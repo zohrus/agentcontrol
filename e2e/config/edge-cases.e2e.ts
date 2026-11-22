@@ -6,7 +6,8 @@ import {
 } from "../support/expect/config-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
-import { environment, mcpServer, onlyInRepo, skill } from "../support/setup/config-items.ts";
+import { startAppWithAServerForOneRepository } from "../support/setup/config-fixtures.ts";
+import { environment, skill } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -14,8 +15,7 @@ test("a plan made without the repository leaves the repository's config alone", 
   // ********************************************************************
   // ** GIVEN an MCP server for one repository that has been applied to that repository
   // ********************************************************************
-  const app = await startAppWithEmptyHome();
-  await app.user.setsUp([onlyInRepo(mcpServer({ name: "docs", command: "npx" }), app.repo.path)]);
+  const app = await startAppWithAServerForOneRepository();
   await app.user.reviewsAndAppliesThePlan({ includingTheRepo: true });
 
   // ********************************************************************

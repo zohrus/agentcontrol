@@ -6,6 +6,7 @@ import {
   environment,
   instructions,
   mcpServer,
+  onlyInRepo,
   permissionRule,
   skill,
 } from "./config-items.ts";
@@ -119,5 +120,12 @@ export async function startAppWithNotesBesideAnAppliedInstruction(): Promise<Con
   await app.home.has(".claude/CLAUDE.md", "Old notes.\n");
   await app.user.setsUp([instructions({ id: "team-rules", text: "Always write tests first." })]);
   await app.user.reviewsAndAppliesThePlan({ onlyForClaudeCode: true });
+  return app;
+}
+
+/** An MCP server "docs" that the user set up for the one repository only. */
+export async function startAppWithAServerForOneRepository(): Promise<ConfigApp> {
+  const app = await startAppWithEmptyHome();
+  await app.user.setsUp([onlyInRepo(mcpServer({ name: "docs", command: "npx" }), app.repo.path)]);
   return app;
 }

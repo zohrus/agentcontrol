@@ -9,8 +9,9 @@ import {
 } from "../support/expect/config-expectations.ts";
 import { expectImportedItem } from "../support/expect/config-import-expectations.ts";
 import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import { startAppWithAServerForOneRepository } from "../support/setup/config-fixtures.ts";
 import { startAppWithHandWrittenSetupToImport } from "../support/setup/config-fixtures.ts";
-import { mcpServer, onlyInRepo, switchedOff } from "../support/setup/config-items.ts";
+import { mcpServer, switchedOff } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -41,8 +42,7 @@ test("a repo-scoped item is written into the repository, not the home folder", a
   // ********************************************************************
   // ** GIVEN an MCP server that the user set up for one repository only
   // ********************************************************************
-  const app = await startAppWithEmptyHome();
-  await app.user.setsUp([onlyInRepo(mcpServer({ name: "docs", command: "npx" }), app.repo.path)]);
+  const app = await startAppWithAServerForOneRepository();
 
   // ********************************************************************
   // ** WHEN the user reviews the plan for that repository and applies it
