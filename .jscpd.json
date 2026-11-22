@@ -1,0 +1,9 @@
+{
+  "path": ["packages", "e2e", "spike"],
+  "format": ["typescript", "tsx"],
+  "minTokens": 50,
+  "threshold": 1,
+  "ignore": ["**/node_modules/**"],
+  "reporters": ["console"],
+  "gitignore": true
+}
