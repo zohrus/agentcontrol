@@ -77,6 +77,12 @@ export const hygieneCases: readonly GateCase[] = [
     command: ["bun", "run", "dup"],
   },
   {
+    name: "acp-leaks: raw ACP name outside the relay",
+    expect: "raw ACP name",
+    files: { "packages/sdk/src/__gate_sample_leak__.ts": 'export const kind = "sessionUpdate";\n' },
+    command: ["bun", "run", "acp-leaks"],
+  },
+  {
     name: "biome: badly formatted file",
     expect: "dup-format",
     files: { [`${SAMPLE_DIR}/dup-format.ts`]: "export   const   x=1\n" },

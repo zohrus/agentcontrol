@@ -24,7 +24,9 @@ export const ToolDescription = z.object({
   title: z.string(),
   kind: ToolKind,
   status: ToolStatus,
-  /** Files the call changes, when known. */
+  /** Files the call touches (read or changed), when known. */
+  paths: z.array(z.string()).optional(),
+  /** Files the call changes with their diff, when the agent sent one. */
   files: z.array(FileChange).optional(),
   /** The shell command, for `execute` calls that have one. */
   command: z.string().optional(),

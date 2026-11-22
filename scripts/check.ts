@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { runCapture, type StepResult, skippedStep } from "./lib/proc.ts";
 
-const PARALLEL_GATES = ["lint", "format:check", "deps", "knip", "dup", "audit"];
+const PARALLEL_GATES = ["lint", "format:check", "deps", "knip", "dup", "acp-leaks", "audit"];
 
 function packageScripts(): Record<string, string> {
   const text = readFileSync("package.json", "utf8");

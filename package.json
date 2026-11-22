@@ -16,6 +16,7 @@
     "deps": "depcruise --config .dependency-cruiser.cjs --no-progress --cache --cache-strategy content packages e2e scripts",
     "knip": "knip --max-issues 0 --cache --cache-location node_modules/.cache/knip",
     "dup": "jscpd",
+    "acp-leaks": "bun scripts/acp-leaks.ts",
     "audit": "bun audit",
     "test": "bun run scripts/run-e2e.ts",
     "prove-gates": "bun run scripts/prove-gates.ts",

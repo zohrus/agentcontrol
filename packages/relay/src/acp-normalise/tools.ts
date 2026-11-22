@@ -15,6 +15,10 @@ const ToolCallShape = z.looseObject({
   kind: z.string().optional().catch(undefined),
   status: z.string().optional().catch(undefined),
   content: z.array(z.unknown()).optional().catch(undefined),
+  locations: z
+    .array(z.looseObject({ path: z.string() }))
+    .optional()
+    .catch(undefined),
   rawInput: z.unknown().optional(),
 });
 
@@ -50,6 +54,11 @@ function filesOf(content: unknown[] | undefined): FileChange[] | undefined {
   return diffs.length > 0 ? diffs : undefined;
 }
 
+function pathsOf(call: z.infer<typeof ToolCallShape>): string[] | undefined {
+  const paths = (call.locations ?? []).map((location) => location.path);
+  return paths.length > 0 ? paths : filesOf(call.content)?.map((file) => file.path);
+}
+
 function patchOf(call: z.infer<typeof ToolCallShape>) {
   const command = CommandInput.safeParse(call.rawInput);
   return {
@@ -57,6 +66,7 @@ function patchOf(call: z.infer<typeof ToolCallShape>) {
     title: call.title,
     kind: call.kind === undefined ? undefined : (KINDS[call.kind] ?? "other"),
     status: call.status === undefined ? undefined : STATUSES[call.status],
+    paths: pathsOf(call),
     files: filesOf(call.content),
     command: command.success ? command.data.command : undefined,
     input: call.rawInput,
