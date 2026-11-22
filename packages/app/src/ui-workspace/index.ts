@@ -20,6 +20,8 @@ export interface UiWorkspace {
   /** Undo / restore: moves history, then writes that version into both live and staging. */
   undo(): Promise<UiVersion | undefined>;
   restore(commit: string): Promise<UiVersion>;
+  /** Undo for a change that was promoted but not kept: writes the tip of the history into live and staging. */
+  resetToKept(): Promise<void>;
   /** Throws away uncommitted staging edits by resetting staging to the live content. */
   discardStaging(): Promise<void>;
   /** Paths that differ between staging and live. */
@@ -87,6 +89,16 @@ async function pendingChanges(ctx: Context): Promise<string[]> {
   return [...write, ...remove].sort();
 }
 
+async function resetToKept(ctx: Context): Promise<void> {
+  await guard(ctx);
+  await checkoutBoth(ctx);
+}
+
+async function discardStaging(ctx: Context): Promise<void> {
+  await guard(ctx);
+  await syncDir({ from: ctx.liveDir, to: ctx.stagingDir });
+}
+
 export function createUiWorkspace(options: UiWorkspaceOptions): UiWorkspace {
   const run = options.runCommand ?? runWithBun;
   const ctx: Context = {
@@ -110,10 +122,8 @@ export function createUiWorkspace(options: UiWorkspaceOptions): UiWorkspace {
       const version = await moveHistory(ctx, () => versions.restore(commit));
       return version as UiVersion;
     },
-    discardStaging: async () => {
-      await guard(ctx);
-      await syncDir({ from: liveDir, to: stagingDir });
-    },
+    resetToKept: () => resetToKept(ctx),
+    discardStaging: () => discardStaging(ctx),
     pendingChanges: () => pendingChanges(ctx),
   };
 }

@@ -12,6 +12,14 @@ export interface MockAgent {
   willPlan(...tasks: string[]): void;
   willEditFile(path: string): void;
   willAskToRunCommand(command: string): void;
+  /** Asks to write the file (relative to its folder, absolute or even outside it), then writes it only if allowed. */
+  willWriteFile(path: string, content: string): void;
+  /** The agent says which launch-time settings (`_meta` of session/new) it was started with. */
+  willEchoLaunchSettings(): void;
+  /** The agent process dies in the middle of the turn. */
+  willExitUnexpectedly(): void;
+  /** Forgets every step so far, for a second agent process that must run a different script. */
+  startsNewScript(): void;
   /** The agent reports compacting its context: an ACP update kind the relay does not interpret. */
   willCompactContext(): void;
   willFinishWith(stopReason: StopReason): void;
@@ -26,7 +34,10 @@ export interface MockAgent {
 
 type ReportedUsage = Omit<Extract<Step, { kind: "reportUsage" }>, "kind">;
 
-type ScriptedSteps = Omit<MockAgent, "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript">;
+type ScriptedSteps = Omit<
+  MockAgent,
+  "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript" | "startsNewScript"
+>;
 
 function turnEndingSteps(
   add: (step: Step) => void,
@@ -44,6 +55,28 @@ function turnEndingSteps(
   };
 }
 
+function fileSteps(
+  add: (step: Step) => void,
+): Pick<
+  MockAgent,
+  "willEditFile" | "willWriteFile" | "willEchoLaunchSettings" | "willExitUnexpectedly"
+> {
+  return {
+    willEditFile: (path) => {
+      add({ kind: "editFile", path, oldText: "// before\n", newText: "// after\n" });
+    },
+    willWriteFile: (path, content) => {
+      add({ kind: "writeFile", path, content });
+    },
+    willEchoLaunchSettings: () => {
+      add({ kind: "echoLaunchSettings" });
+    },
+    willExitUnexpectedly: () => {
+      add({ kind: "exitUnexpectedly" });
+    },
+  };
+}
+
 function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
   return {
     willReply: (text) => {
@@ -55,9 +88,7 @@ function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
     willPlan: (...tasks) => {
       add({ kind: "plan", entries: tasks.map((content) => ({ content, status: "pending" })) });
     },
-    willEditFile: (path) => {
-      add({ kind: "editFile", path, oldText: "// before\n", newText: "// after\n" });
-    },
+    ...fileSteps(add),
     willAskToRunCommand: (command) => {
       add({ kind: "askToRunCommand", command });
     },
@@ -80,6 +111,9 @@ export async function createMockAgent(): Promise<MockAgent> {
       script.turns.at(-1)?.push(step);
     }),
     onNextPrompt: () => script.turns.push([]),
+    startsNewScript: () => {
+      script.turns.splice(0, script.turns.length, []);
+    },
     writeScript: async () => {
       await Bun.write(scriptPath, JSON.stringify(script));
     },

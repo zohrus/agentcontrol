@@ -55,6 +55,14 @@ export type {
   WaitingReason,
 } from "@agentcontrol/protocol";
 
+export type {
+  ModifyGate,
+  ModifyState,
+  ModifyStatus,
+  ModifyUpdate,
+  UiVersion as UiVersionEntry,
+} from "@agentcontrol/app";
+
 /**
  * What the agent did or said, normalised by the relay: read `payload.updates` of an "acp" event
  * (and `payload.tool` of a "permission-requested" event), never the raw `payload.message`.

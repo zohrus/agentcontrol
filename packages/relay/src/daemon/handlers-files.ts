@@ -1,8 +1,8 @@
 import { ErrorCode, RelayName as N } from "@agentcontrol/protocol";
-import { fileTree, readFileAt, watchFiles, writeFileIfUnchanged } from "../files/index.ts";
+import { watchFiles, writeFileIfUnchanged } from "../files/index.ts";
 import { RelayError, type Handlers } from "../rpc/index.ts";
 import type { Sessions } from "../sessions/index.ts";
-import { diffWorktree } from "../worktrees/index.ts";
+import { workdirOf } from "../workdirs/index.ts";
 
 type FileMethods =
   | typeof N.diff
@@ -14,10 +14,10 @@ type FileMethods =
 /** The methods that look into a session's worktree: diff, file tree, read, write, watch. */
 export function fileHandlers(sessions: Sessions): Pick<Handlers, FileMethods> {
   return {
-    [N.diff]: async ({ sessionId }) => diffWorktree(await sessions.info(sessionId)),
-    [N.fsTree]: async ({ sessionId }) => fileTree((await sessions.info(sessionId)).worktreePath),
+    [N.diff]: async ({ sessionId }) => workdirOf(await sessions.info(sessionId)).diff(),
+    [N.fsTree]: async ({ sessionId }) => workdirOf(await sessions.info(sessionId)).tree(),
     [N.fsRead]: async ({ sessionId, path, ref }) =>
-      readFileAt({ ...(await sessions.info(sessionId)), path, ref }),
+      workdirOf(await sessions.info(sessionId)).read({ path, ref }),
     [N.fsWrite]: async ({ sessionId, path, content, expectedHash }) => {
       const { worktreePath } = await sessions.info(sessionId);
       const written = await writeFileIfUnchanged({ worktreePath, path, content, expectedHash });

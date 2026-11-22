@@ -22,6 +22,7 @@ function usageOf(steps: readonly Step[]) {
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
   let cwd = process.cwd();
+  let launchSettings: unknown;
   let cancel = (): void => undefined;
   const cancelled = new Promise<void>((resolve) => {
     cancel = resolve;
@@ -34,6 +35,7 @@ export function createMockAgent(script: MockAgentScript) {
     }))
     .onRequest(methods.agent.session.new, ({ params }) => {
       cwd = params.cwd;
+      launchSettings = params._meta;
       return { sessionId: "mock-session-1" };
     })
     .onNotification(methods.agent.session.cancel, () => {
@@ -41,7 +43,7 @@ export function createMockAgent(script: MockAgentScript) {
     })
     .onRequest(methods.agent.session.prompt, async ({ params, client }) => {
       const steps = script.turns[turnsStarted++] ?? [];
-      const turn = { client, sessionId: params.sessionId, cwd, cancelled };
+      const turn = { client, sessionId: params.sessionId, cwd, cancelled, launchSettings };
       const stopReason = await runSteps(steps, turn);
       return { stopReason, ...usageOf(steps) };
     });

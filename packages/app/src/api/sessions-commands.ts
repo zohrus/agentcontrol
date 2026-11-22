@@ -2,7 +2,7 @@ import {
   PermissionRespondParams,
   RelayName as N,
   SessionId,
-  SessionsCreateParams,
+  WorktreeSessionParams,
 } from "@agentcontrol/protocol";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -22,7 +22,7 @@ const ArchiveBody = z.object({ force: z.boolean().optional() });
 export function sessionConversationRoutes(deps: ApiDeps) {
   const relay = (): Link => routeRequest(deps).link;
   return new Hono()
-    .post("/", validate("json", SessionsCreateParams), async (c) => {
+    .post("/", validate("json", WorktreeSessionParams), async (c) => {
       const { sessionId } = await relay().call(N.sessionsCreate, c.req.valid("json"));
       await relay().refreshSessions();
       return c.json({ sessionId }, 201);

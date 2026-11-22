@@ -19,6 +19,7 @@ export function toSessionRow(workspaceId: string, s: SessionSummary): SessionRow
   const { pendingPermissions, ...rest } = s;
   return {
     ...rest,
+    kind: s.kind ?? "worktree",
     workspaceId,
     waitingReason: s.waitingReason ?? null,
     archivedAt: s.archivedAt ?? null,

@@ -4,6 +4,7 @@ import {
   SessionId,
   type SessionsCreateParams,
   type SessionSummary,
+  type WorktreeSessionParams,
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
@@ -14,6 +15,7 @@ import type { RepoStore } from "../repos/index.ts";
 import { createWorktree, portBaseFor } from "../worktrees/index.ts";
 import { archiveSession } from "./archive.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
+import { createDirectorySession } from "./directory.ts";
 import { answerRequest, cancelRequests } from "./permissions.ts";
 import { recoverSessions } from "./recovery.ts";
 import { runInBackground } from "./start.ts";
@@ -53,12 +55,13 @@ export interface Sessions {
   shutdown(): Promise<void>;
 }
 
-function titleOf(params: CreateParams): string {
+function titleOf(params: WorktreeSessionParams): string {
   const firstLine = params.title ?? params.prompt.split("\n")[0] ?? "";
   return firstLine.slice(0, 80);
 }
 
 async function create(ctx: SessionContext, params: CreateParams): Promise<SessionId> {
+  if ("kind" in params) return createDirectorySession(ctx, params);
   const repo =
     (await ctx.repos.findByPath(params.repoPath)) ?? (await ctx.repos.add(params.repoPath));
   const sessionId = SessionId.parse(crypto.randomUUID());

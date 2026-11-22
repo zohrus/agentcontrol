@@ -9,8 +9,8 @@ export const SessionsListParams = Empty;
 /** Result of relay/sessions.list. */
 export const SessionsListResult = z.object({ sessions: z.array(SessionSummary) });
 
-/** Params of relay/sessions.create. */
-export const SessionsCreateParams = z.object({
+/** Params of relay/sessions.create for a session in its own git worktree. */
+export const WorktreeSessionParams = z.object({
   agent: AgentKind,
   repoPath: z.string(),
   baseBranch: z.string(),
@@ -18,6 +18,25 @@ export const SessionsCreateParams = z.object({
   title: z.string().optional(),
   model: z.string().optional(),
 });
+
+/** What a directory session's agent may do: the relay answers every permission request itself. */
+export const PermissionPolicy = z.object({
+  /** File edits are allowed only when every path they touch resolves inside this folder. */
+  allowEditsUnder: z.string(),
+});
+
+/** Params of relay/sessions.create for an agent that runs in a plain folder, with a fence. */
+export const DirectorySessionParams = z.object({
+  kind: z.literal("directory"),
+  agent: AgentKind,
+  cwd: z.string(),
+  prompt: z.string(),
+  title: z.string().optional(),
+  permissionPolicy: PermissionPolicy,
+});
+
+/** Params of relay/sessions.create: a worktree session (no `kind`) or a directory session. */
+export const SessionsCreateParams = z.union([DirectorySessionParams, WorktreeSessionParams]);
 /** Result of relay/sessions.create. */
 export const SessionsCreateResult = z.object({ sessionId: SessionId });
 
@@ -49,6 +68,9 @@ export const SessionsArchiveResult = z.discriminatedUnion("archived", [
 
 export type SessionsListResult = z.infer<typeof SessionsListResult>;
 export type SessionsCreateParams = z.infer<typeof SessionsCreateParams>;
+export type WorktreeSessionParams = z.infer<typeof WorktreeSessionParams>;
+export type DirectorySessionParams = z.infer<typeof DirectorySessionParams>;
+export type PermissionPolicy = z.infer<typeof PermissionPolicy>;
 export type SessionsCreateResult = z.infer<typeof SessionsCreateResult>;
 export type PromptParams = z.infer<typeof PromptParams>;
 export type PermissionRespondParams = z.infer<typeof PermissionRespondParams>;

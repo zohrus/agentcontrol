@@ -1,6 +1,7 @@
 import type { FileContent, SessionEvent } from "@agentcontrol/sdk";
 import { type ApiError, isStaleFile } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
+import { modifyUserOf } from "./modify-user.ts";
 import { appWorkspaceUserOf, appWorktreeUserOf } from "./app-more-user.ts";
 import { optionOfKind } from "./permission-option.ts";
 
@@ -48,6 +49,7 @@ async function save(
 /** Sessions and files: what a person does in the app, each one through the SDK. */
 function sessionUserOf(app: AppAccess) {
   return {
+    ...modifyUserOf(app),
     /** Starts a session on the local repo; the agent gets the prompt once it is up. */
     startsSession: async (options: { prompt: string }): Promise<Session> => {
       await app.mockAgent.writeScript();

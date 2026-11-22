@@ -36,14 +36,15 @@ function connectTo(spawned: SpawnedAgent, options: StartAgentOptions) {
 
 type Connection = ReturnType<typeof connectTo>;
 
-async function handshake(connection: Connection, cwd: string): Promise<string> {
+async function handshake(connection: Connection, options: StartAgentOptions): Promise<string> {
   await connection.agent.request(methods.agent.initialize, {
     protocolVersion: PROTOCOL_VERSION,
     clientCapabilities: {},
   });
   const { sessionId } = await connection.agent.request(methods.agent.session.new, {
-    cwd,
+    cwd: options.cwd,
     mcpServers: [],
+    ...(options.sessionMeta ? { _meta: options.sessionMeta } : {}),
   });
   return sessionId;
 }
@@ -87,7 +88,7 @@ export async function startAgent(options: StartAgentOptions): Promise<AgentProce
       env: { ...options.hostEnv, ...options.env },
     });
     const connection = connectTo(spawned, options);
-    const sessionId = await handshake(connection, options.cwd);
+    const sessionId = await handshake(connection, options);
     return agentProcess({ spawned, connection, sessionId });
   } catch (error) {
     spawned?.kill();

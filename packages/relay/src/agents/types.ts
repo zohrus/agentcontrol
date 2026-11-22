@@ -26,6 +26,8 @@ export interface StartAgentOptions {
   cwd: string;
   /** Extra env vars for the agent process (ports etc.). */
   env: Record<string, string>;
+  /** Sent as `_meta` of ACP `session/new`: launch-time settings the adapter understands. */
+  sessionMeta?: Record<string, unknown>;
   /** The relay's own environment: where agent commands are looked up and what the agent inherits. */
   hostEnv: Record<string, string | undefined>;
   /** Called with every raw JSON-RPC message, in both directions, unchanged, in wire order. */

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { relayClientOver, startApp } from "@agentcontrol/app";
+import { type ModifyConfig, relayClientOver, startApp } from "@agentcontrol/app";
 import { inSubprocesses, type RelayHost } from "./relay-host.ts";
 
 const appMain = join(import.meta.dir, "../../../packages/app/src/main.ts");
@@ -65,6 +65,8 @@ interface LaunchOptions {
   port?: number;
   /** Serve the UI: a project folder with Vite, or a folder of built files. */
   ui?: { root?: string; dist?: string };
+  /** The default UI and Modify agent; in-process runs only. */
+  modify?: ModifyConfig | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
 }
@@ -75,6 +77,7 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     dataDir: options.dataDir,
     port: options.port ?? 0,
     ...(options.ui && { ui: options.ui }),
+    ...(options.modify && { modify: options.modify }),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

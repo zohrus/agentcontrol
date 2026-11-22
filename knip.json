@@ -5,11 +5,20 @@
       "entry": ["scripts/*.ts", "spike/*.ts"],
       "project": ["scripts/**/*.ts", "spike/**/*.ts"]
     },
-    "packages/app": { "entry": ["src/drizzle.config.ts"], "project": ["src/**/*.ts"] },
+    "packages/app": {
+      "entry": ["src/drizzle.config.ts"],
+      "project": ["src/**/*.ts"]
+    },
     "packages/ui-template": {
       "project": ["src/**/*.{ts,tsx,css}"]
     },
-    "packages/*": { "project": ["src/**/*.ts"] },
-    "e2e": { "entry": ["**/*.e2e.ts", "support/mock-agent/main.ts"], "project": ["**/*.ts"] }
+    "packages/*": {
+      "project": ["src/**/*.ts"]
+    },
+    "e2e": {
+      "entry": ["**/*.e2e.ts", "support/mock-agent/main.ts"],
+      "project": ["**/*.ts"],
+      "ignore": ["fixtures/**"]
+    }
   }
 }

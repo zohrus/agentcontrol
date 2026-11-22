@@ -26,7 +26,8 @@ export function sessionReadRoutes(deps: ApiDeps) {
     .get("/", validate("query", ListQuery), (c) => {
       const { archived } = c.req.valid("query");
       const filter = archived === undefined ? {} : { archived: archived === "true" };
-      return c.json({ sessions: store.listSessions(filter) });
+      const listed = store.listSessions(filter);
+      return c.json({ sessions: listed.filter((session) => session.kind !== "directory") });
     })
     .get("/:id", validate("param", IdParam), (c) =>
       c.json(requireSession(deps, c.req.valid("param").id)),

@@ -1,7 +1,8 @@
-import { ErrorCode, type SessionId } from "@agentcontrol/protocol";
+import { ErrorCode, type PermissionPolicy, type SessionId } from "@agentcontrol/protocol";
 import type { PermissionAnswer, PermissionRequest } from "../agents/index.ts";
 import { RelayError } from "../rpc/index.ts";
 import { type SessionContext, sessionInfo } from "./context.ts";
+import { decidePermission } from "./policy.ts";
 
 /** The agent asked: record the request, then hold the agent until the user answers. */
 export async function holdForUser(
@@ -48,4 +49,25 @@ export async function cancelRequests(ctx: SessionContext, sessionId: SessionId):
     });
   }
   ctx.permissions.cancelAll(sessionId);
+}
+
+/**
+ * A directory session's request: the relay decides under the policy, never the agent or the user.
+ * Both the request and the automatic answer, with its reason, go into the log.
+ */
+export async function answerByPolicy(
+  ctx: SessionContext,
+  call: { sessionId: SessionId; request: PermissionRequest; policy: PermissionPolicy; cwd: string },
+): Promise<PermissionAnswer> {
+  const { sessionId, request } = call;
+  const { answer, reason } = await decidePermission(call);
+  await ctx.log.append(sessionId, {
+    kind: "permission-requested",
+    payload: { requestId: request.requestId, toolCall: request.toolCall, options: request.options },
+  });
+  await ctx.log.append(sessionId, {
+    kind: "permission-answered",
+    payload: { requestId: request.requestId, ...answer, automatic: { reason } },
+  });
+  return answer;
 }

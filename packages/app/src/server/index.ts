@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { ApiDeps } from "../api/index.ts";
 import { createApi } from "../api/index.ts";
+import { safeRoutes } from "../safe/index.ts";
 import type { UiHandler } from "../ui-serving/index.ts";
 
 export interface RunningServer {
@@ -9,7 +10,7 @@ export interface RunningServer {
   stop: () => Promise<void>;
 }
 
-/** Paths that are never the UI's: the API, and the reserved rollback page (not built yet). */
+/** Paths that are never the UI's: the API, and the rollback page the app serves itself. */
 const notTheUi = ["/api/*", "/_safe", "/_safe/*"];
 
 /**
@@ -17,7 +18,9 @@ const notTheUi = ["/api/*", "/_safe", "/_safe/*"];
  * files otherwise) answers everything the API and the reserved paths do not.
  */
 function createRoot(options: { deps: ApiDeps; ui: UiHandler | undefined }): Hono {
-  const root = new Hono().route("/api", createApi(options.deps));
+  const root = new Hono()
+    .route("/api", createApi(options.deps))
+    .route("/_safe", safeRoutes(options.deps.modify));
   const { ui } = options;
   if (ui === undefined) return root;
   for (const path of notTheUi) root.all(path, (c) => c.notFound());

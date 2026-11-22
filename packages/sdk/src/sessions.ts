@@ -2,7 +2,7 @@ import type {
   DiffResult,
   SessionEvent,
   SessionId,
-  SessionsCreateParams,
+  WorktreeSessionParams,
 } from "@agentcontrol/protocol";
 import { read } from "./api-error.ts";
 import type { Api } from "./client-type.ts";
@@ -10,7 +10,7 @@ import type { SessionRow, UsageRow } from "./types.ts";
 
 export interface StartSession {
   /** Which agent to run: "claude-code", "codex" (or "mock" in tests). */
-  agent: SessionsCreateParams["agent"];
+  agent: WorktreeSessionParams["agent"];
   /** Absolute path of the git repo to work in. */
   repoPath: string;
   /** The branch the session's worktree starts from, e.g. "main". */

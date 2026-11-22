@@ -62,6 +62,7 @@ function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSumm
     status,
     ...(waitingReason ? { waitingReason } : {}),
     title: payload.title,
+    kind: payload.kind ?? "worktree",
     repoPath: payload.repoPath,
     branch: payload.branch,
     baseBranch: payload.baseBranch,

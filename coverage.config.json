@@ -47,18 +47,5 @@
       "reason": "Swift/menu bar shell and installer glue; not exercised by the TypeScript e2e suite."
     }
   ],
-  "pending": [
-    {
-      "path": "packages/app/src/ui-versions/**",
-      "owner": "orchestrator: wire UI versions into the app API (Keep, Undo, history)",
-      "since": "2026-11-22",
-      "reason": "No caller yet: only exported from the app's index.ts, so no e2e test can reach it."
-    },
-    {
-      "path": "packages/app/src/ui-workspace/**",
-      "owner": "orchestrator: wire the UI workspace into the Modify agent",
-      "since": "2026-11-22",
-      "reason": "No caller yet: only exported from the app's index.ts, so no e2e test can reach it."
-    }
-  ]
+  "pending": []
 }

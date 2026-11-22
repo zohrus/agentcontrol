@@ -2,6 +2,7 @@ import { ErrorCode } from "@agentcontrol/protocol";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { ModifyRefusal } from "../modify/index.ts";
 import { RelayCallError, RelayConnectionClosedError } from "../relays/index.ts";
 import { RelayUnavailableError } from "../sync/index.ts";
 
@@ -39,9 +40,21 @@ function otherFailure(error: Error): ApiFailure {
   return new ApiFailure(status, { code, message: error.message });
 }
 
-function failureOf(error: Error): ApiFailure {
+function fromModify(error: ModifyRefusal): ApiFailure {
+  const status = error.code === "invalid-request" ? 400 : 409;
+  return new ApiFailure(status, { code: error.code, message: error.message });
+}
+
+/** Failures a route threw on purpose: already an API failure, or a refusal of the relay or Modify. */
+function intended(error: Error): ApiFailure | undefined {
   if (error instanceof ApiFailure) return error;
   if (error instanceof RelayCallError) return fromRelay(error);
+  return error instanceof ModifyRefusal ? fromModify(error) : undefined;
+}
+
+function failureOf(error: Error): ApiFailure {
+  const known = intended(error);
+  if (known) return known;
   const gone =
     error instanceof RelayUnavailableError || error instanceof RelayConnectionClosedError;
   if (!gone) return otherFailure(error);

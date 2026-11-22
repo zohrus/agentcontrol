@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AgentKind } from "../ids/index.ts";
+import { AgentKind, SessionKind } from "../ids/index.ts";
 import { AgentUpdate, ToolDescription } from "./agent-update.ts";
 
 /** A raw ACP JSON-RPC message, kept unchanged; only the version marker is checked. */
@@ -25,6 +25,8 @@ export const SessionCreatedPayload = z.object({
   branch: z.string(),
   worktreePath: z.string(),
   title: z.string(),
+  /** Absent means "worktree". A directory session has no branch; `worktreePath` is its folder. */
+  kind: SessionKind.optional(),
 });
 
 /** Payload of "setup-output": one chunk of the worktree setup script's output. */
@@ -62,10 +64,17 @@ export const PermissionRequestedPayload = z.object({
   options: z.array(PermissionOption),
 });
 
+/** Set on an answer the relay gave by itself under a permission policy, with the reason. */
+export const AutomaticAnswer = z.object({ reason: z.string() });
+
 /** Payload of "permission-answered": the chosen option, or a cancellation. */
 export const PermissionAnsweredPayload = z.union([
-  z.object({ requestId: z.string(), optionId: z.string() }),
-  z.object({ requestId: z.string(), cancelled: z.literal(true) }),
+  z.object({ requestId: z.string(), optionId: z.string(), automatic: AutomaticAnswer.optional() }),
+  z.object({
+    requestId: z.string(),
+    cancelled: z.literal(true),
+    automatic: AutomaticAnswer.optional(),
+  }),
 ]);
 
 /** Payload of "prompt-sent": the user's message to the agent. */

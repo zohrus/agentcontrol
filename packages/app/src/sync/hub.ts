@@ -1,4 +1,5 @@
 import type { SessionEvent, SessionId } from "@agentcontrol/protocol";
+import type { ModifyState } from "../modify/index.ts";
 import type { StoredSession } from "../store/index.ts";
 
 /**
@@ -8,7 +9,8 @@ import type { StoredSession } from "../store/index.ts";
 export type HubMessage =
   | { type: "event"; workspaceId: string; event: SessionEvent }
   | { type: "sessions"; workspaceId: string; sessions: StoredSession[] }
-  | { type: "fs"; workspaceId: string; sessionId: SessionId; paths: string[] };
+  | { type: "fs"; workspaceId: string; sessionId: SessionId; paths: string[] }
+  | { type: "modify"; state: ModifyState };
 
 export interface Hub {
   /** Calls the listener for every message published from now on; returns an unsubscribe function. */

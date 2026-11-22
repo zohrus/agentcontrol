@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
+import type { ModifyConfig } from "@agentcontrol/app";
 import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
@@ -21,7 +22,7 @@ export interface RunningApp extends AppAccess {
   readonly baseUrl: string;
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
-  restartsTheApp(): Promise<void>;
+  restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
   /** Stops the relay daemon while the app keeps running. */
   theRelayStops(): Promise<void>;
   /** Starts the relay daemon again; the app is expected to find it on its own. */
@@ -73,6 +74,10 @@ export interface StartOptions {
   withUi?: boolean;
   /** Serve this folder of built UI files instead (what a release does). */
   uiDist?: string;
+  /** The default UI and the agent that edits it; the live and staging UI are ready at start. */
+  modify?: ModifyConfig;
+  /** Extra environment for the relay, for example the command behind an agent name. */
+  relayEnv?: Record<string, string>;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -83,42 +88,53 @@ function uiOf(options: StartOptions): { root?: string; dist?: string } {
 }
 
 /** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
-async function prepareWorkspace() {
+async function prepareWorkspace(relayEnv: Record<string, string> = {}) {
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
   onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
   const repoPath = await createLocalRepo();
   const mockAgent = await createMockAgent();
-  const env = mockAgentEnvironment(mockAgent);
+  const env = { ...mockAgentEnvironment(mockAgent), ...relayEnv };
   const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
   onTestEnd(() => host.stop());
   return { dataDir, repoPath, mockAgent, env, host };
 }
 
-/** Starts an app on a fresh data folder with a local git repo and the mock agent. */
-export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
-  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace();
-  const heard = newHeard();
-  const ui = uiOf(options);
-  let current = await openApp({ dataDir, env, host, heard, ui });
-  onTestEnd(() => current.close());
-  const access: AppAccess = {
-    mockAgent,
-    repoPath,
-    ...heard,
+/** The parts of the access every helper uses, reading the SDK and URL of the app as it is now. */
+function accessOf(options: {
+  base: Omit<AppAccess, "sdk" | "baseUrl">;
+  current: () => Opened;
+}): AppAccess {
+  const { current } = options;
+  return {
+    ...options.base,
     get sdk() {
-      return current.sdk;
+      return current().sdk;
+    },
+    get baseUrl() {
+      return current().baseUrl;
     },
   };
+}
+
+/** Starts an app on a fresh data folder with a local git repo and the mock agent. */
+export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
+  const heard = newHeard();
+  const ui = uiOf(options);
+  const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
+    openApp({ dataDir, env, host, heard, ui, ...extra });
+  let current = await open({ modify: options.modify });
+  onTestEnd(() => current.close());
+  const access = accessOf({
+    base: { dataDir, mockAgent, repoPath, ...heard },
+    current: () => current,
+  });
   return Object.assign(access, {
-    dataDir,
-    get baseUrl() {
-      return current.baseUrl;
-    },
     user: appUserOf(access),
-    restartsTheApp: async () => {
+    restartsTheApp: async (restart: { modify?: ModifyConfig } = {}) => {
       const port = Number(new URL(current.baseUrl).port);
       await current.close();
-      current = await openApp({ dataDir, env, host, heard, ui, port });
+      current = await open({ port, modify: restart.modify ?? options.modify });
     },
     theRelayStops: () => host.stop(),
     theRelayStartsAgain: () => host.start(),
@@ -138,6 +154,7 @@ async function openApp(options: {
   heard: Heard;
   ui: { root?: string; dist?: string };
   port?: number;
+  modify?: ModifyConfig | undefined;
 }): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({

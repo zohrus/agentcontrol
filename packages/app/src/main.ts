@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { readConfig } from "./config.ts";
+import { readModifyConfig } from "./modify/index.ts";
 import { localRelayCommand, relayClientOver, spawnRelayBridge } from "./relays/index.ts";
 import { startApp } from "./start.ts";
 
@@ -9,6 +10,7 @@ const dataDir = join(config.dataDir, "relay");
 const app = await startApp({
   dataDir: config.dataDir,
   port: config.port,
+  modify: readModifyConfig(process.env),
   ui: { root: config.uiRoot, dist: config.uiDist },
   connectRelay: () => relayClientOver(spawnRelayBridge({ command, dataDir })),
 });

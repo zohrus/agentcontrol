@@ -10,6 +10,7 @@ const overwriteAll = {
   status: sql`excluded.status`,
   waitingReason: sql`excluded.waiting_reason`,
   title: sql`excluded.title`,
+  kind: sql`excluded.kind`,
   repoPath: sql`excluded.repo_path`,
   branch: sql`excluded.branch`,
   baseBranch: sql`excluded.base_branch`,

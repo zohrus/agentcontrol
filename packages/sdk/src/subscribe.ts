@@ -1,6 +1,6 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import { sseMessages } from "./sse.ts";
-import type { LiveSessionEvent, SessionRow } from "./types.ts";
+import type { LiveSessionEvent, ModifyState, SessionRow } from "./types.ts";
 
 const RECONNECT_MS = 1000;
 
@@ -15,6 +15,8 @@ export interface Listeners {
   onSessions?: (sessions: SessionRow[]) => void;
   /** Paths changed in a session's worktree (after `files.tree(id)` has been called for it). */
   onFilesChanged?: (change: { workspaceId: string; sessionId: SessionId; paths: string[] }) => void;
+  /** The Modify agent's state changed (status, changed files, check output, update banner). */
+  onModify?: (state: ModifyState) => void;
   /**
    * Called each time the stream (re)connects. After a reconnect, refetch what you show:
    * `sessions.list()` and `sessions.events(id, { after })`, since messages may have been missed.
@@ -31,6 +33,7 @@ function handlersOf(listeners: Listeners): Handlers {
     ready: () => listeners.onOpen?.(),
     event: (data) => listeners.onEvent?.(data as LiveSessionEvent),
     sessions: (data) => listeners.onSessions?.(data as SessionRow[]),
+    modify: (data) => listeners.onModify?.(data as ModifyState),
     fs: (data) => {
       listeners.onFilesChanged?.(
         data as { workspaceId: string; sessionId: SessionId; paths: string[] },

@@ -18,6 +18,9 @@ export const sessions = sqliteTable(
     status: text("status").notNull(),
     waitingReason: text("waiting_reason"),
     title: text("title").notNull(),
+    kind: text("kind", { enum: ["worktree", "directory"] })
+      .notNull()
+      .default("worktree"),
     repoPath: text("repo_path").notNull(),
     branch: text("branch").notNull(),
     baseBranch: text("base_branch").notNull(),

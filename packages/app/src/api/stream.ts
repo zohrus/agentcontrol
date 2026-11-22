@@ -17,7 +17,8 @@ function sseOf(message: HubMessage): { event: string; data: string } {
         data: JSON.stringify({ ...message.event, workspaceId: message.workspaceId }),
       };
     case "sessions":
-      return { event: type, data: JSON.stringify(message.sessions) };
+      const listed = message.sessions.filter((session) => session.kind !== "directory");
+      return { event: type, data: JSON.stringify(listed) };
     case "fs":
       return {
         event: type,
@@ -27,6 +28,8 @@ function sseOf(message: HubMessage): { event: string; data: string } {
           paths: message.paths,
         }),
       };
+    case "modify":
+      return { event: type, data: JSON.stringify(message.state) };
   }
 }
 
@@ -39,7 +42,7 @@ async function follow(hub: Hub, stream: SSEStreamingApi): Promise<void> {
   stop();
 }
 
-/** The live stream: `event`, `sessions` and `fs` messages, after an initial `ready`. */
+/** The live stream: `event`, `sessions`, `fs` and `modify` messages, after an initial `ready`. */
 export function streamRoute({ hub }: ApiDeps) {
   return new Hono().get("/stream", (c) => streamSSE(c, (stream) => follow(hub, stream)));
 }

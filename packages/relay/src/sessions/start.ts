@@ -1,19 +1,36 @@
-import { RawAcpMessage, type SessionId, type SessionsCreateParams } from "@agentcontrol/protocol";
-import type { z } from "zod";
-import { type AgentProcess, startAgent } from "../agents/index.ts";
+import {
+  type AgentKind,
+  RawAcpMessage,
+  type SessionId,
+  type WorktreeSessionParams,
+} from "@agentcontrol/protocol";
+import {
+  type AgentProcess,
+  type PermissionAnswer,
+  type PermissionRequest,
+  startAgent,
+} from "../agents/index.ts";
 import type { RepoWithSetup } from "../repos/index.ts";
 import { type CreatedWorktree, runSetupScript } from "../worktrees/index.ts";
 import type { SessionContext } from "./context.ts";
 import { holdForUser } from "./permissions.ts";
 import { startTurn } from "./turn.ts";
 
-type CreateParams = z.infer<typeof SessionsCreateParams>;
-
 export interface NewSession {
   sessionId: SessionId;
   repo: RepoWithSetup;
-  params: CreateParams;
+  params: WorktreeSessionParams;
   worktree: CreatedWorktree;
+}
+
+/** Everything needed to start one agent process for a session, whatever kind of session it is. */
+export interface Launch {
+  sessionId: SessionId;
+  agent: AgentKind;
+  cwd: string;
+  env: Record<string, string>;
+  sessionMeta?: Record<string, unknown>;
+  ask: (request: PermissionRequest) => Promise<PermissionAnswer>;
 }
 
 function reasonOf(error: unknown): string {
@@ -59,19 +76,20 @@ function watchExit(ctx: SessionContext, sessionId: SessionId, agent: AgentProces
 }
 
 /** `agent-started` is recorded once the ACP handshake is done, so it means the agent is up. */
-async function launchAgent(
+export async function launchAgent(
   ctx: SessionContext,
-  session: NewSession,
+  launch: Launch,
 ): Promise<AgentProcess | undefined> {
-  const { sessionId, worktree } = session;
+  const { sessionId } = launch;
   try {
     const agent = await startAgent({
-      kind: session.params.agent,
-      cwd: worktree.worktreePath,
-      env: worktree.env,
+      kind: launch.agent,
+      cwd: launch.cwd,
+      env: launch.env,
+      ...(launch.sessionMeta ? { sessionMeta: launch.sessionMeta } : {}),
       hostEnv: ctx.hostEnv,
       onMessage: tapAcp(ctx, sessionId),
-      onPermissionRequest: (request) => holdForUser(ctx, { sessionId, request }),
+      onPermissionRequest: launch.ask,
     });
     ctx.live.set(sessionId, agent);
     await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
@@ -87,9 +105,16 @@ async function launchAgent(
 
 async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
   if (!(await runSetup(ctx, session))) return;
-  const agent = await launchAgent(ctx, session);
+  const { sessionId, worktree } = session;
+  const agent = await launchAgent(ctx, {
+    sessionId,
+    agent: session.params.agent,
+    cwd: worktree.worktreePath,
+    env: worktree.env,
+    ask: (request) => holdForUser(ctx, { sessionId, request }),
+  });
   if (!agent) return;
-  await startTurn(ctx, { sessionId: session.sessionId, agent, text: session.params.prompt });
+  await startTurn(ctx, { sessionId, agent, text: session.params.prompt });
 }
 
 /** Runs everything after the session exists; every failure ends up as events in the log. */

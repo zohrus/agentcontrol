@@ -3,6 +3,7 @@ import type { ApiDeps } from "./deps.ts";
 import { configRoutes } from "./config.ts";
 import { reportFailure } from "./errors.ts";
 import { fileRoutes } from "./files.ts";
+import { modifyRoutes } from "./modify.ts";
 import { sessionControlRoutes, sessionConversationRoutes } from "./sessions-commands.ts";
 import { sessionReadRoutes } from "./sessions-read.ts";
 import { streamRoute } from "./stream.ts";
@@ -18,6 +19,7 @@ export function createApi(deps: ApiDeps) {
     .route("/sessions", sessionConversationRoutes(deps))
     .route("/sessions", sessionControlRoutes(deps))
     .route("/sessions", fileRoutes(deps))
+    .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))
     .route("/", workspaceRoutes(deps))
     .route("/", streamRoute(deps));

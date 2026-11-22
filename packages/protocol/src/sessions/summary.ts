@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { PermissionOption } from "../events/index.ts";
-import { AgentKind, SessionId, SessionStatus, WaitingReason } from "../ids/index.ts";
+import { AgentKind, SessionId, SessionKind, SessionStatus, WaitingReason } from "../ids/index.ts";
 
 /** What a pending request asks to do, in terms every agent shares. Everything but the title is optional. */
 export const PendingToolCall = z.object({
@@ -31,6 +31,8 @@ export const SessionSummary = z.object({
   status: SessionStatus,
   waitingReason: WaitingReason.optional(),
   title: z.string(),
+  /** Absent means "worktree". Directory sessions (the Modify agent) are not in GET /api/sessions; read them by id. */
+  kind: SessionKind.optional(),
   repoPath: z.string(),
   branch: z.string(),
   baseBranch: z.string(),

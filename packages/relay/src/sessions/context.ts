@@ -1,4 +1,4 @@
-import type { SessionId } from "@agentcontrol/protocol";
+import type { SessionId, SessionKind } from "@agentcontrol/protocol";
 import type { AgentProcess, HostEnv } from "../agents/index.ts";
 import type { EventInput, EventLog } from "../event-log/index.ts";
 import type { PendingPermissions } from "../permissions/index.ts";
@@ -33,6 +33,8 @@ export interface SessionInfo {
   baseBranch: string;
   repoPath: string;
   branch: string;
+  /** Absent means "worktree". For a "directory" session `worktreePath` is its folder. */
+  kind?: SessionKind | undefined;
 }
 
 /** A session's location, from its in-memory state; fails with sessionNotFound when it has none. */

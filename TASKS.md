@@ -12,7 +12,6 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] Before the first public release: rename everywhere (`@agentcontrol/sdk`, `~/.agentcontrol/`, `AGENTCONTROL_PORT_BASE`, `AgentControl.dmg`, cask), then claim the npm scope, Homebrew cask name and a domain.
 
 ## Security (deferred)
-- [ ] Owner asked what this is (22 Nov 2026) and has the explanation; waiting for a yes to schedule it. Recommended before the first release at the latest: the app can now change its own UI and write agent config, so an unprotected local server matters more.
 - [ ] Lock down the local server. Done: it listens on `127.0.0.1` only. Still to do: require a random token generated at startup, check `Origin` and `Host` headers (blocks attacks from websites open in the browser, including DNS rebinding).
 - [x] Relay socket: readable only by the owner (`0600`), so other users on the machine can't drive your agents. (Set in `packages/relay/src/daemon/server.ts`; still check the folder permissions on shared SSH workspaces in phase 5.)
 
@@ -104,7 +103,6 @@ Later:
 - [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead.
 
 ## Decisions made
-- [x] Coverage exclusions approved by the owner (22 Nov 2026): the seven thin start-up files proven by the real-process tests, the UI package until browser tests report coverage, the Swift Mac app, and one tooling config file. The list is in `coverage.config.json`; it may only shrink.
 - [x] Laptop platform: macOS only.
 - [x] License: MIT. Add the `LICENSE` file when the repo is created.
 - [x] Merge style: no pull requests. Claude pushes straight to `main` and keeps `docs/status.html` up to date.
@@ -122,7 +120,3 @@ Later:
 - [x] typescript-eslint does not support TypeScript 7 yet: TypeScript is pinned to 6.0.x (decision `docs/decisions/0001-dev-loop.md`). Revisit when typescript-eslint announces support.
 - [x] Bun's `minimumReleaseAge` install setting exists and works (set to 14 days in `bunfig.toml`).
 - [ ] Decide whether to shorten the 14-day release age so security fixes arrive sooner.
-
-## Normalised updates
-- [ ] The app stores the normalised updates it receives, so sessions synced before a normaliser improvement keep the old form. Add a normaliser version and re-sync, or strip on save and normalise on read.
-

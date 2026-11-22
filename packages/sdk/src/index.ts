@@ -2,6 +2,7 @@ import { hc } from "hono/client";
 import type { AppType } from "@agentcontrol/app";
 import { configApi } from "./config.ts";
 import { filesApi } from "./files.ts";
+import { modifyApi } from "./modify.ts";
 import { sessionsApi } from "./sessions.ts";
 import { type Listeners, subscribeTo } from "./subscribe.ts";
 import { agentsApi, reposApi, workspaceApi } from "./workspace.ts";
@@ -28,6 +29,7 @@ export function createClient({ baseUrl, fetch: send = fetch }: ClientOptions) {
   return {
     sessions: sessionsApi(api),
     files: filesApi(api),
+    modify: modifyApi(api),
     config: configApi(api),
     repos: reposApi(api),
     workspace: workspaceApi(api),

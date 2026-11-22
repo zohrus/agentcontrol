@@ -19,3 +19,7 @@ export type SessionStatus = z.infer<typeof SessionStatus>;
 /** Why a session is waiting on the user. */
 export const WaitingReason = z.enum(["permission", "reply", "setup-failed"]);
 export type WaitingReason = z.infer<typeof WaitingReason>;
+
+/** Where a session runs: in its own git worktree, or in a plain directory (the Modify agent). */
+export const SessionKind = z.enum(["worktree", "directory"]);
+export type SessionKind = z.infer<typeof SessionKind>;
