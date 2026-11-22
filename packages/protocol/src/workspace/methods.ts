@@ -5,8 +5,16 @@ const Empty = z.object({});
 
 /** Params of relay/hello. */
 export const HelloParams = z.object({ clientVersion: z.string() });
-/** Result of relay/hello: the relay's version and the agents it can run. */
-export const HelloResult = z.object({ relayVersion: z.string(), agents: z.array(AgentKind) });
+/**
+ * Result of relay/hello: the relay's version, the agents it can run, and the version of the
+ * translation that makes `updates` and `tool` of events (it goes up whenever that output changes,
+ * so the app knows which events it saved are stale).
+ */
+export const HelloResult = z.object({
+  relayVersion: z.string(),
+  normaliserVersion: z.number().int().positive(),
+  agents: z.array(AgentKind),
+});
 
 /** One step of the workspace setup checklist. */
 export const CheckStep = z.object({

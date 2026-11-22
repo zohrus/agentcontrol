@@ -2,6 +2,7 @@ import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import type { HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
 import { createEventLog } from "../event-log/index.ts";
@@ -77,6 +78,8 @@ export interface DaemonOptions {
   dataDir: string;
   /** Added to the process environment for agent commands and what agents inherit. */
   env?: Record<string, string>;
+  /** What `relay/hello` reports as the version of the event translation; the current one if left out. */
+  normaliserVersion?: number;
 }
 
 /** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
@@ -123,7 +126,11 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
     ...sessionHandlers(sessions),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
-    ...workspaceHandlers(repos, hostEnv),
+    ...workspaceHandlers({
+      repos,
+      env: hostEnv,
+      normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
+    }),
     ...configHandlers(configHome(hostEnv)),
   };
   return { handlers, sessions };
@@ -136,7 +143,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const socketPath = socketPathIn(dataDir);
   await claimSocket(socketPath);
   const hostEnv = { ...process.env, ...options.env };
-  const { handlers, sessions } = await buildHandlers({ dataDir, hostEnv });
+  const { handlers, sessions } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);
   await writeFile(pidFileIn(dataDir), String(process.pid));

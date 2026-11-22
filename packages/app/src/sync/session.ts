@@ -6,9 +6,9 @@ import {
   type SessionSummary,
 } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
-import type { Store, Workspace } from "../store/index.ts";
 import { createBatcher } from "./batcher.ts";
-import type { Hub } from "./hub.ts";
+import type { SyncDeps } from "./deps.ts";
+import { renormaliseStaleSessions } from "./renormalise.ts";
 import { saveChangedSummaries } from "./summaries.ts";
 
 const EVENT_BATCH_MS = 20;
@@ -22,12 +22,6 @@ export interface SyncSession {
   flush: () => void;
 }
 
-export interface SyncDeps {
-  store: Store;
-  hub: Hub;
-  workspace: Workspace;
-}
-
 /** Saves summaries the relay sent and tells the hub which ones are news. */
 function saveSummaries(deps: SyncDeps) {
   return (summaries: SessionSummary[]): void => {
@@ -37,12 +31,13 @@ function saveSummaries(deps: SyncDeps) {
   };
 }
 
-function receiver(deps: SyncDeps) {
+/** Batches the relay's events; `version` is the relay's translation version once it has said it. */
+function receiver(deps: SyncDeps, version: () => number) {
   return createBatcher<SessionEvent>({
     delayMs: EVENT_BATCH_MS,
     handle: (events) => {
       const workspaceId = deps.workspace.id;
-      deps.store.saveEvents(workspaceId, events);
+      deps.store.saveEvents({ workspaceId, list: events, normaliserVersion: version() });
       events.forEach((event) => {
         deps.hub.publish({ type: "event", workspaceId, event });
       });
@@ -66,22 +61,39 @@ function relayPushes(options: {
   });
 }
 
-/**
- * Handshake, resume every session after the last stored seq, and list the sessions once. From then
- * on the relay pushes every change (`relay/sessions.changed`), so nothing here polls or has to know
- * which events change a session's status.
- */
-export async function startSyncSession(client: RelayClient, deps: SyncDeps): Promise<SyncSession> {
-  const events = receiver(deps);
-  const onSummaries = saveSummaries(deps);
-  relayPushes({ client, onEvent: events.add, onSummaries });
-  const hello = await client.call(RelayName.hello, { clientVersion: CLIENT_VERSION });
-  deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
+/** Follows every session after the last stored seq, lists them once, and returns how to list again. */
+async function followAndList(call: {
+  client: RelayClient;
+  deps: SyncDeps;
+  onSummaries: (summaries: SessionSummary[]) => void;
+}): Promise<() => Promise<void>> {
+  const { client, deps, onSummaries } = call;
   const afterSeq = deps.store.lastSeqs(deps.workspace.id);
   await client.call(RelayName.eventsSubscribe, { afterSeq });
   const refreshSessions = async (): Promise<void> => {
     onSummaries((await client.call(RelayName.sessionsList, {})).sessions);
   };
   await refreshSessions();
+  return refreshSessions;
+}
+
+/**
+ * Handshake, resume every session after the last stored seq, and list the sessions once. Sessions
+ * saved with an older event translation than the relay's are read again in the background. From then
+ * on the relay pushes every change (`relay/sessions.changed`), so nothing here polls or has to know
+ * which events change a session's status.
+ */
+export async function startSyncSession(client: RelayClient, deps: SyncDeps): Promise<SyncSession> {
+  let normaliserVersion = 0;
+  const events = receiver(deps, () => normaliserVersion);
+  const onSummaries = saveSummaries(deps);
+  relayPushes({ client, onEvent: events.add, onSummaries });
+  const hello = await client.call(RelayName.hello, { clientVersion: CLIENT_VERSION });
+  normaliserVersion = hello.normaliserVersion;
+  deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
+  const refreshSessions = await followAndList({ client, deps, onSummaries });
+  void renormaliseStaleSessions({ client, deps, version: normaliserVersion }).catch(
+    () => undefined,
+  );
   return { hello, refreshSessions, flush: events.flush };
 }

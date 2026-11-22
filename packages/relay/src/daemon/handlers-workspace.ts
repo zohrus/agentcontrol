@@ -13,12 +13,19 @@ type WorkspaceMethods =
   | typeof N.reposSetSetup;
 
 /** The methods about the machine itself: hello, setup checklist, registered repos. */
-export function workspaceHandlers(
-  repos: RepoStore,
-  env: HostEnv,
-): Pick<Handlers, WorkspaceMethods> {
+export function workspaceHandlers(call: {
+  repos: RepoStore;
+  env: HostEnv;
+  normaliserVersion: number;
+}): Pick<Handlers, WorkspaceMethods> {
+  const { repos, env, normaliserVersion } = call;
   return {
-    [N.hello]: () => Promise.resolve({ relayVersion: RELAY_VERSION, agents: availableAgents(env) }),
+    [N.hello]: () =>
+      Promise.resolve({
+        relayVersion: RELAY_VERSION,
+        normaliserVersion,
+        agents: availableAgents(env),
+      }),
     [N.workspaceCheck]: () => checkWorkspace(env),
     [N.reposAdd]: async ({ path }) => {
       const { repoId, defaultBranch, path: root } = await repos.add(path);

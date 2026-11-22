@@ -6,6 +6,7 @@ type SessionMethods =
   | typeof N.sessionsList
   | typeof N.sessionsCreate
   | typeof N.eventsSubscribe
+  | typeof N.eventsRead
   | typeof N.prompt
   | typeof N.permissionRespond
   | typeof N.cancel
@@ -38,6 +39,7 @@ export function sessionHandlers(sessions: Sessions): Pick<Handlers, SessionMetho
       await subscribe({ sessions, params, client });
       return {};
     },
+    [N.eventsRead]: async ({ sessionId }) => ({ events: await sessions.events(sessionId) }),
     [N.prompt]: async (params) => {
       await sessions.prompt(params);
       return {};

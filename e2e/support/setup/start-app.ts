@@ -25,8 +25,11 @@ export interface RunningApp extends AppAccess {
   restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
   /** Stops the relay daemon while the app keeps running. */
   theRelayStops(): Promise<void>;
-  /** Starts the relay daemon again; the app is expected to find it on its own. */
-  theRelayStartsAgain(): Promise<void>;
+  /**
+   * Starts the relay daemon again; the app is expected to find it on its own. The new relay may be
+   * one that translates the agents' messages differently (a higher version).
+   */
+  theRelayStartsAgain(options?: { normaliserVersion?: number }): Promise<void>;
 }
 
 /** What the live stream has delivered so far. */
@@ -145,7 +148,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
       current = await open({ port, modify: restart.modify ?? options.modify });
     },
     theRelayStops: () => host.stop(),
-    theRelayStartsAgain: () => host.start(),
+    theRelayStartsAgain: (relay?: { normaliserVersion?: number }) => host.start(relay),
   });
 }
 

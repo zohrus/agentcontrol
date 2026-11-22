@@ -13,6 +13,11 @@ export const EventsSubscribeParams = z.union([
 /** Result of relay/events.subscribe; events follow as relay/event notifications. */
 export const EventsSubscribeResult = z.object({});
 
+/** Params of relay/events.read: one session. */
+export const EventsReadParams = z.object({ sessionId: SessionId });
+/** Result of relay/events.read: every event of the session, normalised as the relay does today. */
+export const EventsReadResult = z.object({ events: z.array(SessionEvent) });
+
 /** Params of the relay/event notification: one event. */
 export const EventNotificationParams = z.object({ event: SessionEvent });
 
@@ -23,6 +28,7 @@ export const EventNotificationParams = z.object({ event: SessionEvent });
 export const SessionsChangedParams = z.object({ sessions: z.array(SessionSummary) });
 
 export type SessionsChangedParams = z.infer<typeof SessionsChangedParams>;
+export type EventsReadResult = z.infer<typeof EventsReadResult>;
 export type EventsSubscribeParams = z.infer<typeof EventsSubscribeParams>;
 export type EventsSubscribeResult = z.infer<typeof EventsSubscribeResult>;
 export type EventNotificationParams = z.infer<typeof EventNotificationParams>;

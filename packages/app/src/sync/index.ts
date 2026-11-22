@@ -1,9 +1,9 @@
 import type { RelayClient } from "../relays/index.ts";
 import { createLink, type Link } from "./link.ts";
 import { runConnections } from "./reconnect.ts";
-import type { SyncDeps } from "./session.ts";
+import type { SyncDeps } from "./deps.ts";
 
-export type { ConnectionState, Hub, HubMessage, WorkspaceConnection } from "./hub.ts";
+export type { Hub, HubMessage } from "./hub.ts";
 export { createHub } from "./hub.ts";
 export type { Link } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";

@@ -2,7 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { RelayClient } from "../relays/index.ts";
 import type { Live } from "./link.ts";
 import { startSyncSession } from "./session.ts";
-import type { SyncDeps } from "./session.ts";
+import type { SyncDeps } from "./deps.ts";
 
 const BACKOFF_START_MS = 100;
 const BACKOFF_MAX_MS = 3000;

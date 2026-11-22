@@ -18,8 +18,11 @@ export interface RelayHost {
   wire(): Wire;
   /** Stops the daemon, its agents with it. */
   stop(): Promise<void>;
-  /** Starts the daemon again on the same data folder (a bridge also does it when connected). */
-  start(): Promise<void>;
+  /**
+   * Starts the daemon again on the same data folder (a bridge also does it when connected). A
+   * daemon running in the test process can start with another event translation version.
+   */
+  start(options?: { normaliserVersion?: number }): Promise<void>;
 }
 
 export async function stopDaemonProcess(dataDir: string): Promise<void> {
@@ -45,8 +48,8 @@ async function relayInProcess(home: RelayHome): Promise<RelayHost> {
   return {
     wire: () => socketWire(daemon.socketPath),
     stop: () => daemon.stop(),
-    start: async () => {
-      daemon = await startRelayDaemon(home);
+    start: async (options = {}) => {
+      daemon = await startRelayDaemon({ ...home, ...options });
     },
   };
 }

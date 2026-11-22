@@ -19,8 +19,9 @@ export async function startAppWhoseRelayCommandFailsAtFirst() {
     dataDir,
     env: { AGENTCONTROL_RELAY_CMD: JSON.stringify(command) },
   });
-  onTestEnd(() => app.stop());
+  // Teardowns run last-in first-out: quit the app first, so it cannot start a daemon after it was stopped.
   onTestEnd(() => stopDaemonProcess(join(dataDir, "relay")));
+  onTestEnd(() => app.stop());
   return {
     sdk: createClient({ baseUrl: app.baseUrl }),
     baseUrl: app.baseUrl,
