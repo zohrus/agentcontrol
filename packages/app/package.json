@@ -4,5 +4,17 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "exports": { ".": "./src/index.ts" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "@agentcontrol/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "drizzle-kit": "0.31.11"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate --config src/drizzle.config.ts"
+  }
 }
