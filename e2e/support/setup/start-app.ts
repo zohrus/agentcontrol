@@ -35,6 +35,7 @@ interface Heard {
   fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   relayConnectionsEnded: Timeline<number>;
+  workspaceConnections: Timeline<string>;
 }
 
 /** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
@@ -46,6 +47,9 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
       },
       onFilesChanged: (change) => {
         heard.fileChanges.record(change);
+      },
+      onWorkspaceConnection: ({ state }) => {
+        heard.workspaceConnections.record(state);
       },
       onOpen: () => {
         resolve(stop);
@@ -66,6 +70,7 @@ function newHeard(): Heard {
     streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
     fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
     relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
+    workspaceConnections: new Timeline<string>(STREAM_WAIT_MS),
   };
 }
 
@@ -78,6 +83,8 @@ export interface StartOptions {
   modify?: ModifyConfig;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  /** Stop the relay before the app starts, so the app finds none. */
+  relayStopped?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -119,10 +126,11 @@ function accessOf(options: {
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
   const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
+  if (options.relayStopped) await host.stop();
   const heard = newHeard();
   const ui = uiOf(options);
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, ...extra });
+    openApp({ dataDir, env, host, heard, ui, relayDown: options.relayStopped, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -153,6 +161,7 @@ async function openApp(options: {
   host: RelayHost;
   heard: Heard;
   ui: { root?: string; dist?: string };
+  relayDown: boolean | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
 }): Promise<Opened> {

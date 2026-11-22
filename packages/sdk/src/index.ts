@@ -14,7 +14,7 @@ export { isStaleFile } from "./files.ts";
 export type { StartSession } from "./sessions.ts";
 export type { Listeners } from "./subscribe.ts";
 export type * from "./types.ts";
-export type { RepoWithSetup } from "./workspace.ts";
+export type { RepoWithSetup, WorkspaceInfo } from "./workspace.ts";
 
 export interface ClientOptions {
   /** Where the app listens, e.g. "http://127.0.0.1:4747". Use "" for same-origin in the browser. */

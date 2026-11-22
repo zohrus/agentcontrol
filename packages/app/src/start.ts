@@ -51,7 +51,10 @@ function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; sync: Sy
 
 const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };
 
-/** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the relay is synced. */
+/**
+ * Starts the app on 127.0.0.1 with its own database under `dataDir`. It does not wait for the
+ * relay: it keeps trying in the background, and the workspace reads as disconnected until it is up.
+ */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
   const store = createStore({ path: join(options.dataDir, "state.db") });
@@ -60,7 +63,6 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   let ui: UiHandler | undefined;
   const server = await Promise.try(async () => {
     ui = await startUi(options.ui ?? {});
-    await sync.ready;
     const modify = modifyOf(options, { store, hub, sync });
     if (options.modify) await modify.ready();
     const deps = { store, hub, workspace: LOCAL, relay: sync, modify };

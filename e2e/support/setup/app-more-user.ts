@@ -55,6 +55,11 @@ export function appWorkspaceUserOf(app: AppAccess) {
       await app.sdk.repos.setSetup(repo.repoId, { copyFiles: [".env*"], setupScript: script });
     },
     listsTheAgents: () => app.sdk.agents.list(),
+    readsTheWorkspace: () => app.sdk.workspace.get(),
+    readsTheHealth: async (): Promise<{ ok: boolean; relay: string }> => {
+      const response = await fetch(`${app.baseUrl}/api/health`);
+      return (await response.json()) as { ok: boolean; relay: string };
+    },
     readsTheChecklist: () => app.sdk.workspace.check(),
     triesToListTheAgents: () => attemptApi(app.sdk.agents.list()),
   };

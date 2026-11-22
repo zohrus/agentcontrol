@@ -22,7 +22,7 @@ export interface RelayHost {
   start(): Promise<void>;
 }
 
-async function stopDaemonProcess(dataDir: string): Promise<void> {
+export async function stopDaemonProcess(dataDir: string): Promise<void> {
   const stop = Bun.spawn(["bun", relayMain, "stop", "--data-dir", dataDir], {
     stdout: "inherit",
     stderr: "inherit",

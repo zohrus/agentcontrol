@@ -7,7 +7,8 @@ import {
   type SessionId,
 } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
-import type { Hub } from "./hub.ts";
+import { createConnectionState } from "./connection.ts";
+import type { Hub, WorkspaceConnection } from "./hub.ts";
 
 /** The relay connection as the rest of the app sees it: there when connected, an error when not. */
 export class RelayUnavailableError extends Error {
@@ -17,6 +18,8 @@ export class RelayUnavailableError extends Error {
 }
 
 export interface Link {
+  /** Whether the relay is connected right now. It starts disconnected, until the first sync. */
+  connection: () => WorkspaceConnection;
   call: <M extends RelayMethodName>(method: M, params: RelayParams<M>) => Promise<RelayResult<M>>;
   /** Starts forwarding file changes of a session's worktree; a no-op if already watched. */
   watchFiles: (sessionId: SessionId) => Promise<void>;
@@ -62,7 +65,9 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
     return live;
   };
   const files = fileWatching(current);
+  const state = createConnectionState(target);
   const link: Link = {
+    connection: state.get,
     call: (method, params) => current().client.call(method, params),
     refreshSessions: () => current().refreshSessions(),
     watchFiles: files.watch,
@@ -71,12 +76,14 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
     live = next;
     files.reset();
     forwardFileChanges(next.client, target);
+    state.set("connected");
   };
   return {
     link,
     attach,
     detach: () => {
       live = undefined;
+      state.set("disconnected");
     },
   };
 }

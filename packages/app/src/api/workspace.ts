@@ -8,6 +8,13 @@ import { validate } from "./validate.ts";
 
 const RepoParam = z.object({ id: RepoId });
 
+/** The workspace the app serves, with whether its relay is connected. */
+function describeWorkspace(deps: ApiDeps) {
+  const { workspaceId, link } = routeRequest(deps);
+  const { label, kind } = deps.workspace;
+  return { id: workspaceId, label, kind, connection: link.connection().state };
+}
+
 /** Repos, their worktree setup, and the workspace's health. */
 export function workspaceRoutes(deps: ApiDeps) {
   const relay = (): Link => routeRequest(deps).link;
@@ -28,10 +35,11 @@ export function workspaceRoutes(deps: ApiDeps) {
         return c.json({});
       },
     )
+    .get("/workspace", (c) => c.json(describeWorkspace(deps)))
     .get("/workspace/check", async (c) => c.json(await relay().call(N.workspaceCheck, {})))
     .get("/agents", async (c) => {
       const { agents } = await relay().call(N.hello, { clientVersion: "0.0.0" });
       return c.json({ agents });
     })
-    .get("/health", (c) => c.json({ ok: true }));
+    .get("/health", (c) => c.json({ ok: true, relay: relay().connection().state }));
 }

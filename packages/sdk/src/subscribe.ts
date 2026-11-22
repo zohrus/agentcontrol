@@ -1,6 +1,7 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import { sseMessages } from "./sse.ts";
 import type { LiveSessionEvent, ModifyState, SessionRow } from "./types.ts";
+import type { WorkspaceInfo } from "./workspace.ts";
 
 const RECONNECT_MS = 1000;
 
@@ -15,6 +16,11 @@ export interface Listeners {
   onSessions?: (sessions: SessionRow[]) => void;
   /** Paths changed in a session's worktree (after `files.tree(id)` has been called for it). */
   onFilesChanged?: (change: { workspaceId: string; sessionId: SessionId; paths: string[] }) => void;
+  /** The app connected to or lost a workspace's relay; `state` says which. */
+  onWorkspaceConnection?: (change: {
+    workspaceId: string;
+    state: WorkspaceInfo["connection"];
+  }) => void;
   /** The Modify agent's state changed (status, changed files, check output, update banner). */
   onModify?: (state: ModifyState) => void;
   /**
@@ -33,6 +39,10 @@ function handlersOf(listeners: Listeners): Handlers {
     ready: () => listeners.onOpen?.(),
     event: (data) => listeners.onEvent?.(data as LiveSessionEvent),
     sessions: (data) => listeners.onSessions?.(data as SessionRow[]),
+    workspace: (data) =>
+      listeners.onWorkspaceConnection?.(
+        data as { workspaceId: string; state: WorkspaceInfo["connection"] },
+      ),
     modify: (data) => listeners.onModify?.(data as ModifyState),
     fs: (data) => {
       listeners.onFilesChanged?.(

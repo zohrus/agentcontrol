@@ -27,4 +27,6 @@ export interface AppAccess {
   readonly fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   readonly relayConnectionsEnded: Timeline<number>;
+  /** Every change of the workspace's relay connection the live stream has reported. */
+  readonly workspaceConnections: Timeline<string>;
 }
