@@ -21,7 +21,6 @@ export type Adapter = { child: ChildProcess; stream: Stream };
 export function spawnAdapter(agent: AgentName, cwd: string): Adapter {
   const [command = "", ...args] = commandFor(agent);
   const child = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "inherit"], env: process.env });
-  if (!child.stdin || !child.stdout) throw new Error(`${agent} adapter has no stdio`);
   const stream = ndJsonStream(Writable.toWeb(child.stdin), Readable.toWeb(child.stdout));
   return { child, stream };
 }

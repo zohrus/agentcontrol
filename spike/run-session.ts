@@ -9,9 +9,9 @@ import {
   type Stream,
   type ClientConnection,
 } from "@agentclientprotocol/sdk";
-import type { createLogger } from "./message-log.ts";
+import type { Logger } from "./message-log.ts";
 
-type Log = ReturnType<typeof createLogger>;
+type Log = Logger;
 
 /** Chooses the first "allow once" option; cancels when there is none. */
 export function answerPermission(
@@ -51,4 +51,15 @@ export async function runPrompt(
     prompt: [{ type: "text", text: args.prompt }],
   });
   return response.stopReason;
+}
+
+/** Logs in with an API key from the environment when the agent offers an "api-key" method (Codex). */
+export async function authenticateWithApiKey(
+  conn: ClientConnection,
+  init: InitializeResponse,
+): Promise<boolean> {
+  const hasKey = Boolean(process.env.CODEX_API_KEY ?? process.env.OPENAI_API_KEY);
+  if (!hasKey || !init.authMethods?.some((method) => method.id === "api-key")) return false;
+  await conn.agent.request(methods.agent.authenticate, { methodId: "api-key" });
+  return true;
 }
