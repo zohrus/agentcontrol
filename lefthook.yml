@@ -3,6 +3,8 @@ pre-commit:
   jobs:
     - name: dependency changes (orchestrator only)
       run: bun scripts/guard-deps.ts
+    - name: no gate-proof samples
+      run: "! git diff --cached --name-only | grep -q __gate_sample"
     - name: biome format
       glob: "*.{ts,tsx,js,json}"
       run: bunx biome format --error-on-warnings --no-errors-on-unmatched {staged_files}

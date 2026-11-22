@@ -15,4 +15,3 @@ coverage/
 .claude/*
 !.claude/settings.json
 .cache/
-__gate_sample*/
