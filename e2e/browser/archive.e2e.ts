@@ -7,10 +7,8 @@ import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
-import {
-  expectSessionArchived,
-  expectSessionWaitingForReply,
-} from "../support/expect/app-expectations.ts";
+import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
+import { expectSessionArchived } from "../support/expect/app-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
@@ -22,10 +20,7 @@ test(
     // ** GIVEN a session whose agent edited README.md without committing, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    const session = await app.user.startsSession({ prompt: "Reword the readme" });
-    await expectSessionWaitingForReply(app, session);
-    await app.page.opensSession(session.title);
+    await opensSessionWithUncommittedEdit(app, "Reword the readme");
 
     // ********************************************************************
     // ** WHEN the user archives the session
@@ -47,10 +42,7 @@ test(
     // ** GIVEN the archive warning is showing for a session with an uncommitted edit
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    const session = await app.user.startsSession({ prompt: "Reword the readme" });
-    await expectSessionWaitingForReply(app, session);
-    await app.page.opensSession(session.title);
+    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
     await app.page.archives();
     await expectArchiveWarningToList(app, ["README.md"]);
 

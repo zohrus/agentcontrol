@@ -5,11 +5,11 @@ import {
   expectEditorToShow,
   expectFileToBeSaved,
 } from "../support/browser/browser-expectations.ts";
+import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
-import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
@@ -18,17 +18,15 @@ test(
   "the Changes tab lists the file the agent edited and shows its diff",
   async () => {
     // ********************************************************************
-    // ** GIVEN a session whose agent edited README.md and finished its turn
+    // ** GIVEN a session whose agent edited README.md and finished its turn, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    const session = await app.user.startsSession({ prompt: "Reword the readme" });
-    await expectSessionWaitingForReply(app, session);
+    await opensSessionWithUncommittedEdit(app, "Reword the readme");
 
     // ********************************************************************
-    // ** WHEN the user opens the session in the browser
+    // ** WHEN the user looks at the Changes tab
     // ********************************************************************
-    await app.page.opensSession(session.title);
+    await app.page.opensChangesTab();
 
     // ********************************************************************
     // ** THEN the Changes tab lists README.md
@@ -44,14 +42,11 @@ test(
   "a file edited in the browser's editor and saved is written to the session's worktree",
   async () => {
     // ********************************************************************
-    // ** GIVEN a session whose agent finished its turn after editing README.md
+    // ** GIVEN a session whose agent finished its turn after editing README.md, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    const session = await app.user.startsSession({ prompt: "Reword the readme" });
-    await expectSessionWaitingForReply(app, session);
+    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
     // AND the user has opened README.md in the editor
-    await app.page.opensSession(session.title);
     await app.page.opensEditorTab();
     await app.page.opensFileInEditor("README.md");
     await expectEditorToShow(app, "// after");
