@@ -1,6 +1,8 @@
 import { afterEach, test } from "bun:test";
+import { connectsAClientThatNeverHangsUp } from "../support/setup/stuck-client.ts";
 import {
   expectAppToHaveBeenToldTheAgentExited,
+  expectClientToHaveBeenCutOff,
   expectHistoryToEndWithTheReplyAndTheExit,
 } from "../support/expect/relay-stop-expectations.ts";
 import {
@@ -11,6 +13,24 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
 afterEach(cleanUpAfterTest);
+
+test("a client that never hangs up does not keep the relay from stopping", async () => {
+  // ********************************************************************
+  // ** GIVEN a relay with a client that does not hang up when the relay ends the connection
+  // ********************************************************************
+  const relay = await startRelayWithLocalRepo();
+  const client = await connectsAClientThatNeverHangsUp(relay);
+
+  // ********************************************************************
+  // ** WHEN the relay is stopped
+  // ********************************************************************
+  await relay.stopsTheRelayWhileTheAppIsConnected();
+
+  // ********************************************************************
+  // ** THEN the relay has cut that client off
+  // ********************************************************************
+  await expectClientToHaveBeenCutOff(client);
+});
 
 test("stopping the relay during a turn tells the connected app the agent exited and keeps the reply", async () => {
   // ********************************************************************
