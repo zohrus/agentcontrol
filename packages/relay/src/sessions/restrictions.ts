@@ -17,7 +17,8 @@ const CLAUDE_DISALLOWED = [
  * Launch-time settings that fence an agent in further than the relay's own policy does, sent as
  * `_meta` of `session/new`. Claude: `_meta.claudeCode.options` is read by claude-agent-acp 0.109.1
  * (verified in its source): `tools` limits the built-in tools, `disallowedTools` is merged with the
- * adapter's, and `allowDangerouslySkipPermissions: false` removes bypass mode. Other agents get
+ * adapter's, `allowDangerouslySkipPermissions: false` removes bypass mode, and `settingSources: []` keeps the
+ * user's own Claude settings out. Other agents get
  * nothing here: the relay's policy is the only fence for them.
  */
 export function restrictionsFor(agent: AgentKind): Record<string, unknown> | undefined {
@@ -26,6 +27,9 @@ export function restrictionsFor(agent: AgentKind): Record<string, unknown> | und
     tools: CLAUDE_TOOLS,
     disallowedTools: CLAUDE_DISALLOWED,
     allowDangerouslySkipPermissions: false,
+    // The adapter defaults to the user's, project's and local Claude settings (allow rules, MCP
+    // servers, hooks); none of them may widen what the Modify agent can do. Overrides the default.
+    settingSources: [],
   };
   return { claudeCode: { options } };
 }

@@ -102,6 +102,8 @@ function listenForTurn(options: { events: SessionEvents; sessionId: SessionId; f
 /** The open session, if any. */
 interface Current {
   id?: SessionId;
+  /** The session that ended last, so its chat can still be read. */
+  last?: SessionId;
   open: boolean;
 }
 
@@ -167,6 +169,7 @@ async function endSession(deps: Deps, current: Current): Promise<void> {
   current.open = false;
   delete current.id;
   if (!sessionId) return;
+  current.last = sessionId;
   await deps.relay.call(N.cancel, { sessionId }).catch(() => undefined);
   await deps.relay.call(N.sessionsArchive, { sessionId, force: true }).catch(() => undefined);
 }
@@ -174,7 +177,7 @@ async function endSession(deps: Deps, current: Current): Promise<void> {
 export function createAgentTurns(deps: Deps): AgentTurns {
   const current: Current = { open: false };
   return {
-    sessionId: () => current.id,
+    sessionId: () => current.id ?? current.last,
     run: (request) =>
       turnOf(deps, current, request).catch((error: unknown) => ({
         ok: false as const,
