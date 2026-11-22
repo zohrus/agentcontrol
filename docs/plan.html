@@ -60,6 +60,7 @@ td:first-child{font-weight:500;white-space:nowrap}
 .pill.build{background:var(--warn-soft);color:var(--warn)}
 .pill.opt{background:var(--code);color:var(--muted)}
 table.deps td:first-child{white-space:normal;width:36%;overflow-wrap:anywhere}
+table.wide{min-width:0}table.wide .pill{white-space:normal}table.wide td:first-child{white-space:normal;width:18%}table.wide td:nth-child(3){white-space:normal;width:16%}
 table.deps td:last-child{white-space:nowrap}
 details{background:var(--surface);border:1px solid var(--line);border-radius:10px}
 details+details{margin-top:-6px}
@@ -342,7 +343,7 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
     <summary>Abstractions <small>where change will come, and whether the seams are there</small></summary>
     <div class="det">
       <p>From <code>docs/abstractions-review.md</code>. A seam is worth building only when the plan commits to a second implementation, when knowledge already leaks across a package boundary, or when it makes the code testable. Otherwise the answer is "do not abstract yet".</p>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table class="wide">
         <thead><tr><th>Area</th><th>What we have</th><th>Verdict</th><th>What we should have</th></tr></thead>
         <tbody>
           <tr><td>Where the relay runs, how we reach it</td><td>One connection that starts the relay, and a sync that reconnects.</td><td><span class="pill opt">good enough until SSH</span></td><td>A "workspace target" (how to start the bridge, install the relay, forward a port) and a version check, at the start of phase 5.</td></tr>
@@ -475,6 +476,7 @@ config_state (workspace_id, agent, item_id, deployed_hash,
           <tr><td><code>zod</code> 4.6.7</td><td>Since 2020, MIT, zero dependencies, the de facto TypeScript schema library. Version 4 is the one in use.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>isomorphic-git</code> 1.44.11 (app)</td><td>Since 2017, MIT, active, 10 dependencies. Replaces <code>jsdiff</code> and <code>node-diff3</code>.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>react</code> and <code>react-dom</code> 19.3.1, <code>vite</code> 8.3.6, <code>@vitejs/plugin-react</code> 6.2.1, <code>tailwindcss</code> and <code>@tailwindcss/vite</code> 4.3.5 (default UI)</td><td>Industry standards, MIT, few dependencies. Tailwind 4 is configured through the Vite plugin.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td>Markdown renderer for the Preview tab: <code>marked</code>, <code>markdown-it</code> or <code>micromark</code></td><td>Planned, none chosen. Each is evaluated against the bar above (known owner, release in the last 12 months, permissive license, few dependencies) when the task starts. Output is sanitised with DOMPurify, which is already in the tree through Monaco (pinned by an override). If none passes, there is no Markdown preview.</td><td><span class="pill build">to be decided</span></td></tr>
           <tr><td><code>monaco-editor</code> 0.57.0 (default UI)</td><td>Microsoft, MIT, the editor inside VS Code.</td><td><span class="pill">keep</span></td></tr>
           <tr><td>shadcn/ui pieces: <code>@radix-ui/react-dialog</code> 1.3.1, <code>-scroll-area</code> 1.4.0, <code>-slot</code> 1.5.0, <code>-tabs</code> 1.2.1; <code>lucide-react</code> 1.70.0, <code>clsx</code>, <code>tailwind-merge</code>, <code>class-variance-authority</code></td><td>Code is copied into the repo, not installed. Only the individual <code>@radix-ui/react-*</code> primitives in use are installed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
           <tr><td><code>@playwright/test</code></td><td>Not a dependency of the repo today. Browser tests will use a Playwright that is already installed on the machine. Whether to add it as a pinned dev dependency is still to be decided, when the browser tests are written.</td><td><span class="pill build">to be decided</span></td></tr>
@@ -667,6 +669,20 @@ PLANNED, NOT BUILT
       </ol>
       <p><b>Editing while an agent runs.</b> Saves go through <code>fs.write</code> with the hash the user last saw. If the agent changed the file since, the save is refused and the editor shows the new version. By default the editor is read-only while a turn is in progress and editable between turns.</p>
       <p class="muted">Monaco is used directly, not through <code>@monaco-editor/react</code>: that wrapper has one maintainer, no release since Feb 2025, and loads Monaco from a CDN by default, which a local-first app shouldn't do.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Preview tab <small>planned: HTML and Markdown files, shown inside the app</small> <span class="pill opt">not started</span></summary>
+    <div class="det">
+      <p>A Preview tab next to Changes and Editor shows a file from the session's worktree, the way an HTML artifact is shown beside a chat. Two parts, both planned.</p>
+      <p><b>1. HTML files.</b> The page is shown inside the app and is fenced in:</p>
+      <ul>
+        <li>It renders in an <code>iframe</code> with the <code>sandbox</code> attribute.</li>
+        <li>The app serves it from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions.</li>
+        <li>It reloads when the agent edits the file, using the existing file-change notifications (<code>relay/fs.changed</code>).</li>
+        <li>A page with its own CSS, JavaScript and images in the same folder works, because the app serves those files from the same worktree folder.</li>
+      </ul>
+      <p><b>2. Markdown files, only if a library passes the bar.</b> The same tab would show rendered Markdown, but only if an open-source, actively maintained library passes the dependency bar in <code>AGENTS.md</code>: a known owner, a release in the last 12 months, a permissive license and few dependencies. Candidates to evaluate when the task starts: <code>marked</code>, <code>markdown-it</code> and <code>micromark</code>. The output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered inside the same sandbox. If no library passes, the task is dropped and Markdown files are shown as text in the editor.</p>
     </div>
   </details>
   <details>
@@ -1096,7 +1112,7 @@ test("a session that asks to run a command is shown as waiting on you", async ()
     <div class="phase"><span class="tag">Phase 0 · spike</span><h3>Log every ACP event <span class="pill build">in progress</span></h3><p>Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load are confirmed. Remaining: Codex, which needs an OpenAI key with quota and network access to <code>api.openai.com</code>; thinking output is also unconfirmed.</p></div>
     <div class="phase"><span class="tag">Phase 1 · MVP</span><h3>Local relay and event log <span class="pill build">in progress</span></h3><p>Done: the relay with its daemon, ACP client, event log, permission holding, worktrees and diff, files, archive and usage, behind 18 JSON-RPC methods. Decided: our own relay, not sandbox-agent. Remaining: the guided workspace setup checklist.</p></div>
     <div class="phase"><span class="tag">Phase 2 · MVP</span><h3>Local app <span class="pill">done</span></h3><p>Done: SQLite store, sync from the local relay with resume from sequence N, derived session status, the HTTP API and one live stream. Remaining (tracked under Abstractions): a workspace id on every live message, and live summaries pushed by the relay.</p></div>
-    <div class="phase"><span class="tag">Phase 3 · MVP</span><h3>API, SDK and default UI <span class="pill build">in progress</span></h3><p>Done: the SDK. The default UI scaffold exists (shell, session list, session view, Monaco changes panel, dialogs) on example data. Remaining: connect it to live data through one injected client, serve it from the app, and add browser tests.</p></div>
+    <div class="phase"><span class="tag">Phase 3 · MVP</span><h3>API, SDK and default UI <span class="pill build">in progress</span></h3><p>Done: the SDK. The default UI scaffold exists (shell, session list, session view, Monaco changes panel, dialogs) on example data. Remaining: connect it to live data through one injected client, serve it from the app, and add browser tests. <span class="pill opt">not started</span> Preview tab for HTML files in a sandboxed iframe, and for Markdown if a library passes the dependency bar (see the Default UI section).</p></div>
     <div class="phase"><span class="tag">Phase 4 · MVP</span><h3>Modify agent and UI updates <span class="pill build">in progress</span></h3><p>Done: UI versions in a hidden git repository (Keep, Undo, history, merges) and the staging workspace with checks. Remaining: the fenced Modify agent session (needs the plain-directory workdir), the default-UI update flow, <code>/_safe</code>, and the end-to-end test that a user change and a template change to the same file both survive an update.</p></div>
     <div class="phase"><span class="tag">MVP release</span><h3>First Mac release <span class="pill build">in progress</span></h3><p>Done: compiled relay binaries (the Linux one passes a smoke test), and written but never built on a Mac: the Swift menu bar app, app bundle, signing and notarisation scripts, dmg and Homebrew cask template. Remaining: the first Mac build, the Apple Developer ID and secrets, and in-app updates (deferred).</p></div>
     <div class="phase"><span class="tag">Phase 5</span><h3>Remote workspaces <span class="pill opt">not started</span></h3><p>SSH connection manager, Add workspace setup with Check and repair, relay deployment and version handshake, Linux relay builds, sessions that survive SSH drops and laptop sleep. The same bridge command runs over SSH. Also the abstractions that wait for it (workspace target, version check, per-workspace sync).</p></div>

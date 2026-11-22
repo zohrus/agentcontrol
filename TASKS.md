@@ -86,6 +86,10 @@ Later:
 - [ ] Verify Codex end to end (streaming granularity, thinking, diffs, permission requests). Needs an OpenAI key with quota and network access to `api.openai.com`, or the owner's Mac.
 - [ ] Confirm thinking output for Claude (`agent_thought_chunk` did not appear in two small prompts, even at high effort).
 
+## Viewing files
+- [ ] Browser support: render an HTML file from a session's worktree inside the app, in a Preview tab next to Changes and Editor, the way an HTML artifact is shown beside a chat. It must be sandboxed (an iframe with the `sandbox` attribute, served by the app from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions), refresh when the agent edits the file (the existing `relay/fs.changed` notifications), and work for a page with its own CSS, JS and images in the same folder.
+- [ ] Markdown preview in the same Preview tab, only if an open-source, actively maintained library passes the dependency bar in `AGENTS.md` (known owner, release in the last 12 months, permissive license, few dependencies). Candidates to evaluate when the task starts: `marked`, `markdown-it`, `micromark`. Output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered in the same sandbox. If no library passes, drop the task and show Markdown files as text in the editor.
+
 ## App robustness
 - [ ] Long sessions: list virtualization and batching of streamed chunks so the browser doesn't stall.
 - [ ] App upgrades: database migrations, a backup of `state.db` before each update, compatibility of old JSONL logs.

@@ -159,7 +159,7 @@ Prettier, crossby (use its mappings as reference only), the `radix-ui` bundle.
 
 - `bun install`: install dependencies.
 - `bun dev`: app, UI with hot reload and the local relay; opens the browser.
-- `bun test`: the end-to-end suite against the mock agent.
+- `bun run test`: the end-to-end suite against the mock agent.
 - `bun run check`: every quality gate plus the tests.
 
 ## Before you push or hand back work
