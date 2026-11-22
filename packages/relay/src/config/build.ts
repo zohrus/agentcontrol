@@ -86,6 +86,27 @@ const toUnsupported = (agent: ConfigAgent, entries: Entry[]): UnsupportedItem[] 
 const formatOf = (group: Entry[], prior: ManifestFile | undefined): Format =>
   group[0]?.format ?? prior?.format ?? "json";
 
+const under = (path: string, root: string | undefined): boolean =>
+  root !== undefined && path.startsWith(`${root}/`);
+
+/** A file this plan can speak for: in the home folder or in the repo the plan was made for. */
+const inScope = (file: string, ctx: RenderCtx): boolean =>
+  under(file, ctx.homeDir) || under(file, ctx.repoPath);
+
+/** What we own in repos this plan does not cover stays owned, untouched. */
+function carryOver(input: {
+  agent: ConfigAgent;
+  entries: Entry[];
+  ctx: RenderCtx;
+}): RenderResult["managed"] {
+  const { agent, entries, ctx } = input;
+  const wanted = new Set(entries.map((e) => e.file));
+  const kept = Object.entries(ctx.manifest.files).filter(
+    ([file, owned]) => owned.agent === agent && !wanted.has(file) && !inScope(file, ctx),
+  );
+  return Object.fromEntries(kept);
+}
+
 /** One job per native file: those with desired entries, and those we own but no longer want. */
 async function jobsFor(input: {
   agent: ConfigAgent;
@@ -95,7 +116,7 @@ async function jobsFor(input: {
   const { agent, entries, ctx } = input;
   const groups = groupByFile(entries);
   for (const [file, owned] of Object.entries(ctx.manifest.files)) {
-    if (owned.agent === agent && !groups.has(file)) groups.set(file, []);
+    if (owned.agent === agent && !groups.has(file) && inScope(file, ctx)) groups.set(file, []);
   }
   return Promise.all(
     [...groups].map(async ([file, group]) => {
@@ -114,10 +135,15 @@ export async function buildFiles(input: {
   entries: Entry[];
   ctx: RenderCtx;
 }): Promise<RenderResult> {
-  const result: RenderResult = { files: new Map(), deleted: [], managed: {}, unsupported: [] };
+  const managed = carryOver(input);
+  const result: RenderResult = { files: new Map(), deleted: [], managed, unsupported: [] };
   for (const job of await jobsFor(input)) collect({ result, job, outcome: editFile(job) });
   return result;
 }
+
+/** A whole file that does not exist yet is a change even when its content is empty. */
+const changed = (job: FileJob, outcome: FileOutcome): boolean =>
+  job.format === "file" ? outcome.content !== job.current : outcome.content !== (job.current ?? "");
 
 /** A whole-file entry we owned and no longer want means the file should disappear. */
 const shouldDelete = (job: FileJob, outcome: FileOutcome): boolean =>
@@ -128,5 +154,5 @@ function collect(input: { result: RenderResult; job: FileJob; outcome: FileOutco
   result.unsupported.push(...toUnsupported(job.agent, outcome.conflicts));
   if (outcome.managed) result.managed[job.file] = outcome.managed;
   if (shouldDelete(job, outcome)) result.deleted.push(job.file);
-  else if (outcome.content !== (job.current ?? "")) result.files.set(job.file, outcome.content);
+  else if (changed(job, outcome)) result.files.set(job.file, outcome.content);
 }

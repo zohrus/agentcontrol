@@ -88,9 +88,18 @@ function getKey(doc: Doc, name: string): string | undefined {
   return line?.slice(line.indexOf("=") + 1).trim();
 }
 
+/** The `name = value` line of a table that a dotted table name would define a second time. */
+function inlineDefinition(doc: Doc, name: string): string | undefined {
+  const dot = name.lastIndexOf(".");
+  const parent = dot < 0 ? undefined : tableSpan(doc.lines, name.slice(0, dot));
+  const key = name.slice(dot + 1);
+  const lines = parent ? doc.lines.slice(parent.head + 1, parent.stop) : [];
+  return lines.find((line) => new RegExp(`^\\s*${key}\\s*=`).test(line));
+}
+
 function getTable(doc: Doc, name: string): string | undefined {
   const at = tableSpan(doc.lines, name);
-  return at ? doc.lines.slice(at.head + 1, at.stop).join("\n") : undefined;
+  return at ? doc.lines.slice(at.head + 1, at.stop).join("\n") : inlineDefinition(doc, name);
 }
 
 /** Removing a table must not leave two blank lines where one stood before it. */
