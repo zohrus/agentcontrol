@@ -27,9 +27,11 @@ export function applyModify(ctx: Context, state: ModifyState): void {
 
 /** Reads the state and history from the app: on first connection and after every reconnect. */
 export async function loadModify(ctx: Context): Promise<void> {
+  const heldBefore = ctx.store.get().modify;
   const state = await ctx.client.modify.state();
-  ctx.store.update((s) => ({ ...s, modify: state }));
-  const { sessionId } = state;
+  // A live message that arrived while this answer was on its way is newer than it.
+  if (ctx.store.get().modify === heldBefore) ctx.store.update((s) => ({ ...s, modify: state }));
+  const { sessionId } = ctx.store.get().modify ?? state;
   await Promise.all([loadHistory(ctx), sessionId === undefined ? [] : loadEvents(ctx, sessionId)]);
 }
 

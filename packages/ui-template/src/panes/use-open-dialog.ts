@@ -15,7 +15,8 @@ export function useOpenDialog() {
     setDialog(name);
   };
   useModifyShortcut(() => {
-    show(dialog === "modify" ? undefined : "modify");
+    // Another dialog may hold input the user has not saved: leave it alone.
+    if (dialog === undefined || dialog === "modify") show(dialog ? undefined : "modify");
   });
   return [dialog, show] as const;
 }
