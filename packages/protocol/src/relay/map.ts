@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import * as c from "../config/index.ts";
 import * as f from "../files/index.ts";
 import * as s from "../sessions/index.ts";
 import * as w from "../workspace/index.ts";
@@ -26,6 +27,11 @@ export const RelayMethods = {
   [N.fsWrite]: { params: f.FsWriteParams, result: f.FsWriteResult },
   [N.fsWatch]: { params: f.FsSessionParams, result: f.FsWatchResult },
   [N.usage]: { params: UsageParams, result: UsageResult },
+  [N.configInspect]: { params: c.ConfigInspectParams, result: c.ConfigInspectResult },
+  [N.configPlan]: { params: c.ConfigPlanParams, result: c.ConfigPlan },
+  [N.configApply]: { params: c.ConfigApplyParams, result: c.ApplyResult },
+  [N.configRollback]: { params: c.ConfigRollbackParams, result: c.ConfigRollbackResult },
+  [N.configDrift]: { params: c.ConfigDriftParams, result: c.DriftReport },
 } as const;
 
 /** The name of a relay request method. */

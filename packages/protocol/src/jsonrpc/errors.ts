@@ -9,5 +9,6 @@ export const ErrorCode = {
   uncommittedChanges: -32002,
   staleFile: -32003,
   setupFailed: -32004,
+  configStale: -32005,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

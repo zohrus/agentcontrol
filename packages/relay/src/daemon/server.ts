@@ -3,10 +3,12 @@ import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import type { HostEnv } from "../agents/index.ts";
+import { configHome } from "../config/index.ts";
 import { createEventLog } from "../event-log/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
 import { createSessions, type Sessions } from "../sessions/index.ts";
+import { configHandlers } from "./handlers-config.ts";
 import { fileHandlers } from "./handlers-files.ts";
 import { sessionHandlers } from "./handlers-sessions.ts";
 import { usageHandlers } from "./handlers-usage.ts";
@@ -98,6 +100,7 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
     ...workspaceHandlers(repos, hostEnv),
+    ...configHandlers(configHome(hostEnv)),
   };
   return { handlers, sessions };
 }

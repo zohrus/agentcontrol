@@ -1,3 +1,4 @@
+export * from "./config/index.ts";
 export * from "./events/index.ts";
 export * from "./files/index.ts";
 export * from "./ids/index.ts";

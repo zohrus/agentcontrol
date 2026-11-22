@@ -1,3 +1,4 @@
+import { listConfigItems, replaceConfigItems } from "./config-items.ts";
 import { openDatabase } from "./db.ts";
 import { eventsAfter, lastSeqs, saveEvents } from "./events.ts";
 import { getSession, listSessions, saveSessionSummaries } from "./sessions.ts";
@@ -22,6 +23,10 @@ export function createStore({ path }: StoreOptions): Store {
     },
     listSessions: (filter) => listSessions(db, filter),
     getSession: (key) => getSession(db, key),
+    replaceConfigItems: (items) => {
+      replaceConfigItems(db, items);
+    },
+    listConfigItems: () => listConfigItems(db),
     close: () => {
       sqlite.close();
     },
