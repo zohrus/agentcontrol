@@ -86,9 +86,11 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
 
 async function shutdown(ctx: SessionContext): Promise<void> {
   const ids = [...ctx.live.keys()];
+  // Each stop returns once the agent's last messages were reported; waiting on `lastSeq` then
+  // waits for every append queued for the session, so nothing the agent said is lost.
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
-  ctx.stopRecording();
   await Promise.all(ids.map((id) => ctx.log.lastSeq(id)));
+  ctx.stopRecording();
 }
 
 async function cancel(ctx: SessionContext, sessionId: SessionId): Promise<void> {

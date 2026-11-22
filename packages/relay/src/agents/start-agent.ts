@@ -25,16 +25,17 @@ async function askPermission(params: RequestPermissionRequest, options: StartAge
 }
 
 function connectTo(spawned: SpawnedAgent, options: StartAgentOptions) {
-  const stream = tapStream(spawned.stream, options.onMessage);
-  return client({ name: "agentcontrol-relay" })
+  const { stream, drained } = tapStream(spawned.stream, options.onMessage);
+  const connection = client({ name: "agentcontrol-relay" })
     .onNotification(methods.client.session.update, () => undefined)
     .onRequest(methods.client.session.requestPermission, ({ params }) =>
       askPermission(params, options),
     )
     .connect(stream);
+  return { connection, drained };
 }
 
-type Connection = ReturnType<typeof connectTo>;
+type Connection = ReturnType<typeof connectTo>["connection"];
 
 async function handshake(connection: Connection, options: StartAgentOptions): Promise<string> {
   await connection.agent.request(methods.agent.initialize, {
@@ -49,8 +50,16 @@ async function handshake(connection: Connection, options: StartAgentOptions): Pr
   return sessionId;
 }
 
-function agentProcess(parts: { spawned: SpawnedAgent; connection: Connection; sessionId: string }) {
-  const { spawned, connection, sessionId } = parts;
+/** How long a stopped agent's last messages may take to be reported before they are given up on. */
+const DRAIN_MS = 2000;
+
+function agentProcess(parts: {
+  spawned: SpawnedAgent;
+  connection: Connection;
+  drained: Promise<void>;
+  sessionId: string;
+}) {
+  const { spawned, connection, drained, sessionId } = parts;
   const agent: AgentProcess = {
     prompt: async (text) => {
       const { stopReason } = await connection.agent.request(methods.agent.session.prompt, {
@@ -63,6 +72,8 @@ function agentProcess(parts: { spawned: SpawnedAgent; connection: Connection; se
     stop: async () => {
       spawned.kill();
       await spawned.exited;
+      // What the agent said just before it stopped is still on its way: wait until it is reported.
+      await Promise.race([drained, Bun.sleep(DRAIN_MS)]);
     },
     exited: spawned.exited,
   };
@@ -87,9 +98,9 @@ export async function startAgent(options: StartAgentOptions): Promise<AgentProce
       cwd: options.cwd,
       env: { ...options.hostEnv, ...options.env },
     });
-    const connection = connectTo(spawned, options);
+    const { connection, drained } = connectTo(spawned, options);
     const sessionId = await handshake(connection, options);
-    return agentProcess({ spawned, connection, sessionId });
+    return agentProcess({ spawned, connection, drained, sessionId });
   } catch (error) {
     spawned?.kill();
     await spawned?.exited;
