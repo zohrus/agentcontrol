@@ -1,10 +1,8 @@
 import type { SessionEvent, SessionRow } from "@agentcontrol/sdk";
-import { z } from "zod";
 import type { AppAccess, Session } from "../setup/app.ts";
 import type { SaveOutcome } from "../setup/app-user.ts";
 import { eventually } from "../setup/eventually.ts";
-
-const ToolCall = z.object({ title: z.string() });
+import { updatesOf } from "../setup/updates.ts";
 
 function describeStatus(summary: SessionRow): string {
   const reasons = { permission: "approval", reply: "a reply", "setup-failed": "a setup fix" };
@@ -41,8 +39,7 @@ export function expectSessionWaitingForReply(app: AppAccess, session: Session): 
 
 function commandAsked(events: SessionEvent[]): string | undefined {
   const request = events.find((event) => event.kind === "permission-requested");
-  const asked = request?.kind === "permission-requested" ? request.payload.toolCall : undefined;
-  return asked === undefined ? undefined : ToolCall.parse(asked).title;
+  return request?.kind === "permission-requested" ? request.payload.tool?.title : undefined;
 }
 
 /** The session's recorded history holds a request to run exactly this command. */
@@ -58,11 +55,8 @@ export async function expectApprovalRequestToRunCommand(
 }
 
 const isAgentReplyWith = (session: Session, text: string) => (event: SessionEvent) =>
-  event.kind === "acp" &&
   event.sessionId === session.id &&
-  event.payload.direction === "from-agent" &&
-  JSON.stringify(event.payload.message).includes("agent_message_chunk") &&
-  JSON.stringify(event.payload.message).includes(text);
+  updatesOf(event).some((update) => update.type === "agent-text" && update.text.includes(text));
 
 /** The live stream delivered the agent's reply as it happened. */
 export async function expectLiveStreamDeliveredAgentReply(

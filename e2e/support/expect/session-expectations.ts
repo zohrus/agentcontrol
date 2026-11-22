@@ -6,8 +6,6 @@ import type { RelayAccess, Session } from "../setup/relay.ts";
 import { forSession } from "../setup/session-events.ts";
 import { expectListedAs } from "./session-list.ts";
 
-const ToolCall = z.object({ title: z.string() });
-
 /** The session list flags the session as waiting on the user's approval. */
 export async function expectSessionWaitingForApproval(
   relay: RelayAccess,
@@ -66,8 +64,7 @@ export async function expectPendingRequestToRunCommand(
     forSession(session, "permission-requested"),
     `expected session "${session.title}" to have a request to run \`${command}\`, but it has none`,
   );
-  const asked =
-    request.kind === "permission-requested" ? ToolCall.parse(request.payload.toolCall).title : "";
+  const asked = request.kind === "permission-requested" ? (request.payload.tool?.title ?? "") : "";
   if (asked !== `Run ${command}`) {
     throw new Error(`expected the pending request to run \`${command}\`, but it asks: "${asked}"`);
   }

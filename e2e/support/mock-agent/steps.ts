@@ -108,6 +108,16 @@ const askToRunCommand: Handler<"askToRunCommand"> = async (step, turn) => {
   return allowed ? undefined : "end_turn";
 };
 
+/** An update kind the relay does not interpret, so tests can see it arrive as "other". */
+const compactContext: Handler<"compactContext"> = async (_step, turn) => {
+  await send(turn, {
+    sessionUpdate: "compaction_update",
+    compactionId: "compaction-1",
+    status: "completed",
+  });
+  return undefined;
+};
+
 const finish: Handler<"finish"> = (step) => Promise.resolve(step.stopReason);
 
 const waitUntilCancelled: Handler<"waitUntilCancelled"> = async (_step, turn) => {
@@ -133,6 +143,7 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   plan,
   editFile,
   askToRunCommand,
+  compactContext,
   finish,
   waitUntilCancelled,
   reportUsage,

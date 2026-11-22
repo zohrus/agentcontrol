@@ -1,16 +1,9 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
-import { z } from "zod";
 import type { RelayAccess, Session } from "../setup/relay.ts";
 import { forSession } from "../setup/session-events.ts";
+import { updatesOf } from "../setup/updates.ts";
 
-const ToolCallUpdate = z.object({
-  method: z.literal("session/update"),
-  params: z.object({
-    update: z.object({ sessionUpdate: z.literal("tool_call_update"), status: z.string() }),
-  }),
-});
-
-/** The agent's turn ended with exactly this ACP stop reason. */
+/** The agent's turn ended with exactly this stop reason. */
 export async function expectTurnToEndWithStopReason(
   relay: RelayAccess,
   call: { session: Session; stopReason: string },
@@ -28,10 +21,10 @@ export async function expectTurnToEndWithStopReason(
   }
 }
 
-const toolStatusOf = (event: SessionEvent): string[] => {
-  const update = ToolCallUpdate.safeParse(event.kind === "acp" ? event.payload.message : undefined);
-  return update.success ? [update.data.params.update.status] : [];
-};
+const toolStatusOf = (event: SessionEvent): string[] =>
+  updatesOf(event).flatMap((update) =>
+    update.type === "tool-updated" && update.status !== undefined ? [update.status] : [],
+  );
 
 /** The agent never completed a tool call: the command it asked about was not run. */
 export function expectNoCommandToHaveRun(relay: RelayAccess, session: Session): void {

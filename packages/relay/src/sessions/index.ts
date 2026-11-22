@@ -6,6 +6,7 @@ import {
   type SessionSummary,
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
+import { withNormalised } from "../acp-normalise/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
@@ -31,7 +32,7 @@ export interface Sessions {
   list(): Promise<SessionSummary[]>;
   /** Where the session's worktree is; fails with sessionNotFound for an unknown session. */
   info(sessionId: SessionId): Promise<SessionInfo>;
-  /** Every event of the session; fails with sessionNotFound for an unknown session. */
+  /** Every event of the session, with normalised updates; fails with sessionNotFound for an unknown session. */
   events(sessionId: SessionId): Promise<SessionEvent[]>;
   /** Replays events after the client's cursors, then streams new ones; returns how to stop. */
   follow(
@@ -138,7 +139,7 @@ export async function createSessions(options: {
     info: (sessionId) => sessionInfo(ctx, sessionId),
     events: async (sessionId) => {
       await sessionInfo(ctx, sessionId);
-      return options.log.readAfter(sessionId, 0);
+      return (await options.log.readAfter(sessionId, 0)).map(withNormalised);
     },
     follow: (params, send) => followEvents({ log: options.log, params, send }),
     shutdown: () => shutdown(ctx),

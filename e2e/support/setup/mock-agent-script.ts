@@ -12,6 +12,8 @@ export interface MockAgent {
   willPlan(...tasks: string[]): void;
   willEditFile(path: string): void;
   willAskToRunCommand(command: string): void;
+  /** The agent reports compacting its context: an ACP update kind the relay does not interpret. */
+  willCompactContext(): void;
   willFinishWith(stopReason: StopReason): void;
   /** The turn stays open until the user cancels it, then ends with stop reason `cancelled`. */
   willWaitUntilCancelled(): void;
@@ -25,6 +27,22 @@ export interface MockAgent {
 type ReportedUsage = Omit<Extract<Step, { kind: "reportUsage" }>, "kind">;
 
 type ScriptedSteps = Omit<MockAgent, "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript">;
+
+function turnEndingSteps(
+  add: (step: Step) => void,
+): Pick<MockAgent, "willCompactContext" | "willFinishWith" | "willWaitUntilCancelled"> {
+  return {
+    willCompactContext: () => {
+      add({ kind: "compactContext" });
+    },
+    willFinishWith: (stopReason) => {
+      add({ kind: "finish", stopReason });
+    },
+    willWaitUntilCancelled: () => {
+      add({ kind: "waitUntilCancelled" });
+    },
+  };
+}
 
 function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
   return {
@@ -43,12 +61,7 @@ function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
     willAskToRunCommand: (command) => {
       add({ kind: "askToRunCommand", command });
     },
-    willFinishWith: (stopReason) => {
-      add({ kind: "finish", stopReason });
-    },
-    willWaitUntilCancelled: () => {
-      add({ kind: "waitUntilCancelled" });
-    },
+    ...turnEndingSteps(add),
     willReportUsage: (usage) => {
       add({ kind: "reportUsage", ...usage });
     },

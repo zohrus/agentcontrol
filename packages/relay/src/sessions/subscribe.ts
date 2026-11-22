@@ -1,5 +1,6 @@
 import type { EventsSubscribeParams, SessionEvent, SessionId } from "@agentcontrol/protocol";
 import type { z } from "zod";
+import { withNormalised } from "../acp-normalise/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 
 type SubscribeParams = z.infer<typeof EventsSubscribeParams>;
@@ -27,7 +28,7 @@ export async function followEvents(options: {
   const deliver = (event: SessionEvent): void => {
     if (event.seq <= (seen.get(event.sessionId) ?? 0)) return;
     seen.set(event.sessionId, event.seq);
-    send(event);
+    send(withNormalised(event));
   };
   const buffered: SessionEvent[] = [];
   let replaying = true;

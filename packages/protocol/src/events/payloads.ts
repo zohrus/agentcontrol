@@ -1,14 +1,20 @@
 import { z } from "zod";
 import { AgentKind } from "../ids/index.ts";
+import { AgentUpdate, ToolDescription } from "./agent-update.ts";
 
 /** A raw ACP JSON-RPC message, kept unchanged; only the version marker is checked. */
 export const RawAcpMessage = z.looseObject({ jsonrpc: z.literal("2.0") });
 export type RawAcpMessage = z.infer<typeof RawAcpMessage>;
 
-/** Payload of an "acp" event: one ACP message and which way it travelled. */
+/**
+ * Payload of an "acp" event: one ACP message and which way it travelled. `message` is stored
+ * unchanged; `updates` is what the relay made of it when it served the event, never stored.
+ * Read `updates`, not `message`.
+ */
 export const AcpPayload = z.object({
   direction: z.enum(["to-agent", "from-agent"]),
   message: RawAcpMessage,
+  updates: z.array(AgentUpdate).optional(),
 });
 
 /** Payload of "session-created": everything needed to show and rebuild the session. */
@@ -44,10 +50,15 @@ export const PermissionOption = z.object({
 });
 export type PermissionOption = z.infer<typeof PermissionOption>;
 
-/** Payload of "permission-requested": the agent wants an answer from the user. */
+/**
+ * Payload of "permission-requested": the agent wants an answer from the user. `toolCall` is the raw
+ * ACP value, stored unchanged; `tool` is the same call described like a tool update, added by the
+ * relay when it serves the event, never stored. Read `tool`, not `toolCall`.
+ */
 export const PermissionRequestedPayload = z.object({
   requestId: z.string(),
   toolCall: z.unknown(),
+  tool: ToolDescription.optional(),
   options: z.array(PermissionOption),
 });
 
