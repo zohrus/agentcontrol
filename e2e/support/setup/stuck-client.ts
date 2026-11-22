@@ -5,7 +5,7 @@ import type { RelayAccess } from "./relay.ts";
 
 /** A client connected to the relay that answers a hang-up by not hanging up. */
 export interface StuckClient {
-  /** Resolves when the relay has finally cut the connection. */
+  /** Resolves when the relay has finally hung up on this client. */
   readonly cutOff: Promise<void>;
 }
 
@@ -14,7 +14,7 @@ export async function connectsAClientThatNeverHangsUp(relay: RelayAccess): Promi
   const socket = connect({ path: join(relay.dataDir, "relay.sock"), allowHalfOpen: true });
   socket.on("error", () => undefined);
   const cutOff = new Promise<void>((resolve) => {
-    socket.once("close", () => {
+    socket.once("end", () => {
       resolve();
     });
   });
