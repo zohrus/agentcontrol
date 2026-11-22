@@ -1,6 +1,8 @@
 // Pre-commit guard (lefthook): only the orchestrator changes dependencies. Fails when a commit on
 // any other branch stages bun.lock or a package.json whose dependency sections changed.
 // Orchestrator branches: main, orchestrator*, queue/*, integrate*. Escape hatch: ALLOW_DEP_CHANGE=1.
+// While a merge is being committed, a file that ends up exactly as it is in the merged-in commit
+// (MERGE_HEAD, normally origin/main) is not a change by this branch, so it is let through.
 import { dependenciesChanged, isPackageJson } from "./lib/deps.ts";
 import { git, gitLines } from "./lib/proc.ts";
 
@@ -11,7 +13,14 @@ function stagedDependencyFiles(): string[] {
   return staged.filter((path) => path === "bun.lock" || isPackageJson(path));
 }
 
+/** True when the staged file is, byte for byte, the one the merge brings in from the other side. */
+function comesFromMerge(path: string): boolean {
+  const merged = git(["show", `MERGE_HEAD:${path}`]);
+  return merged.ok && merged.out === git(["show", `:${path}`]).out;
+}
+
 function changedDependencies(path: string): boolean {
+  if (comesFromMerge(path)) return false;
   if (path === "bun.lock") return true;
   const before = git(["show", `HEAD:${path}`]);
   const after = git(["show", `:${path}`]);

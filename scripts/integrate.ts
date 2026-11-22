@@ -1,8 +1,13 @@
 // `bun run integrate <branch> [--dry-run]`: the local merge queue. There are no pull requests;
 // this is the only way work reaches main.
 //
-//   1. fetch origin/main, make a scratch worktree, rebase <branch> onto origin/main there
-//      (a conflict stops everything with the conflicting files, nothing is pushed);
+//   1. fetch origin/main, make a scratch worktree and bring <branch> onto origin/main there:
+//      - a branch that does not contain origin/main is rebased onto it (a conflict stops
+//        everything with the conflicting files, nothing is pushed);
+//      - a branch that already contains origin/main (main was merged into it, not rebased) is NOT
+//        rebased, which would replay its old commits and conflict: its tip, merge commits
+//        included, is checked as it is, and landing fast-forwards main to it (plus the landing
+//        log commit). The merge result is what is checked and what lands;
 //   2. `bun install --frozen-lockfile` and the full `bun run check` in the scratch worktree;
 //   3. only when green: append sha, branch and seconds to docs/landings.log and
 //      `git push origin HEAD:main` (a fast-forward; rejected if main moved, so run it again).
@@ -71,9 +76,19 @@ function conflictMessage(scratch: string, branch: string): string {
   return `${branch} conflicts with origin/main in:\n  ${files.join("\n  ")}\nRebase it yourself, then run integrate again.`;
 }
 
-function rebase(scratch: string, branch: string): void {
+/** True when origin/main is already part of the branch's history (merged in, or rebased). */
+function containsMain(scratch: string, branch: string): boolean {
+  return git(["merge-base", "--is-ancestor", "origin/main", branch], { cwd: scratch }).ok;
+}
+
+/** Puts the scratch worktree on the branch's tip, rebased onto origin/main unless it has main. */
+function bringOntoMain(scratch: string, branch: string): void {
   const checkout = git(["checkout", "--detach", branch], { cwd: scratch });
   if (!checkout.ok) fail(`cannot check out ${branch}: ${checkout.out}`);
+  if (containsMain(scratch, branch)) {
+    console.log(`integrate: ${branch} already contains origin/main, checking it as it is`);
+    return;
+  }
   const result = git(["rebase", "origin/main"], { cwd: scratch });
   if (!result.ok) fail(conflictMessage(scratch, branch));
 }
@@ -109,7 +124,7 @@ function land(scratch: string, dryRun: boolean): void {
 
 async function integrate(branch: string, dryRun: boolean, scratch: string): Promise<void> {
   const started = performance.now();
-  rebase(scratch, branch);
+  bringOntoMain(scratch, branch);
   if ((await verify(scratch)) !== 0) fail("check failed; nothing was pushed");
   recordLanding(scratch, branch, (performance.now() - started) / 1000);
   land(scratch, dryRun);
