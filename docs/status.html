@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 19:20 UTC";
+const UPDATED = "22 Nov 2026, 20:05 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -205,7 +205,7 @@ const C = [
   { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"done", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
   { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
   { id:"coverage", phase:"p0", name:"Coverage gate", status:"progress", desc:"End-to-end line coverage of at least 95%, deterministic, required before any push. Tests run the relay and app in-process so coverage sees them.", path:"scripts/coverage.ts" },
-  { id:"dev-loop", phase:"p0", name:"Development loop", status:"progress", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
+  { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
@@ -231,6 +231,8 @@ const C = [
   { id:"session-list", phase:"p3", name:"Session list", status:"progress", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
   { id:"session-view", phase:"p3", name:"Session view", status:"progress", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
   { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"progress", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
+  { id:"html-preview", phase:"p3", name:"HTML preview (browser support)", status:"planned", desc:"Render an HTML file from a session's worktree inside the app, in a sandboxed Preview tab that refreshes when the agent edits it.", path:"" },
+  { id:"md-preview", phase:"p3", name:"Markdown preview", status:"planned", desc:"Rendered Markdown in the Preview tab. Only if a maintained open-source library passes our dependency rules (marked, markdown-it or micromark to evaluate).", path:"" },
   // Phase 4
   { id:"modify", phase:"p4", name:"Modify agent", status:"progress", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
   { id:"ui-versions", phase:"p4", name:"UI versions", status:"done", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
@@ -255,7 +257,8 @@ const C = [
 
 const NOW = [
   "Priority: coverage gate, 95% of lines covered by end-to-end tests, deterministic, required before any push",
-  "Development loop: parallel timed checks, integrate script, guardrails, CI fix",
+  "Abstraction changes: normalised agent updates; live session summaries pushed by the relay; workspace id on live messages",
+  "Plan update: docs/plan.html and TASKS.md brought up to date with every decision so far",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
@@ -274,6 +277,7 @@ const LOG = [
   ["22 Nov 2026 18:05", "Relay wired and running: daemon that outlives the app, session lifecycle, status from events; 8 end-to-end tests pass through the real relay. UI versions done (hidden git: Keep, Undo, history, merges). Usage reader written."],
   ["22 Nov 2026 18:25", "Default UI scaffold done and matching the plan's mockup. Seven subagents now running, the newest four each in an isolated copy of the repo so unfinished work no longer blocks the others."],
   ["22 Nov 2026 19:20", "main is up to date and every gate is green: 16 test files pass. Landed: app server with sync and live stream, SDK, 13 more relay tests, UI wave 2, UI workspace, packaging and Swift menu bar app (not yet built on a Mac). New rules in AGENTS.md: /code-review before any push and 95% end-to-end coverage. Five subagents started on the next wave."],
+  ["22 Nov 2026 20:05", "Development loop landed: parallel timed check (about 33 s), quick check, integrate script, done-report, guardrails, decision log; CI workflow green on main. Abstractions review done and its five changes started. New tasks added: HTML preview inside the app and Markdown preview."],
 ];
 /* ===== END DATA ===== */
 
