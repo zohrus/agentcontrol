@@ -1,5 +1,5 @@
 import { rm } from "node:fs/promises";
-import type { ApplyResult, FileChange } from "@agentcontrol/protocol";
+import type { ApplyResult, ConfigFileChange } from "@agentcontrol/protocol";
 import { createBackup, rollbackConfig } from "./backup.ts";
 import { readText, writeAtomic } from "./fs.ts";
 import { manifestPath, serializeManifest } from "./manifest.ts";
@@ -19,7 +19,7 @@ async function assertUnchanged(plan: StoredPlan): Promise<void> {
   }
 }
 
-async function writeChange(change: FileChange): Promise<void> {
+async function writeChange(change: ConfigFileChange): Promise<void> {
   if (change.action === "delete") await rm(change.path, { force: true });
   else await writeAtomic(change.path, change.after ?? "");
 }

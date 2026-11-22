@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ConfigAgent, ConfigPlan, FileChange, ScopedItem } from "@agentcontrol/protocol";
+import type { ConfigAgent, ConfigPlan, ConfigFileChange, ScopedItem } from "@agentcontrol/protocol";
 import { ADAPTERS } from "./adapters.ts";
 import { makeCtx } from "./fs.ts";
 import { manifestPath, mergeManifest, parseManifest } from "./manifest.ts";
@@ -16,7 +16,7 @@ export interface PlanInput {
 /** What apply needs to write the plan and to notice that files moved since it was made. */
 export interface StoredPlan {
   homeDir: string;
-  changes: FileChange[];
+  changes: ConfigFileChange[];
   manifestBefore: string | undefined;
   manifestAfter: Manifest;
 }
@@ -41,7 +41,7 @@ function mergeResults(results: RenderResult[]): RenderResult {
 async function diff(
   merged: RenderResult,
   read: (path: string) => Promise<string | undefined>,
-): Promise<FileChange[]> {
+): Promise<ConfigFileChange[]> {
   const paths = [...merged.files.keys(), ...merged.deleted].sort();
   return Promise.all(
     paths.map(async (path) => {

@@ -15,6 +15,13 @@
       "when": 1795366490303,
       "tag": "0001_material_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795371420959,
+      "tag": "0002_bouncy_blink",
+      "breakpoints": true
     }
   ]
 }

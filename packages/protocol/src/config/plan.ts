@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { ConfigAgent } from "./items.ts";
 
-export const FileChange = z.object({
+export const ConfigFileChange = z.object({
   path: z.string(),
   before: z.string().optional(),
   after: z.string().optional(),
   action: z.enum(["create", "update", "delete"]),
 });
-export type FileChange = z.infer<typeof FileChange>;
+export type ConfigFileChange = z.infer<typeof ConfigFileChange>;
 
 export const UnsupportedItem = z.object({
   itemId: z.string(),
@@ -18,7 +18,7 @@ export type UnsupportedItem = z.infer<typeof UnsupportedItem>;
 
 export const ConfigPlan = z.object({
   planId: z.string(),
-  changes: z.array(FileChange),
+  changes: z.array(ConfigFileChange),
   unsupported: z.array(UnsupportedItem),
   needsSecret: z.array(z.object({ itemId: z.string(), secret: z.string() })),
 });
