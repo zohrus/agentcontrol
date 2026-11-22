@@ -17,7 +17,8 @@ export function watchFiles(worktreePath: string, onChange: (paths: string[]) => 
     pending.clear();
   };
   const watcher = watch(worktreePath, { recursive: true }, (_event, name) => {
-    if (name === null || isIgnored(name)) return;
+    // Bun reports an undefined name when the folder itself is removed (the session was archived).
+    if (!name || isIgnored(name)) return;
     pending.add(name);
     timer ??= setTimeout(flush, DEBOUNCE_MS);
   });

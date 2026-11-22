@@ -1,4 +1,4 @@
-import { SessionId } from "@agentcontrol/protocol";
+import { RelayName as N, SessionId } from "@agentcontrol/protocol";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { ApiDeps } from "./deps.ts";
@@ -19,7 +19,7 @@ function requireSession(deps: ApiDeps, id: SessionId) {
   return session;
 }
 
-/** Reads of the session list and history, served from the app's own store. */
+/** Reads of the session list and history (from the app's store) and of token usage (from the relay). */
 export function sessionReadRoutes(deps: ApiDeps) {
   const { store } = deps;
   return new Hono()
@@ -39,5 +39,10 @@ export function sessionReadRoutes(deps: ApiDeps) {
       return c.json({
         events: store.eventsAfter(limit ? { ...query, limit: Number(limit) } : query),
       });
+    })
+    .get("/:id/usage", validate("param", IdParam), async (c) => {
+      const { id } = c.req.valid("param");
+      requireSession(deps, id);
+      return c.json(await routeRequest(deps).link.call(N.usage, { sessionId: id }));
     });
 }

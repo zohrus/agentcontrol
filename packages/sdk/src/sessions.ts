@@ -6,7 +6,7 @@ import type {
 } from "@agentcontrol/protocol";
 import { read } from "./api-error.ts";
 import type { Api } from "./client-type.ts";
-import type { SessionRow } from "./types.ts";
+import type { SessionRow, UsageRow } from "./types.ts";
 
 export interface StartSession {
   /** Which agent to run: "claude-code", "codex" (or "mock" in tests). */
@@ -52,6 +52,17 @@ function sessionReads(api: Api) {
   };
 }
 
+/** What sessions cost. */
+function sessionCosts(api: Api) {
+  return {
+    /** One row per finished turn with its tokens and cost, oldest first. */
+    usage: async (id: SessionId): Promise<UsageRow[]> => {
+      const { rows } = await read(api.sessions[":id"].usage.$get({ param: { id } }));
+      return rows;
+    },
+  };
+}
+
 /** Acting on sessions: start, talk to the agent, answer permissions, cancel, archive. */
 function sessionActions(api: Api) {
   return {
@@ -93,5 +104,10 @@ function sessionEnding(api: Api) {
 
 /** Everything about sessions: list them, start one, read history, talk to the agent, archive. */
 export function sessionsApi(api: Api) {
-  return { ...sessionReads(api), ...sessionActions(api), ...sessionEnding(api) };
+  return {
+    ...sessionReads(api),
+    ...sessionCosts(api),
+    ...sessionActions(api),
+    ...sessionEnding(api),
+  };
 }

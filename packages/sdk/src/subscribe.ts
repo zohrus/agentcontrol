@@ -20,6 +20,8 @@ export interface Listeners {
    * `sessions.list()` and `sessions.events(id, { after })`, since messages may have been missed.
    */
   onOpen?: () => void;
+  /** Called when the stream drops (the app quit or the network failed); it retries every second. */
+  onClose?: () => void;
 }
 
 type Handlers = Record<string, (data: unknown) => void>;
@@ -37,8 +39,14 @@ function handlersOf(listeners: Listeners): Handlers {
   };
 }
 
-async function readStream(url: string, handlers: Handlers, signal: AbortSignal): Promise<void> {
-  const response = await fetch(url, { signal, headers: { accept: "text/event-stream" } });
+async function readStream(options: {
+  url: string;
+  handlers: Handlers;
+  signal: AbortSignal;
+  send: typeof fetch;
+}): Promise<void> {
+  const { url, handlers, signal, send } = options;
+  const response = await send(url, { signal, headers: { accept: "text/event-stream" } });
   if (!response.ok || response.body === null) return;
   for await (const message of sseMessages(response.body)) {
     handlers[message.event]?.(JSON.parse(message.data));
@@ -55,17 +63,30 @@ function pause(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
-async function keepReading(url: string, handlers: Handlers, signal: AbortSignal): Promise<void> {
-  while (!signal.aborted) {
-    await readStream(url, handlers, signal).catch(() => undefined);
+async function keepReading(options: {
+  url: string;
+  listeners: Listeners;
+  signal: AbortSignal;
+  send: typeof fetch;
+}): Promise<void> {
+  const { url, listeners, signal, send } = options;
+  const stopped = (): boolean => signal.aborted;
+  while (!stopped()) {
+    await readStream({ url, handlers: handlersOf(listeners), signal, send }).catch(() => undefined);
+    if (!stopped()) listeners.onClose?.();
     await pause(RECONNECT_MS, signal);
   }
 }
 
 /** Opens the live stream and keeps it open, reconnecting after drops. Returns the unsubscribe function. */
-export function subscribeTo(streamUrl: string, listeners: Listeners): () => void {
+export function subscribeTo(options: {
+  streamUrl: string;
+  listeners: Listeners;
+  send: typeof fetch;
+}): () => void {
   const abort = new AbortController();
-  void keepReading(streamUrl, handlersOf(listeners), abort.signal);
+  const { streamUrl: url, listeners, send } = options;
+  void keepReading({ url, listeners, signal: abort.signal, send });
   return () => {
     abort.abort();
   };

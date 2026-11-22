@@ -30,6 +30,7 @@ export interface SessionRow extends SessionSummary {
 export type LiveSessionEvent = SessionEvent & { workspaceId: string };
 
 export type {
+  AgentKind,
   CheckStep,
   DiffFile,
   DiffResult,
@@ -44,6 +45,7 @@ export type {
   SessionId,
   SessionStatus,
   SessionSummary,
+  UsageRow,
   WaitingReason,
 } from "@agentcontrol/protocol";
 

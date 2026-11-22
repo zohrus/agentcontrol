@@ -8,8 +8,9 @@ const POLL_MS = 40;
 export async function eventually(
   expectation: string,
   observe: () => Promise<string | undefined>,
+  timeoutMs: number = TIMEOUT_MS,
 ): Promise<void> {
-  const deadline = Date.now() + TIMEOUT_MS;
+  const deadline = Date.now() + timeoutMs;
   let seen = await observe();
   while (seen !== undefined && Date.now() < deadline) {
     await Bun.sleep(POLL_MS);

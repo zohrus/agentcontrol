@@ -28,5 +28,5 @@ export function DiffViewer({ path, base, working }: DiffViewerProps) {
       modified.dispose();
     };
   }, [monaco, path, base, working]);
-  return <div ref={host} className="min-h-0 flex-1" />;
+  return <div ref={host} data-testid="diff-viewer" className="min-h-0 flex-1" />;
 }

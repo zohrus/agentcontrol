@@ -1,16 +1,7 @@
 import type { SessionId } from "@agentcontrol/protocol";
+import type { Client } from "@agentcontrol/sdk";
 import { useState } from "react";
-import { ChangesPanel } from "./changes/index.ts";
-import { DevDialogs, type DialogName } from "./dev-dialogs.tsx";
-import {
-  exampleDiff,
-  exampleEvents,
-  exampleFiles,
-  exampleSessions,
-  exampleStats,
-  exampleUsage,
-  exampleWorktreePath,
-} from "./dev-fixtures/index.ts";
+import { DataProvider, describeError, useOpenSession, useStatusStats } from "./data/index.ts";
 import {
   AppShell,
   defaultStatusBarSlots,
@@ -18,95 +9,85 @@ import {
   parseLayout,
 } from "./layout/index.ts";
 import layoutJson from "./layout.json";
-import { SessionList } from "./session-list/index.ts";
-import { SessionView } from "./session-view/index.ts";
+import {
+  AppDialogs,
+  ArchiveFlowDialog,
+  ChangesPane,
+  type DialogName,
+  SessionPane,
+  SessionsPane,
+  useArchiveFlow,
+  useSelectedSession,
+} from "./panes/index.ts";
+import { showToast, ToastHost } from "./toasts/index.ts";
 
 const layout = parseLayout(layoutJson);
-const noop = () => undefined;
-const firstPath = exampleDiff.files[0]?.path;
 
-type SessionPaneProps = { selectedId: SessionId | undefined; onArchive: () => void };
+type Open = (name: DialogName) => () => void;
 
-function SessionPane({ selectedId, onArchive }: SessionPaneProps) {
-  const entry = exampleSessions.find((e) => e.summary.id === selectedId);
-  if (!entry) return <p className="p-4 text-muted">Select a session.</p>;
-  const events = exampleEvents.filter((e) => e.sessionId === entry.summary.id);
-  return (
-    <SessionView
-      summary={entry.summary}
-      events={events}
-      usage={exampleUsage}
-      onSendPrompt={noop}
-      onCancel={noop}
-      onArchive={onArchive}
-      onAnswerPermission={noop}
-    />
-  );
-}
-
-function fileAt(path: string | undefined): { base: string; working: string } {
-  return (path && exampleFiles[path]) || { base: "", working: "" };
-}
-
-function ChangesPane() {
-  const [path, setPath] = useState(firstPath);
-  const file = fileAt(path);
-  return (
-    <ChangesPanel
-      diff={exampleDiff}
-      selectedPath={path}
-      onSelectPath={setPath}
-      baseContent={file.base}
-      workingContent={file.working}
-      worktreePath={exampleWorktreePath}
-      readOnly={false}
-      onSave={noop}
-    />
-  );
-}
-
-type SessionsPaneProps = { selectedId: SessionId | undefined; onSelect: (id: SessionId) => void };
-
-function SessionsPane({ selectedId, onSelect }: SessionsPaneProps) {
-  const [showArchived, setShowArchived] = useState(false);
-  return (
-    <SessionList
-      entries={exampleSessions}
-      selectedId={selectedId}
-      onSelect={onSelect}
-      showArchived={showArchived}
-      onShowArchivedChange={setShowArchived}
-      onAnswerPermission={noop}
-    />
-  );
-}
-
-export function App() {
-  const [selectedId, setSelectedId] = useState(exampleSessions[0]?.summary.id);
-  const [dialog, setDialog] = useState<DialogName>();
-  const open = (name: DialogName) => () => {
-    setDialog(name);
-  };
-  const actions = {
+const topBarSlots = (open: Open) =>
+  defaultTopBarSlots({
     onConfig: open("workspace"),
-    onAnalytics: noop,
+    onAnalytics: open("analytics"),
     onModify: open("modify"),
     onNewSession: open("new-session"),
+  });
+
+type PaneOptions = {
+  selectedId: SessionId | undefined;
+  select: (id: SessionId) => void;
+  archive: ReturnType<typeof useArchiveFlow>;
+  open: Open;
+};
+
+function paneSlots({ selectedId, select, archive, open }: PaneOptions) {
+  return {
+    sessions: <SessionsPane selectedId={selectedId} onSelect={select} />,
+    session: (
+      <SessionPane
+        id={selectedId}
+        onNewSession={open("new-session")}
+        onArchive={(id) => void archive.request(id)}
+      />
+    ),
+    changes: <ChangesPane key={selectedId} id={selectedId} />,
   };
-  const panes = {
-    sessions: <SessionsPane selectedId={selectedId} onSelect={setSelectedId} />,
-    session: <SessionPane selectedId={selectedId} onArchive={open("archive")} />,
-    changes: <ChangesPane />,
+}
+
+function Workbench() {
+  const [selectedId, select] = useSelectedSession();
+  const [dialog, setDialog] = useState<DialogName>();
+  const archive = useArchiveFlow();
+  const stats = useStatusStats();
+  useOpenSession(selectedId);
+  const open: Open = (name) => () => {
+    setDialog(name);
   };
   const slots = {
-    topBar: defaultTopBarSlots(actions),
-    panes,
-    statusBar: defaultStatusBarSlots(exampleStats),
+    topBar: topBarSlots(open),
+    panes: paneSlots({ selectedId, select, archive, open }),
+    statusBar: defaultStatusBarSlots(stats),
   };
   return (
     <>
       <AppShell layout={layout} slots={slots} />
-      <DevDialogs open={dialog} onOpenChange={setDialog} />
+      <AppDialogs open={dialog} onOpenChange={setDialog} onStarted={select} />
+      <ArchiveFlowDialog flow={archive} />
     </>
+  );
+}
+
+/** The default UI: the live session list, stream and changes of the app behind `client`. */
+export function App({ client }: { client: Client }) {
+  return (
+    <DataProvider
+      client={client}
+      onError={(error) => {
+        showToast(describeError(error));
+      }}
+    >
+      <Workbench />
+      <ToastHost />
+    </DataProvider>
   );
 }

@@ -31,12 +31,20 @@ function afterTimeout(): Promise<never> {
   });
 }
 
-/** Starts `main.ts` on a free port with its own data folder and waits for its "listening" line. */
+/**
+ * Starts `main.ts` with its own data folder and waits for its "listening" line. It takes a free
+ * port unless `port` is given (to come back where a browser is still pointing); `extraArgs` can
+ * ask it to serve the UI.
+ */
 export async function launchApp(options: {
   dataDir: string;
   env: Record<string, string>;
+  port?: number;
+  extraArgs?: string[];
 }): Promise<AppProcess> {
-  const child = Bun.spawn(["bun", appMain, "--port", "0", "--data-dir", options.dataDir], {
+  const port = String(options.port ?? 0);
+  const args = ["--port", port, "--data-dir", options.dataDir, ...(options.extraArgs ?? [])];
+  const child = Bun.spawn(["bun", appMain, ...args], {
     stdout: "pipe",
     stderr: "inherit",
     env: { ...Bun.env, ...options.env },
