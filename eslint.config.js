@@ -5,7 +5,9 @@ import tseslint from "typescript-eslint";
 const files = ["{packages,e2e,spike,scripts}/**/*.{ts,tsx}"];
 
 export default tseslint.config(
-  { ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/.e2e-tmp/**"] },
+  {
+    ignores: ["**/node_modules/**", "**/dist/**", "**/coverage/**", "**/.e2e-tmp/**", ".claude/**"],
+  },
   {
     files,
     extends: [tseslint.configs.strictTypeChecked, eslintComments.recommended],
