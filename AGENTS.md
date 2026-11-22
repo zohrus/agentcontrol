@@ -172,7 +172,10 @@ Every agent does these, in this order, on its own changes. No exceptions.
 2. **Gates.** `bun run check` passes. Fix findings by changing the code.
 3. **Code review.** Run the `/code-review` skill on your own diff. Fix every bug it finds, then run
    it again until it reports none. Say in your report that you ran it and what it found.
-4. **Status.** `docs/status.html` shows the component's new status (the orchestrator updates it).
+4. **Plan and status.** `docs/plan.html` is the single source of truth: every decision, task and
+   change of direction is written into it (and the long tail into `TASKS.md`) in the same push
+   that makes it true. `docs/status.html` shows each component's status. The orchestrator updates
+   both; tell it in your report what changed.
 
 ## Working in parallel
 
