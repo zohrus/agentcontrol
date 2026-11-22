@@ -83,6 +83,15 @@ export const hygieneCases: readonly GateCase[] = [
     command: ["bun", "run", "acp-leaks"],
   },
   {
+    name: "coverage: new code that no end-to-end test runs",
+    expect: "not run by any end-to-end test",
+    files: {
+      ["packages/relay/src/untested-gate-sample.ts"]:
+        "export function untested(input: number): number {\n  return input * 2 + 1;\n}\n",
+    },
+    command: ["bun", "run", "test:coverage"],
+  },
+  {
     name: "biome: badly formatted file",
     expect: "dup-format",
     files: { [`${SAMPLE_DIR}/dup-format.ts`]: "export   const   x=1\n" },

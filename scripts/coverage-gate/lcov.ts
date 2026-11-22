@@ -1,7 +1,7 @@
 import { Glob } from "bun";
 
 /** Line number to how often it ran. Only executable lines appear. */
-export type LineHits = Map<number, number>;
+type LineHits = Map<number, number>;
 export type LcovFiles = Map<string, LineHits>;
 
 function addHits(into: LineHits | undefined, record: string): void {
@@ -18,7 +18,7 @@ function recordLine(files: LcovFiles, current: LineHits | undefined, line: strin
 }
 
 /** Reads the SF / DA records of an lcov file; other record types are not needed. */
-export function parseLcov(text: string): LcovFiles {
+function parseLcov(text: string): LcovFiles {
   const files: LcovFiles = new Map();
   let current: LineHits | undefined;
   for (const line of text.split("\n")) current = recordLine(files, current, line);
@@ -26,7 +26,7 @@ export function parseLcov(text: string): LcovFiles {
 }
 
 /** The union over several runs: a line is covered when any run executed it. */
-export function mergeLcov(parts: LcovFiles[]): LcovFiles {
+function mergeLcov(parts: LcovFiles[]): LcovFiles {
   const merged: LcovFiles = new Map();
   for (const part of parts) {
     for (const [file, lines] of part) {

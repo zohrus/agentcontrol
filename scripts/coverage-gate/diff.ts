@@ -25,7 +25,7 @@ function hunkLines(row: string): number[] {
 }
 
 /** Reads `git diff -U0` output: the new-side line numbers of every hunk, per file. */
-export function parseAddedLines(diff: string): AddedLines {
+function parseAddedLines(diff: string): AddedLines {
   const added: AddedLines = new Map();
   let lines = new Set<number>();
   for (const row of diff.split("\n")) {

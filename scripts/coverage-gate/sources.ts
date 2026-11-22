@@ -1,7 +1,7 @@
 import { Glob } from "bun";
 import type { CoverageConfig, PendingEntry } from "./config.ts";
 
-export interface PendingFile {
+interface PendingFile {
   file: string;
   entry: PendingEntry;
 }

@@ -35,7 +35,7 @@ export function relayClientOver(transport: RelayTransport): RelayClient {
   });
   void peer.read(transport.output);
   const closed = transport.closed.then(() => {
-    peer.failAll("the relay connection closed");
+    peer.failAll();
   });
   return {
     closed,

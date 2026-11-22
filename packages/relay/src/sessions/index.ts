@@ -84,6 +84,7 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
 async function shutdown(ctx: SessionContext): Promise<void> {
   const ids = [...ctx.live.keys()];
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
+  ctx.stopRecording();
   await Promise.all(ids.map((id) => ctx.log.lastSeq(id)));
 }
 
@@ -107,6 +108,7 @@ function contextOf(options: {
   summaries: LiveSummaries;
 }): SessionContext {
   let portIndex = options.sessionCount;
+  let recording = true;
   const { log } = options;
   return {
     log,
@@ -116,7 +118,11 @@ function contextOf(options: {
     permissions: createPendingPermissions(),
     summaries: options.summaries,
     live: new Map(),
+    stopRecording: () => {
+      recording = false;
+    },
     record: (sessionId, input) => {
+      if (!recording) return;
       log.append(sessionId, input).catch((error: unknown) => {
         console.error(`Could not record an event for session ${sessionId}: ${String(error)}`);
       });

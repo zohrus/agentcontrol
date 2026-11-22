@@ -1,5 +1,4 @@
-import { connect } from "node:net";
-import { Readable } from "node:stream";
+import { connect, type Socket } from "node:net";
 
 /** A line-based channel to a relay, the way the app has one. */
 export interface Wire {
@@ -9,6 +8,20 @@ export interface Wire {
   readonly closed: Promise<unknown>;
   /** Ends the channel; the relay daemon keeps running. */
   close(): Promise<void>;
+}
+
+/** The socket's bytes as a stream that simply ends when the socket does, even by an error. */
+function streamOf(socket: Socket): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      socket.on("data", (chunk: Buffer) => {
+        controller.enqueue(new Uint8Array(chunk));
+      });
+      socket.once("close", () => {
+        controller.close();
+      });
+    },
+  });
 }
 
 /** Connects straight to the relay daemon's unix socket: what the bridge does, minus the process. */
@@ -21,7 +34,7 @@ export function socketWire(socketPath: string): Wire {
   });
   socket.on("error", () => undefined);
   return {
-    output: Readable.toWeb(socket) as ReadableStream<Uint8Array>,
+    output: streamOf(socket),
     closed,
     send: (line) => {
       socket.write(line);

@@ -2,7 +2,7 @@ import { ErrorCode } from "@agentcontrol/protocol";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { RelayCallError } from "../relays/index.ts";
+import { RelayCallError, RelayConnectionClosedError } from "../relays/index.ts";
 import { RelayUnavailableError } from "../sync/index.ts";
 
 /** A failure the API reports as `{error: {code, message, data?}}` with an HTTP status. */
@@ -40,7 +40,9 @@ function otherFailure(error: Error): ApiFailure {
 function failureOf(error: Error): ApiFailure {
   if (error instanceof ApiFailure) return error;
   if (error instanceof RelayCallError) return fromRelay(error);
-  if (!(error instanceof RelayUnavailableError)) return otherFailure(error);
+  const gone =
+    error instanceof RelayUnavailableError || error instanceof RelayConnectionClosedError;
+  if (!gone) return otherFailure(error);
   return new ApiFailure(503, { code: "relay-unavailable", message: error.message });
 }
 

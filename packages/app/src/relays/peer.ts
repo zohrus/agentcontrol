@@ -17,6 +17,13 @@ export class RelayCallError extends Error {
   }
 }
 
+/** The connection ended while a call was waiting for its answer. */
+export class RelayConnectionClosedError extends Error {
+  constructor() {
+    super("The relay connection closed.");
+  }
+}
+
 export interface Notification {
   method: string;
   params: unknown;
@@ -49,9 +56,9 @@ export class Peer {
   }
 
   /** Fails every call still waiting for an answer, because the connection ended. */
-  failAll(reason: string): void {
+  failAll(): void {
     this.waiting.forEach((call) => {
-      call.reject(new Error(reason));
+      call.reject(new RelayConnectionClosedError());
     });
     this.waiting.clear();
   }
