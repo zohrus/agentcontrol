@@ -23,6 +23,8 @@ function changeControls(page: Page) {
     undoesTheChange: () => buttonOf(page, "Undo").click(),
     undoesTheLastKeptChange: () => buttonOf(page, "Undo last change").click(),
     discardsTheChange: () => buttonOf(page, "Discard").click(),
+    /** Presses "Update" on the banner that offers the new default UI. */
+    appliesTheDefaultUiUpdate: () => buttonOf(page, "Update").click(),
   };
 }
 
