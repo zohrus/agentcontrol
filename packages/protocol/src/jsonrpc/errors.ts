@@ -11,5 +11,7 @@ export const ErrorCode = {
   setupFailed: -32004,
   /** A file does not exist at the asked version (new, deleted, or not yet committed). */
   fileNotFound: -32005,
+  /** A config plan no longer matches the files on disk. */
+  configStale: -32006,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

@@ -42,3 +42,22 @@ export const events = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.workspaceId, t.sessionId, t.seq] })],
 );
+
+/** A canonical harness-config item (MCP server, instructions, skill, hook, ...) as JSON. */
+export const configItems = sqliteTable("config_items", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  bodyJson: text("body_json").notNull(),
+});
+
+/** Where an item applies: one row per scope; repoPath is "" for global and workspace scope. */
+export const configScopes = sqliteTable(
+  "config_scopes",
+  {
+    itemId: text("item_id").notNull(),
+    scope: text("scope", { enum: ["global", "workspace", "repo"] }).notNull(),
+    repoPath: text("repo_path").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.scope, t.repoPath] })],
+);

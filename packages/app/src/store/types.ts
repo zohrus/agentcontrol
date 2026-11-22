@@ -1,4 +1,4 @@
-import type { SessionEvent, SessionId, SessionSummary } from "@agentcontrol/protocol";
+import type { ScopedItem, SessionEvent, SessionId, SessionSummary } from "@agentcontrol/protocol";
 
 export interface Workspace {
   id: string;
@@ -36,6 +36,10 @@ export interface Store {
   saveSessionSummaries(workspaceId: string, summaries: SessionSummary[]): void;
   listSessions(filter?: SessionFilter): StoredSession[]; // newest first
   getSession(key: { workspaceId: string; sessionId: SessionId }): StoredSession | undefined;
+  /** Replaces every harness-config item with the given ones. */
+  replaceConfigItems(items: ScopedItem[]): void;
+  /** The harness-config items, one entry per item and scope. */
+  listConfigItems(): ScopedItem[];
   close(): void;
 }
 

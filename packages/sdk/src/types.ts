@@ -31,7 +31,12 @@ export type LiveSessionEvent = SessionEvent & { workspaceId: string };
 
 export type {
   AgentKind,
+  ApplyResult,
   CheckStep,
+  ConfigAgent,
+  ConfigItem,
+  ConfigPlan,
+  DriftReport,
   DiffFile,
   DiffResult,
   FsEntry,
@@ -41,6 +46,7 @@ export type {
   RepoId,
   RepoInfo,
   RepoSetup,
+  ScopedItem,
   SessionEvent,
   SessionId,
   SessionStatus,
