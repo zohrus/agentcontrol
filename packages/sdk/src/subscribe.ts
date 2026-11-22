@@ -45,20 +45,15 @@ async function readStream(url: string, handlers: Handlers, signal: AbortSignal):
   }
 }
 
-function pause(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
+/** Waits before the next reconnect. An unsubscribe is noticed when it ends, at most `ms` later. */
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function keepReading(url: string, handlers: Handlers, signal: AbortSignal): Promise<void> {
   while (!signal.aborted) {
     await readStream(url, handlers, signal).catch(() => undefined);
-    await pause(RECONNECT_MS, signal);
+    await pause(RECONNECT_MS);
   }
 }
 

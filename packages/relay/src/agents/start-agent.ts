@@ -77,11 +77,15 @@ function failure(command: string[], reason: unknown, spawned?: SpawnedAgent): Er
 
 /** Spawns the adapter, runs initialize and session/new, and returns once it is ready for a prompt. */
 export async function startAgent(options: StartAgentOptions): Promise<AgentProcess> {
-  const command = commandFor(options.kind);
+  const command = commandFor(options.kind, options.hostEnv);
   if (!command) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
   let spawned: SpawnedAgent | undefined;
   try {
-    spawned = spawnAgent({ command, cwd: options.cwd, env: options.env });
+    spawned = spawnAgent({
+      command,
+      cwd: options.cwd,
+      env: { ...options.hostEnv, ...options.env },
+    });
     const connection = connectTo(spawned, options);
     const sessionId = await handshake(connection, options.cwd);
     return agentProcess({ spawned, connection, sessionId });

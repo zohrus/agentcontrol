@@ -1,0 +1,64 @@
+{
+  "thresholds": {
+    "rule": "Numbers only go up. Never lower a threshold, never exclude a file to pass: write the end-to-end test, or delete the dead code.",
+    "totalLines": 95,
+    "newLines": 95
+  },
+  "include": ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],
+  "exclude": [
+    {
+      "path": "packages/relay/src/main.ts",
+      "reason": "Thin CLI entry (argument parsing only). The subprocess e2e runs prove it: restart.e2e.ts."
+    },
+    {
+      "path": "packages/app/src/main.ts",
+      "reason": "Thin CLI entry (flags, signals, console line). The subprocess e2e runs prove it: app-restart.e2e.ts, app-waiting-on-you.e2e.ts."
+    },
+    {
+      "path": "packages/relay/src/daemon/bridge.ts",
+      "reason": "The stdio bridge and the detached daemon spawn: process wiring that only exists as a subprocess. Proven by the subprocess e2e runs."
+    },
+    {
+      "path": "packages/relay/src/daemon/index.ts",
+      "reason": "runDaemon (signal handlers, process.exit) and stopDaemon (SIGTERM by pid file): CLI-only, proven by the subprocess e2e runs. Also re-exports."
+    },
+    {
+      "path": "packages/app/src/relays/spawn-bridge.ts",
+      "reason": "The production relay transport that spawns the bridge process. Tests inject a socket transport; the subprocess e2e runs prove this one."
+    },
+    {
+      "path": "packages/app/src/relays/command.ts",
+      "reason": "Reads AGENTCONTROL_RELAY_CMD for main.ts only; proven by the subprocess e2e runs."
+    },
+    {
+      "path": "packages/app/src/config.ts",
+      "reason": "Reads main.ts's --port, --data-dir and environment variables; only the CLI entry calls it, so the subprocess e2e runs prove it."
+    },
+    {
+      "path": "packages/app/src/drizzle.config.ts",
+      "reason": "drizzle-kit tooling config (db:generate), not product code at run time."
+    },
+    {
+      "path": "packages/ui-template/**",
+      "reason": "TODO: browser (Playwright) tests are being added under e2e/browser/; remove this entry when they land and count their coverage."
+    },
+    {
+      "path": "packages/mac/**",
+      "reason": "Swift/menu bar shell and installer glue; not exercised by the TypeScript e2e suite."
+    }
+  ],
+  "pending": [
+    {
+      "path": "packages/app/src/ui-versions/**",
+      "owner": "orchestrator: wire UI versions into the app API (Keep, Undo, history)",
+      "since": "2026-11-22",
+      "reason": "No caller yet: only exported from the app's index.ts, so no e2e test can reach it."
+    },
+    {
+      "path": "packages/app/src/ui-workspace/**",
+      "owner": "orchestrator: wire the UI workspace into the Modify agent",
+      "since": "2026-11-22",
+      "reason": "No caller yet: only exported from the app's index.ts, so no e2e test can reach it."
+    }
+  ]
+}

@@ -6,9 +6,16 @@ import {
 } from "@agentcontrol/protocol";
 import { type Notification, Peer } from "./peer.ts";
 
-export interface RelayConnection {
-  command: string[];
-  dataDir: string;
+/** A line-based channel to a relay: how the bytes travel is the transport's business. */
+export interface RelayTransport {
+  /** Writes one newline-terminated JSON-RPC line. */
+  send(line: string): void;
+  /** What the relay sends back. */
+  readonly output: ReadableStream<Uint8Array>;
+  /** Resolves when the channel ends, for any reason. */
+  readonly closed: Promise<unknown>;
+  /** Ends the channel; the relay daemon itself keeps running. */
+  close(): Promise<void>;
 }
 
 /** A live connection to a relay: typed calls, pushed notifications, and when it ends. */
@@ -21,19 +28,13 @@ export interface RelayClient {
   close(): Promise<void>;
 }
 
-/** Spawns the relay bridge (`<command> --stdio --data-dir <dir>`) and talks JSON-RPC over it. */
-export function connectRelay({ command, dataDir }: RelayConnection): RelayClient {
-  const bridge = Bun.spawn([...command, "--stdio", "--data-dir", dataDir], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "inherit",
-  });
+/** Talks JSON-RPC to a relay over the given transport. */
+export function relayClientOver(transport: RelayTransport): RelayClient {
   const peer = new Peer((line) => {
-    void bridge.stdin.write(line);
-    void bridge.stdin.flush();
+    transport.send(line);
   });
-  void peer.read(bridge.stdout);
-  const closed = bridge.exited.then(() => {
+  void peer.read(transport.output);
+  const closed = transport.closed.then(() => {
     peer.failAll("the relay connection closed");
   });
   return {
@@ -46,7 +47,7 @@ export function connectRelay({ command, dataDir }: RelayConnection): RelayClient
         typeof method
       >,
     close: async () => {
-      void bridge.stdin.end();
+      await transport.close();
       await closed;
     },
   };

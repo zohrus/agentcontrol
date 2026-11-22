@@ -69,6 +69,7 @@ async function launchAgent(
       kind: session.params.agent,
       cwd: worktree.worktreePath,
       env: worktree.env,
+      hostEnv: ctx.hostEnv,
       onMessage: tapAcp(ctx, sessionId),
       onPermissionRequest: (request) => holdForUser(ctx, { sessionId, request }),
     });

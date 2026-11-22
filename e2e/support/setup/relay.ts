@@ -22,6 +22,12 @@ export interface RelayAccess {
   readonly mockAgent: MockAgent;
   /** Calls a relay method over the app's current connection. */
   call<M extends RelayMethodName>(method: M, params: RelayParams<M>): Promise<RelayResult<M>>;
+  /** Calls any method by name, even one the relay does not have. */
+  request(method: string, params: unknown): Promise<unknown>;
+  /** Sends a line as it is, even one that is not JSON-RPC. */
+  sendLine(line: string): void;
+  /** Every error the relay sent that answers no request. */
+  readonly unansweredErrors: Timeline<{ code: number; message: string }>;
   /** The events the app's current connection has received. */
   readonly events: Timeline<SessionEvent>;
   /** The file-change notifications the app's current connection has received. */

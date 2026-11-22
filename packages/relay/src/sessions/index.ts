@@ -7,6 +7,7 @@ import {
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
+import type { HostEnv } from "../agents/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
@@ -101,6 +102,7 @@ function contextOf(options: {
   log: EventLog;
   repos: RepoStore;
   worktreesDir: string;
+  hostEnv: HostEnv;
   sessionCount: number;
   summaries: LiveSummaries;
 }): SessionContext {
@@ -110,6 +112,7 @@ function contextOf(options: {
     log,
     repos: options.repos,
     worktreesDir: options.worktreesDir,
+    hostEnv: options.hostEnv,
     permissions: createPendingPermissions(),
     summaries: options.summaries,
     live: new Map(),
@@ -127,6 +130,7 @@ export async function createSessions(options: {
   log: EventLog;
   repos: RepoStore;
   worktreesDir: string;
+  hostEnv: HostEnv;
 }): Promise<Sessions> {
   const ids = await recoverSessions(options.log);
   const summaries = await createLiveSummaries({ log: options.log, sessionIds: ids });

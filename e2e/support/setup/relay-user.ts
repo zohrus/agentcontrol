@@ -5,6 +5,7 @@ import { editorUserOf } from "./editor-user.ts";
 import { git } from "./git.ts";
 import { optionOfKind } from "./permission-option.ts";
 import type { RelayAccess, Session } from "./relay.ts";
+import { refusedUserOf } from "./relay-refused-user.ts";
 import { forSession, worktreeOf } from "./session-events.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
@@ -80,7 +81,12 @@ function sessionLifeOf(relay: RelayAccess) {
 
 /** The things a person does in the app, as relay calls. Extend this when a test needs a new one. */
 export function userOf(relay: RelayAccess) {
-  return { ...sessionUserOf(relay), ...sessionLifeOf(relay), ...editorUserOf(relay) };
+  return {
+    ...sessionUserOf(relay),
+    ...sessionLifeOf(relay),
+    ...editorUserOf(relay),
+    ...refusedUserOf(relay),
+  };
 }
 
 export type User = ReturnType<typeof userOf>;

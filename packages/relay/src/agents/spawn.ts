@@ -25,14 +25,14 @@ function drain(stderr: ReadableStream<Uint8Array>, lines: string[]): void {
 export interface SpawnOptions {
   command: string[];
   cwd: string;
-  env: Record<string, string>;
+  env: Record<string, string | undefined>;
 }
 
 /** Starts the adapter process and wraps its stdio as an ACP stream. */
 export function spawnAgent({ command, cwd, env }: SpawnOptions): SpawnedAgent {
   const child = Bun.spawn(command, {
     cwd,
-    env: { ...Bun.env, ...env },
+    env,
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",

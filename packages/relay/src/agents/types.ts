@@ -26,6 +26,8 @@ export interface StartAgentOptions {
   cwd: string;
   /** Extra env vars for the agent process (ports etc.). */
   env: Record<string, string>;
+  /** The relay's own environment: where agent commands are looked up and what the agent inherits. */
+  hostEnv: Record<string, string | undefined>;
   /** Called with every raw JSON-RPC message, in both directions, unchanged, in wire order. */
   onMessage: (direction: MessageDirection, message: unknown) => void;
   /** Called when the agent asks for permission; the agent waits until the promise resolves. */

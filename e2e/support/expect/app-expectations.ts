@@ -37,6 +37,11 @@ export function expectSessionWaitingForReply(app: AppAccess, session: Session): 
   return expectListedAs(app, { session, wanted: "waiting for a reply" });
 }
 
+/** The session list shows the session as idle: its last turn was cancelled and nothing runs. */
+export function expectSessionIdle(app: AppAccess, session: Session): Promise<void> {
+  return expectListedAs(app, { session, wanted: "idle" });
+}
+
 function commandAsked(events: SessionEvent[]): string | undefined {
   const request = events.find((event) => event.kind === "permission-requested");
   return request?.kind === "permission-requested" ? request.payload.tool?.title : undefined;

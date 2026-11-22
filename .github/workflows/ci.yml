@@ -5,6 +5,8 @@ name: ci
 on:
   push:
     branches: [main, "queue/**"]
+  schedule:
+    - cron: "17 3 * * *"
 
 permissions:
   contents: read
@@ -16,6 +18,7 @@ concurrency:
 
 jobs:
   check:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -23,6 +26,9 @@ jobs:
       CHECK_SKIP: audit
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          # The coverage gate compares the lines this change adds with origin/main.
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.4
@@ -42,7 +48,35 @@ jobs:
           git config --global user.name ci
           git config --global user.email ci@example.invalid
           git config --global init.defaultBranch main
+      # `check` runs the end-to-end suite once, through the coverage gate (test:coverage).
       - run: bun run check
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: coverage
+          path: |
+            coverage/lcov.info
+            coverage/summary.json
+          if-no-files-found: ignore
+
+  # Nightly: the covered lines must be identical run to run, or a code path depends on timing.
+  coverage-stable:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Git identity for the tests that create repositories
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.invalid
+          git config --global init.defaultBranch main
+      - run: bun run test:coverage-stable
 
   prove-gates:
     # Feeds every gate a deliberately bad sample and fails if one passes, so a gate that silently

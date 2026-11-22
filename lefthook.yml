@@ -15,3 +15,7 @@ pre-push:
   jobs:
     - name: typecheck
       run: bun run typecheck
+    - name: coverage
+      # Runs the end-to-end suite with coverage: at most 5% of lines uncovered, and the lines this
+      # push adds must be covered too. Code that no end-to-end test runs does not get pushed.
+      run: bun run test:coverage

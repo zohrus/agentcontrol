@@ -1,6 +1,7 @@
 import type { FileContent, SessionEvent } from "@agentcontrol/sdk";
-import { ApiError } from "@agentcontrol/sdk";
+import { type ApiError, isStaleFile } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
+import { appWorkspaceUserOf, appWorktreeUserOf } from "./app-more-user.ts";
 import { optionOfKind } from "./permission-option.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
@@ -38,14 +39,14 @@ async function save(
   try {
     return { saved: true, hash: await app.sdk.files.write(write) };
   } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
+    if (!isStaleFile(error)) throw error;
     const { status, code } = error;
     return { saved: false, status, code, currentHash: currentHashOf(error) };
   }
 }
 
-/** The things a person does in the app, each one through the SDK. Extend when a test needs more. */
-export function appUserOf(app: AppAccess) {
+/** Sessions and files: what a person does in the app, each one through the SDK. */
+function sessionUserOf(app: AppAccess) {
   return {
     /** Starts a session on the local repo; the agent gets the prompt once it is up. */
     startsSession: async (options: { prompt: string }): Promise<Session> => {
@@ -70,6 +71,11 @@ export function appUserOf(app: AppAccess) {
     savesFile: (session: Session, edit: { path: string; content: string; basedOn: FileContent }) =>
       save(app, { session, ...edit }),
   };
+}
+
+/** The things a person does in the app, each one through the SDK. Extend when a test needs more. */
+export function appUserOf(app: AppAccess) {
+  return { ...sessionUserOf(app), ...appWorktreeUserOf(app), ...appWorkspaceUserOf(app) };
 }
 
 export type AppUser = ReturnType<typeof appUserOf>;

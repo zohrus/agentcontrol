@@ -26,7 +26,9 @@
       "name": "@agentcontrol/e2e",
       "version": "0.0.0",
       "dependencies": {
+        "@agentcontrol/app": "workspace:*",
         "@agentcontrol/protocol": "workspace:*",
+        "@agentcontrol/relay": "workspace:*",
         "@agentcontrol/sdk": "workspace:*",
       },
     },

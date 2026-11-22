@@ -5,7 +5,9 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
+    "@agentcontrol/app": "workspace:*",
     "@agentcontrol/protocol": "workspace:*",
+    "@agentcontrol/relay": "workspace:*",
     "@agentcontrol/sdk": "workspace:*"
   }
 }

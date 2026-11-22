@@ -1,4 +1,3 @@
-import { join } from "node:path";
 import {
   type FsChangedParams,
   type JsonRpcFailure,
@@ -13,9 +12,9 @@ import {
   type RelayResult,
   type SessionEvent,
 } from "@agentcontrol/protocol";
+import type { Wire } from "./wire.ts";
 import { Timeline } from "./timeline.ts";
 
-const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
 const EVENT_WAIT_MS = 10_000;
 
 /** A failure answered by the relay, with its JSON-RPC code. */
@@ -34,6 +33,12 @@ export interface RelayClient {
   readonly events: Timeline<SessionEvent>;
   /** Every `relay/fs.changed` this client has been sent, in order. */
   readonly fileChanges: Timeline<FsChangedParams>;
+  /** Calls any method by name, even one the relay does not have. */
+  request(method: string, params: unknown): Promise<unknown>;
+  /** Sends a line as it is, even one that is not JSON-RPC. */
+  sendLine(line: string): void;
+  /** Every error the relay sent that answers no request (it could not tell which one). */
+  readonly unansweredErrors: Timeline<{ code: number; message: string }>;
   /** Closes the connection, as the app does when it quits; the relay itself keeps running. */
   disconnect(): Promise<void>;
 }
@@ -47,6 +52,7 @@ interface ClientState {
   pending: Map<unknown, Pending>;
   events: Timeline<SessionEvent>;
   fileChanges: Timeline<FsChangedParams>;
+  unansweredErrors: Timeline<{ code: number; message: string }>;
 }
 
 function settle(message: JsonRpcSuccess | JsonRpcFailure, pending: Map<unknown, Pending>): void {
@@ -59,13 +65,22 @@ function settle(message: JsonRpcSuccess | JsonRpcFailure, pending: Map<unknown, 
   }
 }
 
-function dispatch(message: JsonRpcMessage, state: ClientState): void {
-  if (!("method" in message)) settle(message, state.pending);
-  else if (message.method === RelayName.event) {
+function notified(message: { method: string; params?: unknown }, state: ClientState): void {
+  if (message.method === RelayName.event) {
     state.events.record(RelayNotifications[RelayName.event].parse(message.params).event);
   } else if (message.method === RelayName.fsChanged) {
     state.fileChanges.record(RelayNotifications[RelayName.fsChanged].parse(message.params));
   }
+}
+
+function answered(message: JsonRpcSuccess | JsonRpcFailure, state: ClientState): void {
+  if ("error" in message && message.id === null) state.unansweredErrors.record(message.error);
+  else settle(message, state.pending);
+}
+
+function dispatch(message: JsonRpcMessage, state: ClientState): void {
+  if ("method" in message) notified(message, state);
+  else answered(message, state);
 }
 
 async function listen(
@@ -78,52 +93,40 @@ async function listen(
   }
 }
 
-function spawnBridge(options: { dataDir: string; env: Record<string, string> }) {
-  return Bun.spawn(["bun", relayMain, "--stdio", "--data-dir", options.dataDir], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "inherit",
-    env: { ...Bun.env, ...options.env },
-  });
+/** Sends a request line and resolves with the relay's answer to it. */
+function requester(wire: Wire, pending: Map<unknown, Pending>) {
+  let nextId = 1;
+  return (method: string, params: unknown): Promise<unknown> => {
+    const id = nextId++;
+    const answer = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+    wire.send(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+    return answer;
+  };
 }
 
-/** Starts the relay bridge exactly as the app does (`main.ts --stdio`) and talks JSON-RPC over it. */
-export function connectToRelay(options: {
-  dataDir: string;
-  env: Record<string, string>;
-}): RelayClient {
-  const bridge = spawnBridge(options);
+/** Talks JSON-RPC to the relay over the wire, as the app does. */
+export function connectToRelay(wire: Wire): RelayClient {
   const state: ClientState = {
     pending: new Map(),
     events: new Timeline(EVENT_WAIT_MS),
     fileChanges: new Timeline(EVENT_WAIT_MS),
+    unansweredErrors: new Timeline(EVENT_WAIT_MS),
   };
-  void listen(bridge.stdout, (message) => {
+  void listen(wire.output, (message) => {
     dispatch(message, state);
   });
-  let nextId = 1;
+  const request = requester(wire, state.pending);
   return {
     events: state.events,
     fileChanges: state.fileChanges,
-    call: (method, params) => {
-      const id = nextId++;
-      const answered = new Promise((resolve, reject) => state.pending.set(id, { resolve, reject }));
-      void bridge.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
-      void bridge.stdin.flush();
-      return answered as Promise<RelayResult<typeof method>>;
+    unansweredErrors: state.unansweredErrors,
+    request,
+    call: (method, params) => request(method, params) as Promise<RelayResult<typeof method>>,
+    sendLine: (line) => {
+      wire.send(`${line}\n`);
     },
     disconnect: async () => {
-      void bridge.stdin.end();
-      await bridge.exited;
+      await wire.close();
     },
   };
-}
-
-/** Tells the relay daemon of this data folder to shut down, and waits until it has. */
-export async function stopRelayDaemon(dataDir: string): Promise<void> {
-  const stop = Bun.spawn(["bun", relayMain, "stop", "--data-dir", dataDir], {
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  await stop.exited;
 }

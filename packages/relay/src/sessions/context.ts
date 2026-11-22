@@ -1,5 +1,5 @@
 import type { SessionId } from "@agentcontrol/protocol";
-import type { AgentProcess } from "../agents/index.ts";
+import type { AgentProcess, HostEnv } from "../agents/index.ts";
 import type { EventInput, EventLog } from "../event-log/index.ts";
 import type { PendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
@@ -15,6 +15,8 @@ export interface SessionContext {
   summaries: LiveSummaries;
   repos: RepoStore;
   worktreesDir: string;
+  /** The relay's environment, for agent commands and what agents inherit. */
+  hostEnv: HostEnv;
   /** Agents that are running right now. */
   live: Map<SessionId, AgentProcess>;
   /** Appends an event without waiting; a failed write is reported on stderr. */
