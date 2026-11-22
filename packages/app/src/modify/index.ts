@@ -32,6 +32,8 @@ export interface Modify {
   restore(commit: string): Promise<ModifyState>;
   /** Merges the available default-UI update; the result waits for Keep or Undo. */
   applyUpdate(): Promise<ModifyState>;
+  /** The app is quitting: stops what is running and ends the agent's session, leaving no agent behind. */
+  stop(): Promise<void>;
 }
 
 /** Seeds once, on the first call; a change that was waiting for Keep or Undo is brought back. */
@@ -39,9 +41,9 @@ function seedOnce(ctx: Ctx, seed: Seed): () => Promise<void> {
   let seeded: Promise<void> | undefined;
   return () => {
     seeded ??= seedUi(seed)
-      .then((available) => {
+      .then(async (available) => {
         ctx.available = available;
-        restoreWaiting(ctx);
+        await restoreWaiting(ctx);
       })
       .catch((error: unknown) => {
         seeded = undefined;
@@ -63,6 +65,12 @@ function aloneIn(ctx: Ctx, act: (work: () => unknown) => Promise<ModifyState>) {
         ctx.finishing = false;
       }
     });
+}
+
+/** Whatever runs sees a new generation and stops quietly; then the agent's session is ended. */
+async function stopWorking(ctx: Ctx): Promise<void> {
+  ctx.change = { ...ctx.change, generation: ctx.change.generation + 1 };
+  await ctx.turns.end();
 }
 
 export function createModify(options: ModifyOptions): Modify {
@@ -90,5 +98,6 @@ export function createModify(options: ModifyOptions): Modify {
       act(() => {
         startUpdate(ctx);
       }),
+    stop: () => stopWorking(ctx),
   };
 }

@@ -61,9 +61,9 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const hub = createHub();
   const sync = startSync({ store, hub, workspace: LOCAL, connect: options.connectRelay });
   let ui: UiHandler | undefined;
+  const modify = modifyOf(options, { store, hub, sync });
   const server = await Promise.try(async () => {
     ui = await startUi(options.ui ?? {});
-    const modify = modifyOf(options, { store, hub, sync });
     if (options.modify) await modify.ready();
     const deps = { store, hub, workspace: LOCAL, relay: sync, modify };
     return startServer({ port: options.port, deps, ui });
@@ -77,6 +77,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
+      await modify.stop();
       await ui?.close();
       await sync.stop();
       store.close();

@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SessionSummary } from "@agentcontrol/protocol";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
 import type { ModifyConfig } from "@agentcontrol/app";
 import type { AppAccess, FileChange } from "./app.ts";
@@ -9,6 +10,7 @@ import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
+import { sessionsOfRelay } from "./relay-peek.ts";
 import { type RelayHost, startRelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
 
@@ -23,6 +25,8 @@ export interface RunningApp extends AppAccess {
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
+  /** The sessions the relay itself lists, whatever the app knows of them. */
+  readsTheRelaySessions(): Promise<SessionSummary[]>;
   /** Stops the relay daemon while the app keeps running. */
   theRelayStops(): Promise<void>;
   /**
@@ -153,6 +157,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
       await current.close();
       current = await open({ port, modify: restart.modify ?? options.modify });
     },
+    readsTheRelaySessions: () => sessionsOfRelay(host),
     theRelayStops: () => host.stop(),
     theRelayStartsAgain: (relay?: { normaliserVersion?: number }) => host.start(relay),
   });

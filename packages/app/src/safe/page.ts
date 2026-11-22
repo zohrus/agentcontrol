@@ -20,7 +20,6 @@ textarea{width:100%;font:inherit;box-sizing:border-box}pre{background:#eee;paddi
 
 /** Runs in the browser; knows nothing of the UI bundle or the SDK package, only the app's API. */
 const SCRIPT = `
-const status = document.body.dataset.status;
 async function call(path, body) {
   const response = await fetch("/api/modify" + path, {
     method: "POST", headers: { "content-type": "application/json" },
@@ -30,7 +29,16 @@ async function call(path, body) {
     document.getElementById("error").textContent = (data.error && data.error.message) || "That did not work.";
     return;
   }
-  location.reload();
+  if (body && body.request) document.getElementById("request").value = "";
+  await refresh();
+}
+/** Swaps in the status and version parts of a fresh page; the request box is left as it is. */
+async function refresh() {
+  const html = await fetch("/_safe").then((r) => r.text()).catch(() => undefined);
+  if (!html) return;
+  const next = new DOMParser().parseFromString(html, "text/html");
+  for (const id of ["status", "versions"]) document.getElementById(id).replaceWith(next.getElementById(id));
+  document.body.dataset.status = next.body.dataset.status;
 }
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
@@ -44,7 +52,7 @@ document.addEventListener("click", (event) => {
 });
 setInterval(async () => {
   const state = await fetch("/api/modify").then((r) => r.json()).catch(() => undefined);
-  if (state && state.status !== status) location.reload();
+  if (state && state.status !== document.body.dataset.status) await refresh();
 }, 2000);
 `;
 
@@ -95,12 +103,16 @@ export function renderSafePage(options: { state: ModifyState; versions: UiVersio
 <p>This page is served by the app itself, so it works even when your UI is broken.</p>
 <p id="error"></p>
 <h2>Modify agent</h2>
+<div id="status">
 ${stateSection(state)}
 <p>${undo}</p>
+</div>
 <textarea id="request" rows="3" placeholder="Describe a change to the UI"></textarea>
 <p>${button("send", "Send")}</p>
+<div id="versions">
 <h2>Versions</h2>
 <ul>${versions.map(versionItem).join("\n")}</ul>
+</div>
 <script>${SCRIPT}</script>
 </body></html>`;
 }

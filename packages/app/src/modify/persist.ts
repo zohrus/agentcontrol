@@ -24,8 +24,12 @@ export function persistIn(dataDir: string): Persist {
         rmSync(file, { force: true });
         return;
       }
-      const { kind, requests, title, merge } = change;
-      const kept = { kind, requests, title, ...(merge ? { merge } : {}) };
+      const { kind, requests, title, merge, baseCommit } = change;
+      const kept = {
+        ...{ kind, requests, title },
+        ...(merge ? { merge } : {}),
+        ...(baseCommit === undefined ? {} : { baseCommit }),
+      };
       writeFileSync(file, JSON.stringify({ state, change: kept } satisfies Saved));
     },
     load: () => {
