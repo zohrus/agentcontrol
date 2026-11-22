@@ -6,6 +6,9 @@ ${repeatLines(30, (i) => `  const step${String(i)} = input.map((value) => value 
 }
 `;
 
+/** Enough lines that no end-to-end test runs to push the added lines below 95%, whatever else changed. */
+const untestedCode = `${repeatLines(100, (i) => `export const untested${String(i)} = ${String(i)} * 2 + 1;`)}\n`;
+
 const ROOT_FILE = "packages/relay/src/__gate_sample_root__.ts";
 const RELAY_INDEX = "packages/relay/src/index.ts";
 const RELAY_PACKAGE = "packages/relay/package.json";
@@ -86,8 +89,7 @@ export const hygieneCases: readonly GateCase[] = [
     name: "coverage: new code that no end-to-end test runs",
     expect: "not run by any end-to-end test",
     files: {
-      ["packages/relay/src/untested-gate-sample.ts"]:
-        "export function untested(input: number): number {\n  return input * 2 + 1;\n}\n",
+      "packages/relay/src/untested-gate-sample.ts": untestedCode,
     },
     command: ["bun", "run", "test:coverage"],
   },
