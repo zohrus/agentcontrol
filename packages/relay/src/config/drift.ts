@@ -2,15 +2,29 @@ import type { DriftReport } from "@agentcontrol/protocol";
 import { editors } from "./editors.ts";
 import { makeCtx, sha256 } from "./fs.ts";
 import { loadManifest } from "./manifest.ts";
-import type { ConfigCtx, ManifestFile } from "./types.ts";
+import type { ConfigCtx, Format, ManifestFile } from "./types.ts";
 
 type Status = DriftReport["entries"][number]["status"];
+
+/** What each owned entry holds now; undefined when the file can no longer be read as its format. */
+function readEntries(
+  editor: (typeof editors)[Format],
+  content: string,
+  file: ManifestFile,
+): (string | undefined)[] | undefined {
+  try {
+    return file.entries.map((e) => editor.get(content, e.key));
+  } catch {
+    return undefined;
+  }
+}
 
 async function fileStatus(ctx: ConfigCtx, path: string, file: ManifestFile): Promise<Status> {
   const content = await ctx.readFile(path);
   if (content === undefined) return "missing";
   const editor = editors[file.format];
-  const seen = file.entries.map((e) => editor.get(content, e.key));
+  const seen = readEntries(editor, content, file);
+  if (seen === undefined) return "drift";
   if (seen.every((v) => v === undefined)) return "missing";
   const same = file.entries.every(
     (e, i) => seen[i] !== undefined && sha256(seen[i] ?? "") === e.hash,

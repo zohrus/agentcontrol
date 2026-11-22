@@ -6,11 +6,18 @@ import type { ConfigCtx } from "./types.ts";
 export const sha256 = (data: string | Uint8Array): string =>
   createHash("sha256").update(data).digest("hex");
 
+/** Only "no such file" means the file is absent; any other read error must not look like that. */
+export const isMissing = (error: unknown): boolean =>
+  error instanceof Error &&
+  "code" in error &&
+  (error.code === "ENOENT" || error.code === "ENOTDIR");
+
 export async function readText(path: string): Promise<string | undefined> {
   try {
     return await readFile(path, "utf8");
-  } catch {
-    return undefined;
+  } catch (error) {
+    if (isMissing(error)) return undefined;
+    throw error;
   }
 }
 

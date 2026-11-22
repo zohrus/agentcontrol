@@ -95,6 +95,12 @@ app created and then emptied stays as an empty file.
   applied as separate marked groups, next to the original.
 - A hand-written instructions file is adopted into a marked block only when the whole file is the
   imported text; otherwise the marked block is appended next to the original text.
+- A hand-written `PostToolUse` hook without a matcher is imported as `after-edit`, and applying
+  it adds the edit-only matcher: it is written next to the original, not over it.
+- Imported ids do not include the scope, so the same server name in the home folder and in a repo
+  gives two imported items with one id; saving them together is refused until one is renamed.
+- A managed JSON file that no longer parses fails the plan with a parse error; drift reports it
+  as `drift`.
 - Config files that are symlinks are written through to their target. Deleting a managed whole-file
   entry (a skill or command) removes the link, not the target. Symlinked skill folders are not
   listed on import.

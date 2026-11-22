@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { writeAtomic } from "./fs.ts";
+import { isMissing, writeAtomic } from "./fs.ts";
 
 interface BackupMeta {
   files: { path: string; blob: string | null }[];
@@ -11,7 +11,10 @@ const backupDir = (homeDir: string, backupId: string): string =>
   join(homeDir, ".agentcontrol", "backups", backupId);
 
 async function readBytes(path: string): Promise<Buffer | undefined> {
-  return readFile(path).catch(() => undefined);
+  return readFile(path).catch((error: unknown) => {
+    if (isMissing(error)) return undefined;
+    throw error;
+  });
 }
 
 /** Copy every file about to change (or note that it did not exist) so it can be restored exactly. */
