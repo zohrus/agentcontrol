@@ -55,11 +55,20 @@ function catchUp(ctx: Context): void {
   }
 }
 
+/** Usage is read again only for a session never read, or one that has new events since. */
+function usageIsOutOfDate(before: DataState, row: SessionRow): boolean {
+  const known = before.sessions.find((held) => held.id === row.id);
+  return before.usage[row.id] === undefined || known?.lastSeq !== row.lastSeq;
+}
+
 /** Takes in the app's session list (never dropping a newer row), and catches up what it shows. */
 export async function loadSessions(ctx: Context): Promise<void> {
   const fetched = await ctx.client.sessions.list();
+  const before = ctx.store.get();
   ctx.store.update((s) => ({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }));
-  for (const row of fetched) inBackground(ctx, loadUsage(ctx, row.id));
+  for (const row of fetched) {
+    if (usageIsOutOfDate(before, row)) inBackground(ctx, loadUsage(ctx, row.id));
+  }
   catchUp(ctx);
 }
 

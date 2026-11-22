@@ -1,5 +1,5 @@
 import { ApiError, type FileRef, isStaleFile, type SessionId } from "@agentcontrol/sdk";
-import type { Context } from "./context.ts";
+import { type Context, inBackground } from "./context.ts";
 import { describeError } from "./errors.ts";
 import { fileKey, type FileVersions } from "./model.ts";
 
@@ -77,7 +77,7 @@ export async function saveFile(
   try {
     const hash = await ctx.client.files.write({ id, path, content, expectedHash: have.hash });
     holdFile(ctx, key, { base: have.base, working: content, hash, notice: undefined });
-    await refreshChanges(ctx, id);
+    inBackground(ctx, refreshChanges(ctx, id));
   } catch (error) {
     if (!isStaleFile(error)) throw error;
     await loadFile(ctx, { id, path, notice: STALE_NOTICE });

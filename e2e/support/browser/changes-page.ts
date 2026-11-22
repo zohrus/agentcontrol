@@ -32,12 +32,12 @@ export function changesPage(page: Page) {
 
 function editing(page: Page) {
   return {
-    /** Replaces the whole file in the editor with `text` and saves with Ctrl+S. */
+    /** Replaces the whole file in the editor with `text` and saves with Ctrl+S (Cmd+S on a Mac). */
     replacesFileAndSaves: async (text: string): Promise<void> => {
       await editorOf(page).locator(".view-lines").click();
-      await page.keyboard.press("Control+A");
+      await page.keyboard.press("ControlOrMeta+A");
       await page.keyboard.type(text);
-      await page.keyboard.press("Control+S");
+      await page.keyboard.press("ControlOrMeta+S");
     },
     /** The names of the changed files, as the Changes tab lists them. */
     changedFiles: (): Promise<string[]> =>
