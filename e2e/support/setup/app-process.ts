@@ -33,12 +33,16 @@ function afterTimeout(): Promise<never> {
   });
 }
 
+function uiFlags(ui: LaunchOptions["ui"]): string[] {
+  const { root, dist } = ui ?? {};
+  return [...(root ? ["--ui-root", root] : []), ...(dist ? ["--ui-dist", dist] : [])];
+}
+
 /** Starts `main.ts` on a free port with its own data folder and waits for its "listening" line. */
-async function launchAppProcess(options: {
-  dataDir: string;
-  env: Record<string, string>;
-}): Promise<AppProcess> {
-  const child = Bun.spawn(["bun", appMain, "--port", "0", "--data-dir", options.dataDir], {
+async function launchAppProcess(options: LaunchOptions): Promise<AppProcess> {
+  const port = String(options.port ?? 0);
+  const args = ["--port", port, "--data-dir", options.dataDir, ...uiFlags(options.ui)];
+  const child = Bun.spawn(["bun", appMain, ...args], {
     stdout: "pipe",
     stderr: "inherit",
     env: { ...Bun.env, ...options.env },
@@ -57,6 +61,10 @@ interface LaunchOptions {
   dataDir: string;
   env: Record<string, string>;
   host: RelayHost;
+  /** The port to come back on after a restart (so a browser can find the app); free port if left out. */
+  port?: number;
+  /** Serve the UI: a project folder with Vite, or a folder of built files. */
+  ui?: { root?: string; dist?: string };
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
 }
@@ -65,7 +73,8 @@ interface LaunchOptions {
 async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
   const app = await startApp({
     dataDir: options.dataDir,
-    port: 0,
+    port: options.port ?? 0,
+    ...(options.ui && { ui: options.ui }),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

@@ -19,7 +19,10 @@ function Counts({ file }: { file: DiffFile }) {
 /** Changed files with their +/− counts; the selected one is highlighted. */
 export function FileList({ files, selectedPath, onSelect }: Props) {
   return (
-    <ul className="m-0 flex max-h-40 list-none flex-col gap-0.5 overflow-y-auto border-b border-line p-2">
+    <ul
+      data-testid="changed-files"
+      className="m-0 flex max-h-40 list-none flex-col gap-0.5 overflow-y-auto border-b border-line p-2"
+    >
       {files.map((file) => (
         <li key={file.path}>
           <button

@@ -17,6 +17,8 @@ const STREAM_WAIT_MS = 5000;
 /** The app running with one local workspace, driven the way a user's browser drives it. */
 export interface RunningApp extends AppAccess {
   readonly dataDir: string;
+  /** Where the app listens now; a browser opens its UI here (when started `withUi`). */
+  readonly baseUrl: string;
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(): Promise<void>;
@@ -66,8 +68,22 @@ function newHeard(): Heard {
   };
 }
 
-/** Starts an app on a fresh data folder with a local git repo and the mock agent. */
-export async function startAppWithLocalWorkspace(): Promise<RunningApp> {
+export interface StartOptions {
+  /** Also serve the default UI, so a browser can use the app. */
+  withUi?: boolean;
+  /** Serve this folder of built UI files instead (what a release does). */
+  uiDist?: string;
+}
+
+const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
+
+function uiOf(options: StartOptions): { root?: string; dist?: string } {
+  if (options.uiDist !== undefined) return { dist: options.uiDist };
+  return options.withUi ? { root: uiRoot } : {};
+}
+
+/** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
+async function prepareWorkspace() {
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
   onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
   const repoPath = await createLocalRepo();
@@ -75,8 +91,15 @@ export async function startAppWithLocalWorkspace(): Promise<RunningApp> {
   const env = mockAgentEnvironment(mockAgent);
   const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
   onTestEnd(() => host.stop());
+  return { dataDir, repoPath, mockAgent, env, host };
+}
+
+/** Starts an app on a fresh data folder with a local git repo and the mock agent. */
+export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace();
   const heard = newHeard();
-  let current = await openApp({ dataDir, env, host, heard });
+  const ui = uiOf(options);
+  let current = await openApp({ dataDir, env, host, heard, ui });
   onTestEnd(() => current.close());
   const access: AppAccess = {
     mockAgent,
@@ -88,10 +111,14 @@ export async function startAppWithLocalWorkspace(): Promise<RunningApp> {
   };
   return Object.assign(access, {
     dataDir,
+    get baseUrl() {
+      return current.baseUrl;
+    },
     user: appUserOf(access),
     restartsTheApp: async () => {
+      const port = Number(new URL(current.baseUrl).port);
       await current.close();
-      current = await openApp({ dataDir, env, host, heard });
+      current = await openApp({ dataDir, env, host, heard, ui, port });
     },
     theRelayStops: () => host.stop(),
     theRelayStartsAgain: () => host.start(),
@@ -99,6 +126,7 @@ export async function startAppWithLocalWorkspace(): Promise<RunningApp> {
 }
 
 interface Opened {
+  baseUrl: string;
   sdk: AppAccess["sdk"];
   close(): Promise<void>;
 }
@@ -108,6 +136,8 @@ async function openApp(options: {
   env: Record<string, string>;
   host: RelayHost;
   heard: Heard;
+  ui: { root?: string; dist?: string };
+  port?: number;
 }): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({
@@ -119,6 +149,7 @@ async function openApp(options: {
   const sdk = createClient({ baseUrl: app.baseUrl });
   const stopStream = await followLiveStream(sdk, heard);
   return {
+    baseUrl: app.baseUrl,
     sdk,
     close: async () => {
       stopStream();

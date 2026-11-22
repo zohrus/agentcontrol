@@ -24,7 +24,7 @@
     "prove-gates": "bun run scripts/prove-gates.ts",
     "check": "bun scripts/check.ts",
     "relay": "bun packages/relay/src/main.ts daemon",
-    "dev": "bun --watch packages/app/src/main.ts",
+    "dev": "bun --watch packages/app/src/main.ts --ui-root packages/ui-template",
     "build": "bun scripts/build.ts",
     "build:relay-linux-x64": "bun scripts/build.ts --only relay-linux-x64",
     "build:mac": "bun scripts/build.ts --only darwin",

@@ -4,6 +4,7 @@ import type { RelayClient } from "./relays/index.ts";
 import { startServer } from "./server/index.ts";
 import { createStore, type Workspace } from "./store/index.ts";
 import { createHub, startSync } from "./sync/index.ts";
+import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
 
 export interface AppOptions {
   dataDir: string;
@@ -11,6 +12,8 @@ export interface AppOptions {
   port: number;
   /** Opens a fresh connection to the local relay; called again after every drop. */
   connectRelay: () => RelayClient;
+  /** The UI to serve besides the API; none by default. */
+  ui?: UiSource;
 }
 
 export interface RunningApp {
@@ -26,16 +29,14 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
   const workspace: Workspace = { id: "local", label: "This Mac", kind: "local" };
-  const sync = startSync({
-    store,
-    hub,
-    workspace,
-    connect: options.connectRelay,
-  });
+  const sync = startSync({ store, hub, workspace, connect: options.connectRelay });
+  let ui: UiHandler | undefined;
   const server = await Promise.try(async () => {
+    ui = await startUi(options.ui ?? {});
     await sync.ready;
-    return startServer({ port: options.port, deps: { store, hub, workspace, relay: sync } });
+    return startServer({ port: options.port, deps: { store, hub, workspace, relay: sync }, ui });
   }).catch(async (error: unknown) => {
+    await ui?.close();
     await sync.stop();
     store.close();
     throw error;
@@ -44,6 +45,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
+      await ui?.close();
       await sync.stop();
       store.close();
     },

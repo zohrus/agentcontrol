@@ -16,11 +16,13 @@ export type { RepoWithSetup } from "./workspace.ts";
 export interface ClientOptions {
   /** Where the app listens, e.g. "http://127.0.0.1:4747". Use "" for same-origin in the browser. */
   baseUrl: string;
+  /** How requests are sent; defaults to the global `fetch`. Lets the client point at something other than the local app. */
+  fetch?: typeof fetch;
 }
 
 /** The one way the UI talks to the app. Every function throws ApiError when the app refuses. */
-export function createClient({ baseUrl }: ClientOptions) {
-  const api = hc<AppType>(`${baseUrl}/api`);
+export function createClient({ baseUrl, fetch: send = fetch }: ClientOptions) {
+  const api = hc<AppType>(`${baseUrl}/api`, { fetch: send });
   return {
     sessions: sessionsApi(api),
     files: filesApi(api),
@@ -29,7 +31,7 @@ export function createClient({ baseUrl }: ClientOptions) {
     agents: agentsApi(api),
     /** Live updates. Returns a function that stops them. */
     subscribe: (listeners: Listeners): (() => void) =>
-      subscribeTo(`${baseUrl}/api/stream`, listeners),
+      subscribeTo({ streamUrl: `${baseUrl}/api/stream`, listeners, send }),
   };
 }
 

@@ -18,7 +18,7 @@ export function EditorTab({ path, content, readOnly, onSave }: EditorTabProps) {
         {path}
         {readOnly && " · read-only while the agent runs"}
       </div>
-      <div ref={host} className="min-h-0 flex-1" />
+      <div ref={host} data-testid="code-editor" className="min-h-0 flex-1" />
     </div>
   );
 }

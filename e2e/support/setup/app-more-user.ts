@@ -23,6 +23,8 @@ export function appWorktreeUserOf(app: AppAccess) {
       attemptApi(app.sdk.sessions.get(UNKNOWN_SESSION.id)),
     triesToSendAnEmptyMessage: (session: Session) =>
       attemptApi(app.sdk.sessions.sendPrompt(session.id, "")),
+    triesToReadTheBaseVersionOf: (session: Session, path: string) =>
+      attemptApi(app.sdk.files.read({ id: session.id, path, ref: "base" })),
     listsTheFiles: (session: Session) => app.sdk.files.tree(session.id),
     readsTheDiff: (session: Session) => app.sdk.sessions.diff(session.id),
     /** Cancels once the agent has been given its prompt. */

@@ -46,7 +46,7 @@ test("reading a file the agent created at the base version is refused", async ()
   // ** THEN the relay says the file does not exist at that version
   // ********************************************************************
   expectRefusal(outcome, {
-    code: ErrorCode.internalError,
+    code: ErrorCode.fileNotFound,
     saying: "does not exist at that version",
   });
 });

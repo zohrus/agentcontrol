@@ -40,7 +40,7 @@
     },
     {
       "path": "packages/ui-template/**",
-      "reason": "TODO: browser (Playwright) tests are being added under e2e/browser/; remove this entry when they land and count their coverage."
+      "reason": "TODO: the browser tests (e2e/browser/) run the UI in Chromium, which bun cannot see. Counting them needs Chromium V8 coverage (page.coverage) mapped through Vite source maps to source lines and written as an lcov part, and enough browser tests to reach 95% of the UI (modify panel, workspace setup, new session errors, editor conflicts are untested). Remove this entry then."
     },
     {
       "path": "packages/mac/**",

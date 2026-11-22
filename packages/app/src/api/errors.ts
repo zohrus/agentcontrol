@@ -20,6 +20,7 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
   [ErrorCode.uncommittedChanges]: { status: 409, code: "uncommitted-changes" },
   [ErrorCode.staleFile]: { status: 409, code: "stale-file" },
   [ErrorCode.setupFailed]: { status: 422, code: "setup-failed" },
+  [ErrorCode.fileNotFound]: { status: 404, code: "file-not-found" },
   [ErrorCode.invalidParams]: { status: 400, code: "invalid-request" },
 };
 const unknownFailure = { status: 500, code: "internal-error" } as const;

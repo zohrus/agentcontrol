@@ -63,3 +63,23 @@ test("an empty message to the agent is refused as an invalid request", async () 
   // ********************************************************************
   expectAppToRefuse(outcome, { status: 400, code: "invalid-request" });
 });
+
+test("reading the base version of a file the agent created is answered as file not found", async () => {
+  // ********************************************************************
+  // ** GIVEN a session whose agent created src/server.ts and finished its turn
+  // ********************************************************************
+  const app = await startAppWithLocalWorkspace();
+  app.mockAgent.willEditFile("src/server.ts");
+  const session = await app.user.startsSession({ prompt: "Add a server" });
+  await expectSessionWaitingForReply(app, session);
+
+  // ********************************************************************
+  // ** WHEN the user opens src/server.ts at its base version
+  // ********************************************************************
+  const outcome = await app.user.triesToReadTheBaseVersionOf(session, "src/server.ts");
+
+  // ********************************************************************
+  // ** THEN the app answers that the file was not found
+  // ********************************************************************
+  expectAppToRefuse(outcome, { status: 404, code: "file-not-found" });
+});

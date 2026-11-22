@@ -1,15 +1,7 @@
-import { z } from "zod";
+import type { FileChange } from "@agentcontrol/protocol";
 import type { DiffStat } from "./view-items.ts";
 
-const DiffContent = z.object({
-  type: z.literal("diff"),
-  path: z.string(),
-  oldText: z.string().nullish(),
-  newText: z.string(),
-});
-type DiffContent = z.infer<typeof DiffContent>;
-
-function toLines(text: string | null | undefined): string[] {
+function toLines(text: string | undefined): string[] {
   return text ? text.split("\n") : [];
 }
 
@@ -30,28 +22,18 @@ function countUnmatched(lines: string[], other: string[]): number {
   return lines.filter((line) => !take(available, line)).length;
 }
 
-/** Added and removed line counts of one ACP diff, by comparing the lines as multisets. */
-function statOf(diff: DiffContent): DiffStat {
-  const before = toLines(diff.oldText);
-  const after = toLines(diff.newText);
+/** Added and removed line counts of one changed file: as sent, or by comparing the lines as multisets. */
+function statOf(change: FileChange): DiffStat {
+  if ("additions" in change) return { additions: change.additions, deletions: change.deletions };
+  const before = toLines(change.oldText);
+  const after = toLines(change.newText);
   return { additions: countUnmatched(after, before), deletions: countUnmatched(before, after) };
 }
 
-/** The diffs found in an ACP tool call content list; other content is ignored. */
-export function diffsIn(content: readonly unknown[] | null | undefined): DiffContent[] {
-  const found: DiffContent[] = [];
-  for (const item of content ?? []) {
-    const parsed = DiffContent.safeParse(item);
-    if (parsed.success) found.push(parsed.data);
-  }
-  return found;
-}
-
-/** Summed stat of every diff in the content, or undefined when there is none. */
-export function diffStatOf(content: readonly unknown[] | null | undefined): DiffStat | undefined {
-  const diffs = diffsIn(content);
-  if (diffs.length === 0) return undefined;
-  return diffs.map(statOf).reduce((sum, s) => ({
+/** Summed stat of every changed file, or undefined when there is none. */
+export function diffStatOf(files: readonly FileChange[] | undefined): DiffStat | undefined {
+  if (files === undefined || files.length === 0) return undefined;
+  return files.map(statOf).reduce((sum, s) => ({
     additions: sum.additions + s.additions,
     deletions: sum.deletions + s.deletions,
   }));

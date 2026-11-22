@@ -9,5 +9,7 @@ export const ErrorCode = {
   uncommittedChanges: -32002,
   staleFile: -32003,
   setupFailed: -32004,
+  /** A file does not exist at the asked version (new, deleted, or not yet committed). */
+  fileNotFound: -32005,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

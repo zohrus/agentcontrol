@@ -9,6 +9,7 @@ const dataDir = join(config.dataDir, "relay");
 const app = await startApp({
   dataDir: config.dataDir,
   port: config.port,
+  ui: { root: config.uiRoot, dist: config.uiDist },
   connectRelay: () => relayClientOver(spawnRelayBridge({ command, dataDir })),
 });
 console.log(`AgentControl listening on ${app.url}`);

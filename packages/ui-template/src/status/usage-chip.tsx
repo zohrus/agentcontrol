@@ -25,6 +25,7 @@ export function UsageChip({ usage }: { usage: SessionUsage }) {
   const text = usage.costUsd === undefined ? tokens : `${tokens} · ${formatCost(usage.costUsd)}`;
   return (
     <span
+      data-testid="usage-chip"
       title={breakdown(usage)}
       className="rounded-full bg-code px-2 py-px font-mono text-[11px] text-muted"
     >
