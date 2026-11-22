@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { PaneBoundary } from "../resilience/index.ts";
 import { SlotRow, type SlotMap } from "./bar-slots.tsx";
 import type { Layout } from "./layout-schema.ts";
 
@@ -23,7 +24,7 @@ function Panes({ panes, slots }: { panes: Layout["panes"]; slots: SlotMap }) {
           style={paneStyle(pane)}
           className="min-h-0 min-w-0 flex-1 border-r border-line last:border-r-0"
         >
-          {slots[pane.slot]}
+          <PaneBoundary name={pane.slot}>{slots[pane.slot]}</PaneBoundary>
         </div>
       ))}
     </div>

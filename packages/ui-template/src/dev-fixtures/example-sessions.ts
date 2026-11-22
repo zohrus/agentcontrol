@@ -1,6 +1,7 @@
 import { SessionSummary } from "@agentcontrol/protocol";
 import type { StatusStats } from "../layout/index.ts";
-import type { SessionListEntry } from "../session-list/index.ts";
+import type { PendingPermission, SessionListEntry } from "../session-list/index.ts";
+import type { SessionUsage } from "../status/index.ts";
 
 /** EXAMPLE DATA: sessions across three workspaces, as the session list shows them. */
 type Row = {
@@ -83,6 +84,15 @@ const rows: Row[] = [
   },
 ];
 
+const pendingPermission: PendingPermission = {
+  requestId: "req-1",
+  title: "Run npm test -- rateLimit",
+  options: [
+    { optionId: "allow", name: "Allow once", kind: "allow_once" },
+    { optionId: "reject", name: "Deny", kind: "reject_once" },
+  ],
+};
+
 function toEntry(row: Row, index: number): SessionListEntry {
   const summary = SessionSummary.parse({
     id: row.id,
@@ -94,9 +104,11 @@ function toEntry(row: Row, index: number): SessionListEntry {
     branch: "agent/" + row.id.replace("example-", ""),
     baseBranch: "main",
     lastSeq: 20 + index,
-    createdAt: "2026-11-22T08:00:00Z",
+    createdAt: new Date(Date.now() - (25 + index * 9) * 60_000).toISOString(),
+    archivedAt: row.status === "archived" ? new Date().toISOString() : undefined,
   });
-  return { summary, workspace: row.workspace, detail: row.detail };
+  const pending = row.id === "example-rate-limit" ? { pendingPermission } : {};
+  return { summary, workspace: row.workspace, detail: row.detail, ...pending };
 }
 
 export const exampleSessions: SessionListEntry[] = rows.map(toEntry);
@@ -113,3 +125,12 @@ export const exampleStats: StatusStats = {
 };
 
 export const exampleWorktreePath = "/Users/dev/.agentcontrol/worktrees/rate-limit";
+
+/** EXAMPLE DATA: tokens and cost of the open session. */
+export const exampleUsage: SessionUsage = {
+  inputTokens: 48_200,
+  outputTokens: 6_900,
+  cacheReadTokens: 210_000,
+  cacheWriteTokens: 31_000,
+  costUsd: 0.62,
+};

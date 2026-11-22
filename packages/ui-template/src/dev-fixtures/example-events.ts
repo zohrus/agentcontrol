@@ -1,27 +1,9 @@
-import { SessionEvent } from "@agentcontrol/protocol";
+import type { SessionEvent } from "@agentcontrol/protocol";
+import { eventKit, toEvents } from "./event-helpers.ts";
 
 /** EXAMPLE DATA: the relay event log of a session that is waiting for a permission answer. */
 const sessionId = "example-rate-limit";
-
-function acp(update: Record<string, unknown>) {
-  const message = { jsonrpc: "2.0", method: "session/update", params: { sessionId, update } };
-  return { kind: "acp", payload: { direction: "from-agent", message } };
-}
-
-function text(sessionUpdate: string, chunk: string, messageId: string) {
-  return acp({ sessionUpdate, messageId, content: { type: "text", text: chunk } });
-}
-
-const edit = (id: string, path: string, newText: string) => [
-  acp({ sessionUpdate: "tool_call", toolCallId: id, title: "Edit " + path, kind: "edit" }),
-  acp({
-    sessionUpdate: "tool_call_update",
-    toolCallId: id,
-    status: "completed",
-    locations: [{ path }],
-    content: [{ type: "diff", path, oldText: null, newText }],
-  }),
-];
+const { acp, text, read, edit } = eventKit(sessionId);
 
 const rawEvents = [
   {
@@ -57,12 +39,18 @@ const rawEvents = [
       { content: "Write tests and run them", status: "in_progress", priority: "medium" },
     ],
   }),
-  acp({ sessionUpdate: "tool_call", toolCallId: "c1", title: "Read src/server.ts", kind: "read" }),
+  acp({ sessionUpdate: "current_mode_update", currentModeId: "default" }),
+  ...read("c1", "src/server.ts"),
+  ...read("c1b", "src/routes/index.ts"),
+  ...read("c1c", "src/middleware/auth.ts"),
+  ...read("c1d", "package.json", "search"),
+  ...read("c1e", "src/config.ts"),
+  ...read("c1f", "test/server.test.ts"),
   acp({
-    sessionUpdate: "tool_call_update",
-    toolCallId: "c1",
-    status: "completed",
-    locations: [{ path: "src/server.ts" }],
+    sessionUpdate: "notice",
+    severity: "info",
+    title: "Redis is already a dependency",
+    description: "Using the existing connection.",
   }),
   text("agent_message_chunk", "I found the pipeline in server.ts. ", "m1"),
   text("agent_message_chunk", "Adding a middleware before the router.", "m1"),
@@ -86,13 +74,4 @@ const rawEvents = [
   },
 ];
 
-const start = Date.parse("2026-11-22T09:00:00Z");
-
-export const exampleEvents: SessionEvent[] = rawEvents.map((event, index) =>
-  SessionEvent.parse({
-    ...event,
-    sessionId,
-    seq: index + 1,
-    ts: new Date(start + index * 4000).toISOString(),
-  }),
-);
+export const exampleEvents: SessionEvent[] = toEvents(sessionId, rawEvents, "2026-11-22T09:00:00Z");

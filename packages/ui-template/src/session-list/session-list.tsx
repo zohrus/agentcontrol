@@ -1,9 +1,12 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import type { ComponentType } from "react";
-import { Button, ScrollArea } from "../components/index.ts";
-import { groupByWorkspace } from "./group-entries.ts";
+import { ScrollArea } from "../components/index.ts";
+import { groupByWorkspace, isWaiting } from "./group-entries.ts";
+import { ListFilters, type SessionFilter } from "./list-filters.tsx";
 import { SessionRow } from "./session-row.tsx";
 import type { SessionListEntry, SessionRowProps } from "./types.ts";
+import { useListKeys } from "./use-list-keys.ts";
+import { useSessionFilter } from "./use-session-filter.ts";
 import { WorkspaceSection } from "./workspace-group.tsx";
 
 export type SessionListProps = {
@@ -12,33 +15,17 @@ export type SessionListProps = {
   onSelect: (id: SessionId) => void;
   showArchived: boolean;
   onShowArchivedChange: (show: boolean) => void;
+  /** Approve or deny from a row that has a single pending permission request. */
+  onAnswerPermission?: (sessionId: SessionId, requestId: string, optionId: string) => void;
   /** Slot: replaces the default row. */
   rowComponent?: ComponentType<SessionRowProps>;
 };
 
-function ListHeader({
-  showArchived,
-  onShowArchivedChange,
-}: Pick<SessionListProps, "showArchived" | "onShowArchivedChange">) {
-  return (
-    <div className="flex items-center justify-between px-2 pt-2">
-      <span className="text-xs font-medium">{showArchived ? "Archived" : "Sessions"}</span>
-      <Button
-        variant="ghost"
-        aria-pressed={showArchived}
-        onClick={() => {
-          onShowArchivedChange(!showArchived);
-        }}
-      >
-        Archived
-      </Button>
-    </div>
-  );
-}
+type RowsProps = SessionListProps & { filter: SessionFilter };
 
-/** Sessions grouped by workspace, with an Archived filter toggle. */
-export function SessionList(props: SessionListProps) {
+function Rows(props: RowsProps) {
   const Row = props.rowComponent ?? SessionRow;
+  const { onAnswerPermission } = props;
   const renderEntry = (entry: SessionListEntry) => (
     <Row
       key={entry.summary.id}
@@ -47,19 +34,34 @@ export function SessionList(props: SessionListProps) {
       onSelect={() => {
         props.onSelect(entry.summary.id);
       }}
+      onAnswerPermission={
+        onAnswerPermission &&
+        ((requestId, optionId) => {
+          onAnswerPermission(entry.summary.id, requestId, optionId);
+        })
+      }
     />
   );
+  const shown = props.filter === "inbox" ? props.entries.filter(isWaiting) : props.entries;
+  return groupByWorkspace(shown, props.filter === "archived").map((group) => (
+    <WorkspaceSection key={group.workspace} group={group} renderEntry={renderEntry} />
+  ));
+}
+
+/** Sessions grouped by workspace; Inbox, All and Archived filters; j/k keyboard navigation. */
+export function SessionList(props: SessionListProps) {
+  const keys = useListKeys();
+  const { filter, change } = useSessionFilter(props);
   return (
-    <div className="flex h-full min-h-0 flex-col bg-bg">
-      <ListHeader
-        showArchived={props.showArchived}
-        onShowArchivedChange={props.onShowArchivedChange}
+    <div ref={keys.ref} onKeyDown={keys.onKeyDown} className="flex h-full min-h-0 flex-col bg-bg">
+      <ListFilters
+        filter={filter}
+        waiting={props.entries.filter(isWaiting).length}
+        onChange={change}
       />
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3 p-2">
-          {groupByWorkspace(props.entries, props.showArchived).map((group) => (
-            <WorkspaceSection key={group.workspace} group={group} renderEntry={renderEntry} />
-          ))}
+          <Rows {...props} filter={filter} />
         </div>
       </ScrollArea>
     </div>

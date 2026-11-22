@@ -6,7 +6,8 @@ export type ComposerProps = {
   placeholder: string;
   onSendPrompt: (text: string) => void;
   onCancel: () => void;
-  onArchive: () => void;
+  /** Omit to hide the Archive button (for example in the Modify chat). */
+  onArchive?: () => void;
 };
 
 type PromptProps = {
@@ -59,9 +60,11 @@ export function Composer({
           Send
         </Button>
         {running && <Button onClick={onCancel}>Cancel</Button>}
-        <Button className="ml-auto" variant="ghost" onClick={onArchive}>
-          Archive
-        </Button>
+        {onArchive && (
+          <Button className="ml-auto" variant="ghost" onClick={onArchive}>
+            Archive
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,15 @@ import type { SessionListEntry } from "./types.ts";
 
 export type WorkspaceGroup = { workspace: string; entries: SessionListEntry[] };
 
-/** Groups entries by workspace in first-seen order; archived ones only when asked for. */
+/** True for a session that is blocked until the user answers. */
+export function isWaiting(entry: SessionListEntry): boolean {
+  return entry.summary.status === "waiting";
+}
+
+/**
+ * Groups entries by workspace in first-seen order; archived ones only when asked for.
+ * Inside a group, sessions waiting on the user come first.
+ */
 export function groupByWorkspace(
   entries: readonly SessionListEntry[],
   showArchived: boolean,
@@ -15,5 +23,8 @@ export function groupByWorkspace(
     list.push(entry);
     groups.set(entry.workspace, list);
   }
-  return [...groups].map(([workspace, list]) => ({ workspace, entries: list }));
+  return [...groups].map(([workspace, list]) => ({
+    workspace,
+    entries: list.toSorted((a, b) => Number(isWaiting(b)) - Number(isWaiting(a))),
+  }));
 }

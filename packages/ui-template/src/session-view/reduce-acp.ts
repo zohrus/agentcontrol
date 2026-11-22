@@ -1,5 +1,6 @@
 import { diffsIn, diffStatOf } from "./diff-stats.ts";
 import type { AcpUpdate } from "./acp-updates.ts";
+import { reduceAgentNotice, reduceCompaction, reduceMode } from "./reduce-notices.ts";
 import type { ItemOf } from "./view-items.ts";
 import { addChunk, findTool, itemKey, pick, type ViewState } from "./view-state.ts";
 
@@ -64,6 +65,9 @@ const acpHandlers: Handlers = {
   },
   tool_call: upsertTool,
   tool_call_update: upsertTool,
+  current_mode_update: reduceMode,
+  notice: reduceAgentNotice,
+  compaction_update: reduceCompaction,
 };
 
 type Call<K extends keyof AcpMap> = { kind: K; update: AcpMap[K] };

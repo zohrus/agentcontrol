@@ -11,7 +11,12 @@ export function Stream({ items, actions }: Props) {
     bottom.current?.scrollIntoView({ block: "end" });
   }, [items]);
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-3.5">
+    <div
+      role="log"
+      tabIndex={0}
+      aria-label="Conversation"
+      className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-3.5"
+    >
       {items.map((item) => (
         <StreamItem key={item.key} item={item} actions={actions} />
       ))}

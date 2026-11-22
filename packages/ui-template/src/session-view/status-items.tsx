@@ -35,6 +35,10 @@ export function AgentExited({ item }: { item: ItemOf<"agent-exited"> }) {
   );
 }
 
+export function ModeLine({ item }: { item: ItemOf<"mode"> }) {
+  return <div className="font-mono text-[11px] text-muted">Mode: {item.modeId}</div>;
+}
+
 export function Notice({ item }: { item: ItemOf<"notice"> }) {
   return <div className="text-center text-[11px] text-muted">{item.text}</div>;
 }

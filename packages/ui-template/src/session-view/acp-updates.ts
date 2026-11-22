@@ -13,7 +13,11 @@ const toolFields = {
   locations: z.array(z.object({ path: z.string() })).nullish(),
 };
 
-/** The ACP session/update kinds the default UI shows; every other kind is ignored. */
+/**
+ * The ACP session/update kinds the default UI shows; every other kind is ignored.
+ * usage_update is deliberately not shown in the stream (it feeds the header's usage chip) and
+ * available_commands_update is ignored.
+ */
 export const AcpUpdate = z.discriminatedUnion("sessionUpdate", [
   z.object({ sessionUpdate: z.literal("user_message_chunk"), ...chunk }),
   z.object({ sessionUpdate: z.literal("agent_message_chunk"), ...chunk }),
@@ -27,6 +31,18 @@ export const AcpUpdate = z.discriminatedUnion("sessionUpdate", [
     sessionUpdate: z.literal("tool_call_update"),
     title: z.string().nullish(),
     ...toolFields,
+  }),
+  z.object({ sessionUpdate: z.literal("current_mode_update"), currentModeId: z.string() }),
+  z.object({
+    sessionUpdate: z.literal("notice"),
+    severity: z.string().nullish(),
+    title: z.string(),
+    description: z.string().nullish(),
+  }),
+  z.object({
+    sessionUpdate: z.literal("compaction_update"),
+    compactionId: z.string(),
+    status: z.string(),
   }),
 ]);
 export type AcpUpdate = z.infer<typeof AcpUpdate>;

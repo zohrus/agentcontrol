@@ -1,5 +1,6 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
 import { parseAcpUpdate } from "./acp-updates.ts";
+import { groupTools } from "./group-tools.ts";
 import { applyAcpUpdate } from "./reduce-acp.ts";
 import { reducePermissionAnswered, reducePermissionRequested } from "./reduce-permission.ts";
 import { reduceSetupFinished, reduceSetupOutput } from "./reduce-setup.ts";
@@ -51,7 +52,7 @@ function dispatch<K extends keyof EventMap>(state: ViewState, kind: K, event: Ev
 export function buildViewItems(events: readonly SessionEvent[]): ViewItem[] {
   const state: ViewState = { items: [] };
   for (const event of events) dispatch(state, event.kind, event);
-  return state.items;
+  return groupTools(state.items);
 }
 
 /** True while a prompt has been sent and its turn has not ended. */

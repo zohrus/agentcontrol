@@ -5,5 +5,5 @@
     { "slot": "session" },
     { "slot": "changes", "width": 420 }
   ],
-  "statusBar": ["waiting", "running", "today", "spacer", "connections"]
+  "statusBar": ["waiting", "running", "today", "spacer", "connections", "connection"]
 }

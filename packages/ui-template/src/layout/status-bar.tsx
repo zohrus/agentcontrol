@@ -1,3 +1,4 @@
+import { ConnectionIndicator, type ConnectionState } from "../status/index.ts";
 import type { SlotMap } from "./bar-slots.tsx";
 
 export type StatusStats = {
@@ -7,6 +8,8 @@ export type StatusStats = {
   today: string;
   /** Names of the connected workspaces. */
   connected: readonly string[];
+  /** The app's link to the relay; defaults to "connected". */
+  connection?: ConnectionState;
 };
 
 function Count({ value, label }: { value: string | number; label: string }) {
@@ -23,6 +26,7 @@ export function defaultStatusBarSlots(stats: StatusStats): SlotMap {
     waiting: <Count value={stats.waiting} label="waiting" />,
     running: <Count value={stats.running} label="running" />,
     today: <Count value={stats.today} label="today" />,
+    connection: <ConnectionIndicator state={stats.connection ?? "connected"} />,
     connections: <span>{stats.connected.map((name) => `${name} connected`).join(" · ")}</span>,
   };
 }

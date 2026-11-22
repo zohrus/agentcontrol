@@ -2,8 +2,9 @@ import { Fragment, type ReactNode } from "react";
 import { AgentMessage, Thought, UserMessage } from "./message-items.tsx";
 import { PermissionCard } from "./permission-card.tsx";
 import { PlanCard } from "./plan-card.tsx";
-import { AgentExited, Notice, SetupOutput, TurnEnded } from "./status-items.tsx";
+import { AgentExited, ModeLine, Notice, SetupOutput, TurnEnded } from "./status-items.tsx";
 import { ToolCard } from "./tool-card.tsx";
+import { ToolGroup } from "./tool-group.tsx";
 import type { ItemOf, ItemType, ViewItem } from "./view-items.ts";
 
 export type ItemActions = { onAnswerPermission: (requestId: string, optionId: string) => void };
@@ -17,6 +18,8 @@ const renderers: Renderers = {
   thought: (item) => <Thought item={item} />,
   plan: (item) => <PlanCard item={item} />,
   tool: (item) => <ToolCard item={item} />,
+  "tool-group": (item) => <ToolGroup item={item} />,
+  mode: (item) => <ModeLine item={item} />,
   permission: (item, actions) => (
     <PermissionCard item={item} onAnswer={actions.onAnswerPermission} />
   ),
