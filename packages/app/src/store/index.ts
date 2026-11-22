@@ -1,9 +1,9 @@
 import { listConfigItems, replaceConfigItems } from "./config-items.ts";
 import { openDatabase } from "./db.ts";
 import { eventsAfter, lastSeqs, saveEvents } from "./events.ts";
-import { getSession, listSessions, saveSessionSummaries } from "./sessions.ts";
+import { findSessions, getSession, listSessions, saveSessionSummaries } from "./sessions.ts";
 import type { Store, StoreOptions } from "./types.ts";
-import { upsertWorkspace } from "./workspaces.ts";
+import { listWorkspaces, upsertWorkspace } from "./workspaces.ts";
 
 export type { Store, StoreOptions, StoredSession, Workspace } from "./types.ts";
 
@@ -13,6 +13,7 @@ export function createStore({ path }: StoreOptions): Store {
     upsertWorkspace: (workspace) => {
       upsertWorkspace(db, workspace);
     },
+    listWorkspaces: () => listWorkspaces(db),
     saveEvents: (workspaceId, list) => {
       saveEvents(db, workspaceId, list);
     },
@@ -23,6 +24,7 @@ export function createStore({ path }: StoreOptions): Store {
     },
     listSessions: (filter) => listSessions(db, filter),
     getSession: (key) => getSession(db, key),
+    findSessions: (sessionId) => findSessions(db, sessionId),
     replaceConfigItems: (items) => {
       replaceConfigItems(db, items);
     },

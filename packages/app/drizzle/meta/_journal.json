@@ -29,6 +29,13 @@
       "when": 1795450000000,
       "tag": "0003_session_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795377452003,
+      "tag": "0004_workspace_removed",
+      "breakpoints": true
     }
   ]
 }

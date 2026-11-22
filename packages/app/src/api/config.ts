@@ -7,7 +7,9 @@ import {
 } from "@agentcontrol/protocol";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Link } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
+import { routeRequest } from "./routing.ts";
 import { validate } from "./validate.ts";
 
 const placeOf = ({ item, scope }: ScopedItem): string =>
@@ -37,7 +39,9 @@ const withAllAgents = (body: z.infer<typeof TargetBody>) => ({
 });
 
 /** Harness configuration: the canonical items, and putting them into the agents' own files. */
-export function configRoutes({ store, relay }: ApiDeps) {
+export function configRoutes(deps: ApiDeps) {
+  const { store } = deps;
+  const relay = (): Link => routeRequest(deps).link;
   return new Hono()
     .get("/items", (c) => c.json({ items: store.listConfigItems() }))
     .put("/items", validate("json", ItemsBody), (c) => {
@@ -45,21 +49,21 @@ export function configRoutes({ store, relay }: ApiDeps) {
       return c.json({ items: store.listConfigItems() });
     })
     .post("/import", validate("json", TargetBody), async (c) =>
-      c.json(await relay.call(N.configInspect, withAllAgents(c.req.valid("json")))),
+      c.json(await relay().call(N.configInspect, withAllAgents(c.req.valid("json")))),
     )
     .post("/plan", validate("json", TargetBody), async (c) =>
       c.json(
-        await relay.call(N.configPlan, {
+        await relay().call(N.configPlan, {
           ...withAllAgents(c.req.valid("json")),
           items: store.listConfigItems(),
         }),
       ),
     )
     .post("/apply", validate("json", ConfigApplyParams), async (c) =>
-      c.json(await relay.call(N.configApply, c.req.valid("json"))),
+      c.json(await relay().call(N.configApply, c.req.valid("json"))),
     )
     .post("/rollback", validate("json", ConfigRollbackParams), async (c) =>
-      c.json(await relay.call(N.configRollback, c.req.valid("json"))),
+      c.json(await relay().call(N.configRollback, c.req.valid("json"))),
     )
-    .get("/drift", async (c) => c.json(await relay.call(N.configDrift, {})));
+    .get("/drift", async (c) => c.json(await relay().call(N.configDrift, {})));
 }

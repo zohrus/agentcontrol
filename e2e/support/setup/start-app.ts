@@ -1,8 +1,8 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createClient, type SessionEvent } from "@agentcontrol/sdk";
-import type { ModifyConfig } from "@agentcontrol/app";
+import { createClient, type SessionEvent, type WorkspaceInfo } from "@agentcontrol/sdk";
+import type { ModifyConfig, SshSettings } from "@agentcontrol/app";
 import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
@@ -35,6 +35,8 @@ interface Heard {
   fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   relayConnectionsEnded: Timeline<number>;
+  /** Every change of a workspace's connection state, in order. */
+  workspaceChanges: Timeline<WorkspaceInfo>;
 }
 
 /** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
@@ -46,6 +48,9 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
       },
       onFilesChanged: (change) => {
         heard.fileChanges.record(change);
+      },
+      onWorkspace: (workspace) => {
+        heard.workspaceChanges.record(workspace);
       },
       onOpen: () => {
         resolve(stop);
@@ -66,6 +71,7 @@ function newHeard(): Heard {
     streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
     fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
     relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
+    workspaceChanges: new Timeline<WorkspaceInfo>(STREAM_WAIT_MS),
   };
 }
 
@@ -78,6 +84,8 @@ export interface StartOptions {
   modify?: ModifyConfig;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  /** How the app reaches ssh workspaces (`host.appSettings` of a started ssh host). */
+  ssh?: Partial<SshSettings>;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -122,7 +130,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const heard = newHeard();
   const ui = uiOf(options);
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, ...extra });
+    openApp({ dataDir, env, host, heard, ui, ssh: options.ssh, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -153,6 +161,7 @@ async function openApp(options: {
   host: RelayHost;
   heard: Heard;
   ui: { root?: string; dist?: string };
+  ssh?: Partial<SshSettings> | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
 }): Promise<Opened> {

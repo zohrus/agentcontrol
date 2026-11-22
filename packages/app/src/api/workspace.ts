@@ -1,36 +1,52 @@
-import { RelayName as N, RepoId, RepoSetup, ReposAddParams } from "@agentcontrol/protocol";
+import { RelayName as N, RepoId, RepoSetup, ReposAddParams, VERSION } from "@agentcontrol/protocol";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Link } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
-import { routeRequest } from "./routing.ts";
+import { routeRequest, WorkspaceQuery } from "./routing.ts";
 import { validate } from "./validate.ts";
 
 const RepoParam = z.object({ id: RepoId });
+const query = validate("query", WorkspaceQuery);
 
-/** Repos, their worktree setup, and the workspace's health. */
-export function workspaceRoutes(deps: ApiDeps) {
-  const relay = (): Link => routeRequest(deps).link;
+/** Repos and their worktree setup. Each takes `?workspace=<id>`; the local workspace when left out. */
+function repoRoutes(relay: (workspace: string | undefined) => Link) {
   return new Hono()
-    .get("/repos", async (c) => c.json(await relay().call(N.reposList, {})))
-    .post("/repos", validate("json", ReposAddParams), async (c) =>
-      c.json(await relay().call(N.reposAdd, c.req.valid("json")), 201),
+    .get("/repos", query, async (c) =>
+      c.json(await relay(c.req.valid("query").workspace).call(N.reposList, {})),
+    )
+    .post("/repos", query, validate("json", ReposAddParams), async (c) =>
+      c.json(
+        await relay(c.req.valid("query").workspace).call(N.reposAdd, c.req.valid("json")),
+        201,
+      ),
     )
     .put(
       "/repos/:id/setup",
+      query,
       validate("param", RepoParam),
       validate("json", RepoSetup),
       async (c) => {
-        await relay().call(N.reposSetSetup, {
-          repoId: c.req.valid("param").id,
-          setup: c.req.valid("json"),
-        });
+        const setup = c.req.valid("json");
+        const repoId = c.req.valid("param").id;
+        await relay(c.req.valid("query").workspace).call(N.reposSetSetup, { repoId, setup });
         return c.json({});
       },
+    );
+}
+
+/** Repos, their worktree setup, and the workspace's health, per `?workspace=<id>`. */
+export function workspaceRoutes(deps: ApiDeps) {
+  const relay = (workspace: string | undefined): Link =>
+    routeRequest(deps, { workspaceId: workspace }).link;
+  return new Hono()
+    .route("/", repoRoutes(relay))
+    .get("/workspace/check", query, async (c) =>
+      c.json(await relay(c.req.valid("query").workspace).call(N.workspaceCheck, {})),
     )
-    .get("/workspace/check", async (c) => c.json(await relay().call(N.workspaceCheck, {})))
-    .get("/agents", async (c) => {
-      const { agents } = await relay().call(N.hello, { clientVersion: "0.0.0" });
+    .get("/agents", query, async (c) => {
+      const link = relay(c.req.valid("query").workspace);
+      const { agents } = await link.call(N.hello, { clientVersion: VERSION });
       return c.json({ agents });
     })
     .get("/health", (c) => c.json({ ok: true }));

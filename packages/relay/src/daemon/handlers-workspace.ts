@@ -1,9 +1,10 @@
-import { RelayName as N } from "@agentcontrol/protocol";
+import { RelayName as N, VERSION } from "@agentcontrol/protocol";
 import { availableAgents, type HostEnv } from "../agents/index.ts";
 import { checkWorkspace, type RepoStore } from "../repos/index.ts";
 import type { Handlers } from "../rpc/index.ts";
 
-const RELAY_VERSION = "0.0.0";
+/** The version this relay reports. AGENTCONTROL_RELAY_VERSION overrides it; only tests set it. */
+const versionIn = (env: HostEnv): string => env["AGENTCONTROL_RELAY_VERSION"] ?? VERSION;
 
 type WorkspaceMethods =
   | typeof N.hello
@@ -18,8 +19,9 @@ export function workspaceHandlers(
   env: HostEnv,
 ): Pick<Handlers, WorkspaceMethods> {
   return {
-    [N.hello]: () => Promise.resolve({ relayVersion: RELAY_VERSION, agents: availableAgents(env) }),
-    [N.workspaceCheck]: () => checkWorkspace(env),
+    [N.hello]: () =>
+      Promise.resolve({ relayVersion: versionIn(env), agents: availableAgents(env) }),
+    [N.workspaceCheck]: ({ agents }) => checkWorkspace(env, { withAgents: agents }),
     [N.reposAdd]: async ({ path }) => {
       const { repoId, defaultBranch, path: root } = await repos.add(path);
       return { repoId, defaultBranch, path: root };

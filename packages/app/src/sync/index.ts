@@ -1,23 +1,64 @@
-import type { RelayClient } from "../relays/index.ts";
+import type { ConnectionStatus } from "@agentcontrol/protocol";
 import { createLink, type Link } from "./link.ts";
-import { runConnections } from "./reconnect.ts";
+import { wakeablePause } from "./pause.ts";
+import { type ConnectionSettings, runConnections } from "./reconnect.ts";
 import type { SyncDeps } from "./session.ts";
 
 export type { Hub, HubMessage } from "./hub.ts";
 export { createHub } from "./hub.ts";
 export type { Link } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";
+export type { ReplaceRelay } from "./reconnect.ts";
+export { RelayVersionMismatch } from "./version.ts";
+
+const DEFAULT_BACKOFF_MAX_MS = 3000;
 
 export interface Sync extends Link {
   /** Resolves once the first connection has handshaken, resumed its events and listed sessions. */
   ready: Promise<void>;
+  /** Where the connection stands now. */
+  status: () => ConnectionStatus;
+  /** Skips the wait before the next connection attempt, if one is waiting. */
+  retryNow: () => void;
   /** Stops reconnecting and closes the relay connection (the relay daemon keeps running). */
   stop: () => Promise<void>;
 }
 
 export interface SyncOptions extends SyncDeps {
   /** Opens a fresh relay connection; called again after every drop. */
-  connect: () => RelayClient;
+  connect: ConnectionSettings["connect"];
+  /** What to do when the relay has another version than the app: replace it, or say why not. */
+  replaceRelay?: ConnectionSettings["replaceRelay"];
+  /** Called every time the connection state changes. */
+  onStatus?: (status: ConnectionStatus) => void;
+  /** The longest pause between connection attempts, in ms (3000 by default). */
+  backoffMaxMs?: number;
+}
+
+/** A promise and the function that resolves it. */
+function readiness() {
+  let signal = (): void => undefined;
+  const ready = new Promise<void>((resolve) => {
+    signal = resolve;
+  });
+  return {
+    ready,
+    signal: (): void => {
+      signal();
+    },
+  };
+}
+
+/** The latest status, passed on to whoever listens. */
+function statusTracker(onStatus: SyncOptions["onStatus"]) {
+  let current: ConnectionStatus = { state: "connecting" };
+  return {
+    current: () => current,
+    set: (next: ConnectionStatus): void => {
+      current = next;
+      onStatus?.(next);
+    },
+  };
 }
 
 /** Keeps one workspace's relay connected and its events and sessions saved, resuming after drops. */
@@ -26,28 +67,27 @@ export function startSync(options: SyncOptions): Sync {
     hub: options.hub,
     workspaceId: options.workspace.id,
   });
-  let signalReady = (): void => undefined;
-  const ready = new Promise<void>((resolve) => {
-    signalReady = resolve;
-  });
+  const first = readiness();
+  const status = statusTracker(options.onStatus);
   const abort = new AbortController();
-  const running = runConnections({
-    options,
-    signal: abort.signal,
-    hooks: {
-      attach: (live) => {
-        attach(live);
-        signalReady();
-      },
-      detach,
-    },
-  });
-  return {
-    ...link,
-    ready,
-    stop: async () => {
-      abort.abort();
-      await running;
-    },
+  const { pause, wake } = wakeablePause();
+  const settings = {
+    connect: options.connect,
+    replaceRelay: options.replaceRelay,
+    backoffMaxMs: options.backoffMaxMs ?? DEFAULT_BACKOFF_MAX_MS,
   };
+  const hooks = {
+    attach: (live: Parameters<typeof attach>[0]) => {
+      attach(live);
+      first.signal();
+    },
+    detach,
+    status: status.set,
+  };
+  const running = runConnections({ deps: options, settings, signal: abort.signal, pause, hooks });
+  const stop = async (): Promise<void> => {
+    abort.abort();
+    await running;
+  };
+  return { ...link, ready: first.ready, status: status.current, retryNow: wake, stop };
 }

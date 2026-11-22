@@ -10,9 +10,9 @@ import type { Store, Workspace } from "../store/index.ts";
 import { createBatcher } from "./batcher.ts";
 import type { Hub } from "./hub.ts";
 import { saveChangedSummaries } from "./summaries.ts";
+import { RelayVersionMismatch } from "./version.ts";
 
 const EVENT_BATCH_MS = 20;
-const CLIENT_VERSION = "0.0.0";
 
 export interface SyncSession {
   hello: HelloResult;
@@ -26,6 +26,8 @@ export interface SyncDeps {
   store: Store;
   hub: Hub;
   workspace: Workspace;
+  /** The version of this app; a relay of any other version is refused. */
+  version: string;
 }
 
 /** Saves summaries the relay sent and tells the hub which ones are news. */
@@ -75,7 +77,10 @@ export async function startSyncSession(client: RelayClient, deps: SyncDeps): Pro
   const events = receiver(deps);
   const onSummaries = saveSummaries(deps);
   relayPushes({ client, onEvent: events.add, onSummaries });
-  const hello = await client.call(RelayName.hello, { clientVersion: CLIENT_VERSION });
+  const hello = await client.call(RelayName.hello, { clientVersion: deps.version });
+  if (hello.relayVersion !== deps.version) {
+    throw new RelayVersionMismatch(hello.relayVersion, deps.version);
+  }
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const afterSeq = deps.store.lastSeqs(deps.workspace.id);
   await client.call(RelayName.eventsSubscribe, { afterSeq });

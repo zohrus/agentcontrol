@@ -6,6 +6,8 @@ import { ALLOW_OR_REJECT, type Handler, send, type TurnContext } from "./turn.ts
 
 export type { TurnContext } from "./turn.ts";
 
+const FILE_POLL_MS = 20;
+
 const commandCallId = (command: string): string => `run-${command}`;
 
 async function askUser(turn: TurnContext, command: string): Promise<boolean> {
@@ -107,6 +109,12 @@ const waitUntilCancelled: Handler<"waitUntilCancelled"> = async (_step, turn) =>
   return "cancelled";
 };
 
+/** Holds the turn open until a file exists: a test lets the agent go on by writing it. */
+const waitForFile: Handler<"waitForFile"> = async (step) => {
+  while (!(await Bun.file(step.path).exists())) await Bun.sleep(FILE_POLL_MS);
+  return undefined;
+};
+
 /** Shaped like the real adapters: a `usage_update` with the model in `_meta` and a cumulative cost. */
 const reportUsage: Handler<"reportUsage"> = async (step, turn) => {
   await send(turn, {
@@ -130,6 +138,7 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   compactContext,
   finish,
   waitUntilCancelled,
+  waitForFile,
   reportUsage,
 };
 

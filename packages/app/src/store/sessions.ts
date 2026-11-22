@@ -63,3 +63,7 @@ export function getSession(
     .get();
   return row && toStoredSession(row);
 }
+
+export function findSessions(db: Db, sessionId: SessionId): StoredSession[] {
+  return db.select().from(sessions).where(eq(sessions.id, sessionId)).all().map(toStoredSession);
+}

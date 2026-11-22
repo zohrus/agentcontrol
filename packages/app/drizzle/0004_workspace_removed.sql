@@ -1,0 +1,1 @@
+ALTER TABLE `workspaces` ADD `removed_at` text;

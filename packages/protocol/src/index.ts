@@ -6,5 +6,7 @@ export * from "./jsonrpc/index.ts";
 export * from "./relay/index.ts";
 export * from "./sessions/index.ts";
 export * from "./usage/index.ts";
+export * from "./version.ts";
 export * from "./workspace/index.ts";
+export * from "./workspaces/index.ts";
 export * from "./worktrees/index.ts";

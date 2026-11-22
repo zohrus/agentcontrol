@@ -23,6 +23,7 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("compactContext") }),
   z.object({ kind: z.literal("finish"), stopReason }),
   z.object({ kind: z.literal("waitUntilCancelled") }),
+  z.object({ kind: z.literal("waitForFile"), path: z.string() }),
   z.object({
     kind: z.literal("reportUsage"),
     model: z.string(),

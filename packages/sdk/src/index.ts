@@ -6,6 +6,7 @@ import { modifyApi } from "./modify.ts";
 import { sessionsApi } from "./sessions.ts";
 import { type Listeners, subscribeTo } from "./subscribe.ts";
 import { agentsApi, reposApi, workspaceApi } from "./workspace.ts";
+import { workspacesApi } from "./workspaces.ts";
 
 export { ApiError } from "./api-error.ts";
 export type { ConfigTarget } from "./config.ts";
@@ -14,7 +15,8 @@ export { isStaleFile } from "./files.ts";
 export type { StartSession } from "./sessions.ts";
 export type { Listeners } from "./subscribe.ts";
 export type * from "./types.ts";
-export type { RepoWithSetup } from "./workspace.ts";
+export type { InWorkspace, RepoWithSetup } from "./workspace.ts";
+export type { AddWorkspace } from "./workspaces.ts";
 
 export interface ClientOptions {
   /** Where the app listens, e.g. "http://127.0.0.1:4747". Use "" for same-origin in the browser. */
@@ -33,6 +35,7 @@ export function createClient({ baseUrl, fetch: send = fetch }: ClientOptions) {
     config: configApi(api),
     repos: reposApi(api),
     workspace: workspaceApi(api),
+    workspaces: workspacesApi(api),
     agents: agentsApi(api),
     /** Live updates. Returns a function that stops them. */
     subscribe: (listeners: Listeners): (() => void) =>
