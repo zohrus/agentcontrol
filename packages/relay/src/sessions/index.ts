@@ -16,8 +16,8 @@ import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts
 import { answerRequest, cancelRequests } from "./permissions.ts";
 import { recoverSessions } from "./recovery.ts";
 import { runInBackground } from "./start.ts";
-import { followEvents } from "./subscribe.ts";
-import { summarize } from "./summarize.ts";
+import { createLiveSummaries, type LiveSummaries } from "./live-summaries.ts";
+import { followEvents, followSummaries } from "./subscribe.ts";
 import { liveAgent, startTurn } from "./turn.ts";
 
 type CreateParams = z.infer<typeof SessionsCreateParams>;
@@ -29,7 +29,16 @@ export interface Sessions {
   cancel(sessionId: SessionId): Promise<void>;
   respond(call: { sessionId: SessionId; requestId: string; optionId: string }): Promise<void>;
   archive(call: { sessionId: SessionId; force: boolean }): Promise<ArchiveResult>;
+  /** Every session's summary, oldest first, from memory. */
   list(): Promise<SessionSummary[]>;
+  /**
+   * Calls `send` with the summaries that change from now on (only the followed session's when
+   * `sessionId` is given); returns how to stop.
+   */
+  followSummaries(
+    sessionId: SessionId | undefined,
+    send: (summaries: SessionSummary[]) => void,
+  ): () => void;
   /** Where the session's worktree is; fails with sessionNotFound for an unknown session. */
   info(sessionId: SessionId): Promise<SessionInfo>;
   /** Every event of the session, with normalised updates; fails with sessionNotFound for an unknown session. */
@@ -71,16 +80,6 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
   return sessionId;
 }
 
-async function listAll(ctx: SessionContext): Promise<SessionSummary[]> {
-  const ids = await ctx.log.listSessionIds();
-  const summaries = await Promise.all(
-    ids.map(async (id) => summarize(await ctx.log.readAfter(id, 0))),
-  );
-  return summaries
-    .filter((summary) => summary !== undefined)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-}
-
 async function shutdown(ctx: SessionContext): Promise<void> {
   const ids = [...ctx.live.keys()];
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
@@ -103,6 +102,7 @@ function contextOf(options: {
   repos: RepoStore;
   worktreesDir: string;
   sessionCount: number;
+  summaries: LiveSummaries;
 }): SessionContext {
   let portIndex = options.sessionCount;
   const { log } = options;
@@ -111,6 +111,7 @@ function contextOf(options: {
     repos: options.repos,
     worktreesDir: options.worktreesDir,
     permissions: createPendingPermissions(),
+    summaries: options.summaries,
     live: new Map(),
     record: (sessionId, input) => {
       log.append(sessionId, input).catch((error: unknown) => {
@@ -128,14 +129,16 @@ export async function createSessions(options: {
   worktreesDir: string;
 }): Promise<Sessions> {
   const ids = await recoverSessions(options.log);
-  const ctx = contextOf({ ...options, sessionCount: ids.length });
+  const summaries = await createLiveSummaries({ log: options.log, sessionIds: ids });
+  const ctx = contextOf({ ...options, sessionCount: ids.length, summaries });
   return {
     create: (params) => create(ctx, params),
     prompt: (call) => prompt(ctx, call),
     cancel: (sessionId) => cancel(ctx, sessionId),
     respond: (call) => answerRequest(ctx, call),
     archive: (call) => archiveSession(ctx, call),
-    list: () => listAll(ctx),
+    list: () => Promise.resolve(summaries.list()),
+    followSummaries: (sessionId, send) => followSummaries({ summaries, sessionId, send }),
     info: (sessionId) => sessionInfo(ctx, sessionId),
     events: async (sessionId) => {
       await sessionInfo(ctx, sessionId);

@@ -39,8 +39,7 @@ export async function archiveSession(
 ): Promise<ArchiveResult> {
   const { sessionId } = call;
   const info = await sessionInfo(ctx, sessionId);
-  const events = await ctx.log.readAfter(sessionId, 0);
-  if (events.some((event) => event.kind === "session-archived")) return { archived: true };
+  if (ctx.summaries.summary(sessionId)?.archivedAt !== undefined) return { archived: true };
   const files = await uncommittedIn(info);
   if (files.length > 0 && !call.force) return { archived: false, uncommittedFiles: files };
   await tearDown(ctx, { sessionId, info });

@@ -1,10 +1,14 @@
-import type { SessionEvent, SessionId, SessionSummary } from "@agentcontrol/protocol";
+import type { SessionEvent, SessionId } from "@agentcontrol/protocol";
+import type { StoredSession } from "../store/index.ts";
 
-/** What the app tells its in-process listeners (the SSE stream) as things change. */
+/**
+ * What the app tells its in-process listeners (the SSE stream) as things change. Every message
+ * names the workspace it came from: session ids are only unique within one workspace.
+ */
 export type HubMessage =
-  | { type: "event"; event: SessionEvent }
-  | { type: "sessions"; sessions: SessionSummary[] }
-  | { type: "fs"; sessionId: SessionId; paths: string[] };
+  | { type: "event"; workspaceId: string; event: SessionEvent }
+  | { type: "sessions"; workspaceId: string; sessions: StoredSession[] }
+  | { type: "fs"; workspaceId: string; sessionId: SessionId; paths: string[] };
 
 export interface Hub {
   /** Calls the listener for every message published from now on; returns an unsubscribe function. */

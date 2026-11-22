@@ -1,61 +1,5 @@
-import type {
-  EventKind,
-  SessionEvent,
-  SessionStatus,
-  SessionSummary,
-  WaitingReason,
-} from "@agentcontrol/protocol";
-
-type EventOf<K extends EventKind> = Extract<SessionEvent, { kind: K }>;
-
-/** Everything the session list needs, built up by folding the events in order. */
-interface Fold {
-  created: EventOf<"session-created"> | undefined;
-  lastSeq: number;
-  setupExitCode: number | undefined;
-  agentStarted: boolean;
-  exitCode: number | null | undefined;
-  turnOpen: boolean;
-  lastStopReason: string | undefined;
-  unansweredRequests: string[];
-  archivedAt: string | undefined;
-}
-
-type Reducers = { [K in EventKind]: (fold: Fold, event: EventOf<K>) => Fold };
-
-/** One small reducer per event kind. */
-const reducers: Reducers = {
-  acp: (fold) => fold,
-  "setup-output": (fold) => fold,
-  "session-created": (fold, event) => ({ ...fold, created: event }),
-  "setup-finished": (fold, event) => ({ ...fold, setupExitCode: event.payload.exitCode }),
-  "agent-started": (fold) => ({ ...fold, agentStarted: true }),
-  "agent-exited": (fold, event) => ({
-    ...fold,
-    exitCode: event.payload.exitCode,
-    unansweredRequests: [],
-  }),
-  "permission-requested": (fold, event) => ({
-    ...fold,
-    unansweredRequests: [...fold.unansweredRequests, event.payload.requestId],
-  }),
-  "permission-answered": (fold, event) => ({
-    ...fold,
-    unansweredRequests: fold.unansweredRequests.filter((id) => id !== event.payload.requestId),
-  }),
-  "prompt-sent": (fold) => ({ ...fold, turnOpen: true, lastStopReason: undefined }),
-  "turn-ended": (fold, event) => ({
-    ...fold,
-    turnOpen: false,
-    lastStopReason: event.payload.stopReason,
-  }),
-  "session-archived": (fold, event) => ({ ...fold, archivedAt: event.ts }),
-};
-
-function reduce(fold: Fold, event: SessionEvent): Fold {
-  const reducer = reducers[event.kind] as (fold: Fold, event: SessionEvent) => Fold;
-  return { ...reducer(fold, event), lastSeq: event.seq };
-}
+import type { SessionStatus, SessionSummary, WaitingReason } from "@agentcontrol/protocol";
+import type { EventOf, Fold } from "./fold.ts";
 
 interface Status {
   status: SessionStatus;
@@ -78,9 +22,7 @@ const setupFailed = (fold: Fold): Status | undefined =>
     : undefined;
 
 const needsPermission = (fold: Fold): Status | undefined =>
-  fold.unansweredRequests.length > 0
-    ? { status: "waiting", waitingReason: "permission" }
-    : undefined;
+  fold.pendingRequests.length > 0 ? { status: "waiting", waitingReason: "permission" } : undefined;
 
 const running = (fold: Fold): Status | undefined => {
   const working = fold.turnOpen || fold.lastStopReason === undefined;
@@ -108,17 +50,8 @@ function statusOf(fold: Fold): Status {
   return { status: "starting" };
 }
 
-const empty: Fold = {
-  created: undefined,
-  lastSeq: 0,
-  setupExitCode: undefined,
-  agentStarted: false,
-  exitCode: undefined,
-  turnOpen: false,
-  lastStopReason: undefined,
-  unansweredRequests: [],
-  archivedAt: undefined,
-};
+const turnRunning = (fold: Fold): boolean =>
+  fold.turnOpen && fold.exitCode === undefined && fold.archivedAt === undefined;
 
 function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSummary {
   const { status, waitingReason } = statusOf(fold);
@@ -135,16 +68,18 @@ function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSumm
     lastSeq: fold.lastSeq,
     createdAt: created.ts,
     ...(fold.archivedAt ? { archivedAt: fold.archivedAt } : {}),
+    turnRunning: turnRunning(fold),
+    pendingPermissions: fold.pendingRequests,
   };
 }
 
 /**
- * The session list row for one session's events, or undefined if it has no session-created event.
+ * The session list row for a fold, or undefined while it has no session-created event.
  *
  * Restart rule: when the relay restarts, the agents die. Recovery appends `agent-exited` for them,
+ * which also drops their pending requests (nobody is left to answer them) and ends `turnRunning`,
  * so a turn that was open then reads as `failed`; a session that finished its turn reads as `idle`.
  */
-export function summarize(events: readonly SessionEvent[]): SessionSummary | undefined {
-  const fold = events.reduce(reduce, empty);
+export function summaryOf(fold: Fold): SessionSummary | undefined {
   return fold.created ? toSummary(fold, fold.created) : undefined;
 }

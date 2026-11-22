@@ -22,7 +22,10 @@ export interface SyncOptions extends SyncDeps {
 
 /** Keeps one workspace's relay connected and its events and sessions saved, resuming after drops. */
 export function startSync(options: SyncOptions): Sync {
-  const { link, attach, detach } = createLink(options.hub);
+  const { link, attach, detach } = createLink({
+    hub: options.hub,
+    workspaceId: options.workspace.id,
+  });
   let signalReady = (): void => undefined;
   const ready = new Promise<void>((resolve) => {
     signalReady = resolve;

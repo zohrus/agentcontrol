@@ -3,30 +3,16 @@ import {
   RelayName,
   RelayNotifications,
   type SessionEvent,
+  type SessionSummary,
 } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
 import { createBatcher } from "./batcher.ts";
-import { createCoalescer } from "./coalescer.ts";
 import type { Hub } from "./hub.ts";
 import { saveChangedSummaries } from "./summaries.ts";
 
 const EVENT_BATCH_MS = 20;
-const REFRESH_MS = 50;
 const CLIENT_VERSION = "0.0.0";
-
-/** Event kinds after which a session's status may have changed, so its summary is refetched. */
-const STATUS_CHANGING = new Set<SessionEvent["kind"]>([
-  "session-created",
-  "setup-finished",
-  "agent-started",
-  "agent-exited",
-  "permission-requested",
-  "permission-answered",
-  "prompt-sent",
-  "turn-ended",
-  "session-archived",
-]);
 
 export interface SyncSession {
   hello: HelloResult;
@@ -42,48 +28,60 @@ export interface SyncDeps {
   workspace: Workspace;
 }
 
-function refresher(client: RelayClient, deps: SyncDeps) {
-  return createCoalescer({
-    delayMs: REFRESH_MS,
-    task: async () => {
-      const { sessions } = await client.call(RelayName.sessionsList, {});
-      const workspaceId = deps.workspace.id;
-      const changed = saveChangedSummaries({ store: deps.store, workspaceId, summaries: sessions });
-      if (changed.length > 0) deps.hub.publish({ type: "sessions", sessions: changed });
-    },
-  });
+/** Saves summaries the relay sent and tells the hub which ones are news. */
+function saveSummaries(deps: SyncDeps) {
+  return (summaries: SessionSummary[]): void => {
+    const workspaceId = deps.workspace.id;
+    const changed = saveChangedSummaries({ store: deps.store, workspaceId, summaries });
+    if (changed.length > 0) deps.hub.publish({ type: "sessions", workspaceId, sessions: changed });
+  };
 }
 
-function receiver(deps: SyncDeps, onStatusChange: () => void) {
+function receiver(deps: SyncDeps) {
   return createBatcher<SessionEvent>({
     delayMs: EVENT_BATCH_MS,
     handle: (events) => {
-      deps.store.saveEvents(deps.workspace.id, events);
+      const workspaceId = deps.workspace.id;
+      deps.store.saveEvents(workspaceId, events);
       events.forEach((event) => {
-        deps.hub.publish({ type: "event", event });
+        deps.hub.publish({ type: "event", workspaceId, event });
       });
-      if (events.some((event) => STATUS_CHANGING.has(event.kind))) onStatusChange();
     },
   });
 }
 
-function relayEvents(client: RelayClient, onEvent: (event: SessionEvent) => void): void {
+/** Routes the relay's pushes: events are batched, summary changes are saved at once. */
+function relayPushes(options: {
+  client: RelayClient;
+  onEvent: (event: SessionEvent) => void;
+  onSummaries: (summaries: SessionSummary[]) => void;
+}): void {
+  const { client, onEvent, onSummaries } = options;
   client.onNotification(({ method, params }) => {
     if (method === RelayName.event) {
       onEvent(RelayNotifications[RelayName.event].parse(params).event);
+    } else if (method === RelayName.sessionsChanged) {
+      onSummaries(RelayNotifications[RelayName.sessionsChanged].parse(params).sessions);
     }
   });
 }
 
-/** Handshake, then resume every session after the last stored seq, and list the sessions. */
+/**
+ * Handshake, resume every session after the last stored seq, and list the sessions once. From then
+ * on the relay pushes every change (`relay/sessions.changed`), so nothing here polls or has to know
+ * which events change a session's status.
+ */
 export async function startSyncSession(client: RelayClient, deps: SyncDeps): Promise<SyncSession> {
-  const refresh = refresher(client, deps);
-  const events = receiver(deps, refresh.request);
-  relayEvents(client, events.add);
+  const events = receiver(deps);
+  const onSummaries = saveSummaries(deps);
+  relayPushes({ client, onEvent: events.add, onSummaries });
   const hello = await client.call(RelayName.hello, { clientVersion: CLIENT_VERSION });
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const afterSeq = deps.store.lastSeqs(deps.workspace.id);
   await client.call(RelayName.eventsSubscribe, { afterSeq });
-  await refresh.runNow();
-  return { hello, refreshSessions: refresh.runNow, flush: events.flush };
+  const refreshSessions = async (): Promise<void> => {
+    onSummaries((await client.call(RelayName.sessionsList, {})).sessions);
+  };
+  await refreshSessions();
+  return { hello, refreshSessions, flush: events.flush };
 }

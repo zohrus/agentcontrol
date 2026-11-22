@@ -1,15 +1,18 @@
-import type { SessionEvent, SessionId } from "@agentcontrol/protocol";
+import type { SessionId } from "@agentcontrol/protocol";
 import type { AgentProcess } from "../agents/index.ts";
 import type { EventInput, EventLog } from "../event-log/index.ts";
 import type { PendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
 import { RelayError } from "../rpc/index.ts";
 import { ErrorCode } from "@agentcontrol/protocol";
+import type { LiveSummaries } from "./live-summaries.ts";
 
 /** What every session operation needs; built once by `createSessions`. */
 export interface SessionContext {
   log: EventLog;
   permissions: PendingPermissions;
+  /** Every session's summary, kept current from the log: read this, never fold the log again. */
+  summaries: LiveSummaries;
   repos: RepoStore;
   worktreesDir: string;
   /** Agents that are running right now. */
@@ -28,13 +31,9 @@ export interface SessionInfo {
   branch: string;
 }
 
-/** Reads a session's location from its log; fails with sessionNotFound when it has none. */
+/** A session's location, from its in-memory state; fails with sessionNotFound when it has none. */
 export async function sessionInfo(ctx: SessionContext, sessionId: SessionId): Promise<SessionInfo> {
-  const events = await ctx.log.readAfter(sessionId, 0);
-  const created = events.find(
-    (event): event is Extract<SessionEvent, { kind: "session-created" }> =>
-      event.kind === "session-created",
-  );
+  const created = ctx.summaries.created(sessionId);
   if (!created) throw new RelayError(ErrorCode.sessionNotFound, `No session "${sessionId}".`);
-  return created.payload;
+  return Promise.resolve(created.payload);
 }

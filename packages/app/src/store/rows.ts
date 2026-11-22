@@ -17,20 +17,23 @@ export function toWorkspace(row: WorkspaceRow): Workspace {
 }
 
 export function toStoredSession(row: SessionRow): StoredSession {
-  const { waitingReason, archivedAt, ...rest } = row;
+  const { waitingReason, archivedAt, pendingPermissionsJson, ...rest } = row;
   return {
     ...rest,
+    pendingPermissions: JSON.parse(pendingPermissionsJson) as StoredSession["pendingPermissions"],
     ...(waitingReason === null ? {} : { waitingReason }),
     ...(archivedAt === null ? {} : { archivedAt }),
   } as StoredSession;
 }
 
 export function toSessionRow(workspaceId: string, s: SessionSummary): SessionRow {
+  const { pendingPermissions, ...rest } = s;
   return {
-    ...s,
+    ...rest,
     workspaceId,
     waitingReason: s.waitingReason ?? null,
     archivedAt: s.archivedAt ?? null,
+    pendingPermissionsJson: JSON.stringify(pendingPermissions),
   };
 }
 

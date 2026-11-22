@@ -1,5 +1,5 @@
 import { RelayName as N } from "@agentcontrol/protocol";
-import type { Handlers } from "../rpc/index.ts";
+import type { Client, Handlers } from "../rpc/index.ts";
 import type { Sessions } from "../sessions/index.ts";
 
 type SessionMethods =
@@ -11,16 +11,31 @@ type SessionMethods =
   | typeof N.cancel
   | typeof N.sessionsArchive;
 
+/** Streams events, and the summaries that change, to the client until it disconnects. */
+async function subscribe(call: {
+  sessions: Sessions;
+  params: Parameters<Sessions["follow"]>[0];
+  client: Client;
+}): Promise<void> {
+  const { sessions, params, client } = call;
+  const stop = await sessions.follow(params, (event) => {
+    client.notify(N.event, { event });
+  });
+  client.onClose(stop);
+  const sessionId = "sessionId" in params ? params.sessionId : undefined;
+  const stopSummaries = sessions.followSummaries(sessionId, (changed) => {
+    client.notify(N.sessionsChanged, { sessions: changed });
+  });
+  client.onClose(stopSummaries);
+}
+
 /** The methods that drive a session's life: list, create, talk to the agent, archive, follow. */
 export function sessionHandlers(sessions: Sessions): Pick<Handlers, SessionMethods> {
   return {
     [N.sessionsList]: async () => ({ sessions: await sessions.list() }),
     [N.sessionsCreate]: async (params) => ({ sessionId: await sessions.create(params) }),
     [N.eventsSubscribe]: async (params, client) => {
-      const stop = await sessions.follow(params, (event) => {
-        client.notify(N.event, { event });
-      });
-      client.onClose(stop);
+      await subscribe({ sessions, params, client });
       return {};
     },
     [N.prompt]: async (params) => {

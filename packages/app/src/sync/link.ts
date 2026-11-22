@@ -31,10 +31,11 @@ export interface Live {
 }
 
 /** Forwards `relay/fs.changed` notifications of this connection to the hub. */
-function forwardFileChanges(client: RelayClient, hub: Hub): void {
+function forwardFileChanges(client: RelayClient, target: { hub: Hub; workspaceId: string }): void {
   client.onNotification(({ method, params }) => {
     if (method !== RelayName.fsChanged) return;
-    hub.publish({ type: "fs", ...RelayNotifications[RelayName.fsChanged].parse(params) });
+    const change = RelayNotifications[RelayName.fsChanged].parse(params);
+    target.hub.publish({ type: "fs", workspaceId: target.workspaceId, ...change });
   });
 }
 
@@ -54,7 +55,7 @@ function fileWatching(current: () => Live) {
 }
 
 /** Holds whichever connection is current, and what the app watches on it. */
-export function createLink(hub: Hub) {
+export function createLink(target: { hub: Hub; workspaceId: string }) {
   let live: Live | undefined;
   const current = (): Live => {
     if (!live) throw new RelayUnavailableError();
@@ -69,7 +70,7 @@ export function createLink(hub: Hub) {
   const attach = (next: Live): void => {
     live = next;
     files.reset();
-    forwardFileChanges(next.client, hub);
+    forwardFileChanges(next.client, target);
   };
   return {
     link,

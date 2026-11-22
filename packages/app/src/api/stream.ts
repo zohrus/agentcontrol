@@ -3,18 +3,29 @@ import { type SSEStreamingApi, streamSSE } from "hono/streaming";
 import type { Hub, HubMessage } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
 
-/** One SSE message: its name and its JSON data. */
+/**
+ * One SSE message: its name and its JSON data. Every message that concerns a session names the
+ * workspace: `event` is the session event plus `workspaceId`, `sessions` is a list of session rows
+ * (each with its `workspaceId`), `fs` is `{ workspaceId, sessionId, paths }`.
+ */
 function sseOf(message: HubMessage): { event: string; data: string } {
   const { type } = message;
   switch (message.type) {
     case "event":
-      return { event: type, data: JSON.stringify(message.event) };
+      return {
+        event: type,
+        data: JSON.stringify({ ...message.event, workspaceId: message.workspaceId }),
+      };
     case "sessions":
       return { event: type, data: JSON.stringify(message.sessions) };
     case "fs":
       return {
         event: type,
-        data: JSON.stringify({ sessionId: message.sessionId, paths: message.paths }),
+        data: JSON.stringify({
+          workspaceId: message.workspaceId,
+          sessionId: message.sessionId,
+          paths: message.paths,
+        }),
       };
   }
 }

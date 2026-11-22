@@ -23,13 +23,19 @@ export function lastSeqs(db: Db, workspaceId: string): Record<string, number> {
 
 export function eventsAfter(
   db: Db,
-  query: { sessionId: SessionId; afterSeq: number; limit?: number },
+  query: { workspaceId: string; sessionId: SessionId; afterSeq: number; limit?: number },
 ): SessionEvent[] {
-  const { sessionId, afterSeq, limit = 1000 } = query;
+  const { workspaceId, sessionId, afterSeq, limit = 1000 } = query;
   return db
     .select()
     .from(events)
-    .where(and(eq(events.sessionId, sessionId), gt(events.seq, afterSeq)))
+    .where(
+      and(
+        eq(events.workspaceId, workspaceId),
+        eq(events.sessionId, sessionId),
+        gt(events.seq, afterSeq),
+      ),
+    )
     .orderBy(asc(events.seq))
     .limit(limit)
     .all()

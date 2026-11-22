@@ -38,5 +38,6 @@ export type RelayResult<M extends RelayMethodName> = z.infer<(typeof RelayMethod
 /** Notifications the relay pushes to the app, with their params schemas. */
 export const RelayNotifications = {
   [N.event]: s.EventNotificationParams,
+  [N.sessionsChanged]: s.SessionsChangedParams,
   [N.fsChanged]: f.FsChangedParams,
 } as const;

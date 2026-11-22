@@ -19,5 +19,6 @@ export const RelayName = {
   fsWatch: "relay/fs.watch",
   usage: "relay/usage",
   event: "relay/event",
+  sessionsChanged: "relay/sessions.changed",
   fsChanged: "relay/fs.changed",
 } as const;

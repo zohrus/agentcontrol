@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { SessionEvent } from "../events/index.ts";
 import { SessionId } from "../ids/index.ts";
+import { SessionSummary } from "./summary.ts";
 
 const seq = z.number().int().nonnegative();
 
@@ -15,6 +16,13 @@ export const EventsSubscribeResult = z.object({});
 /** Params of the relay/event notification: one event. */
 export const EventNotificationParams = z.object({ event: SessionEvent });
 
+/**
+ * Params of the relay/sessions.changed notification: summaries that changed, sent to every client
+ * that has called relay/events.subscribe (for the sessions it follows).
+ */
+export const SessionsChangedParams = z.object({ sessions: z.array(SessionSummary) });
+
+export type SessionsChangedParams = z.infer<typeof SessionsChangedParams>;
 export type EventsSubscribeParams = z.infer<typeof EventsSubscribeParams>;
 export type EventsSubscribeResult = z.infer<typeof EventsSubscribeResult>;
 export type EventNotificationParams = z.infer<typeof EventNotificationParams>;

@@ -1,7 +1,13 @@
-import type { EventsSubscribeParams, SessionEvent, SessionId } from "@agentcontrol/protocol";
+import type {
+  EventsSubscribeParams,
+  SessionEvent,
+  SessionId,
+  SessionSummary,
+} from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
 import type { EventLog } from "../event-log/index.ts";
+import type { LiveSummaries } from "./live-summaries.ts";
 
 type SubscribeParams = z.infer<typeof EventsSubscribeParams>;
 
@@ -44,4 +50,17 @@ export async function followEvents(options: {
   buffered.forEach(deliver);
   replaying = false;
   return unsubscribe;
+}
+
+/** Sends the summaries that change from now on, only the session's own when `sessionId` is set. */
+export function followSummaries(options: {
+  summaries: LiveSummaries;
+  sessionId: SessionId | undefined;
+  send: (summaries: SessionSummary[]) => void;
+}): () => void {
+  const { sessionId, send } = options;
+  return options.summaries.onChanged((changed) => {
+    const wanted = sessionId === undefined ? changed : changed.filter((s) => s.id === sessionId);
+    if (wanted.length > 0) send(wanted);
+  });
 }

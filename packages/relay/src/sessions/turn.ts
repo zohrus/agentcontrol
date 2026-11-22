@@ -2,12 +2,10 @@ import { ErrorCode, type SessionId } from "@agentcontrol/protocol";
 import type { AgentProcess } from "../agents/index.ts";
 import { RelayError } from "../rpc/index.ts";
 import { type SessionContext, sessionInfo } from "./context.ts";
-import { summarize } from "./summarize.ts";
 
 async function whyNoAgent(ctx: SessionContext, sessionId: SessionId): Promise<RelayError> {
   await sessionInfo(ctx, sessionId);
-  const summary = summarize(await ctx.log.readAfter(sessionId, 0));
-  if (summary?.waitingReason === "setup-failed") {
+  if (ctx.summaries.summary(sessionId)?.waitingReason === "setup-failed") {
     return new RelayError(
       ErrorCode.setupFailed,
       "The setup script failed, so this session has no agent. Fix the setup and start a new session.",
