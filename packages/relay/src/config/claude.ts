@@ -39,7 +39,7 @@ function json(input: { file: string; itemId: string; key: string; value: unknown
 function server(item: McpItem): Record<string, unknown> | undefined {
   if (item.url) return compact({ type: "http", url: item.url, headers: item.headers });
   if (!item.command) return undefined;
-  return compact({ type: "stdio", command: item.command, args: item.args, env: item.env });
+  return compact({ command: item.command, args: item.args, env: item.env });
 }
 
 function mcp(item: McpItem, place: Place): Mapped {

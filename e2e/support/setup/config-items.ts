@@ -19,16 +19,20 @@ export function permissionRule(input: Omit<Of<"permission">, "id" | "kind">): Sc
   return global({ id: "rules", kind: "permission", ...input });
 }
 
+export function afterEditHook(input: { id: string; command: string }): ScopedItem {
+  return global({ ...input, kind: "hook", name: input.id, event: "after-edit" });
+}
+
 export function beforeToolHook(input: { id: string; command: string }): ScopedItem {
   return global({ ...input, kind: "hook", name: input.id, event: "before-tool" });
 }
 
-export function skill(input: { name: string; text: string }): ScopedItem {
-  const files = [{ path: "SKILL.md", content: input.text }];
+export function skill(input: { name: string; text: string; path?: string }): ScopedItem {
+  const files = [{ path: input.path ?? "SKILL.md", content: input.text }];
   return global({ id: `skill-${input.name}`, kind: "skill", name: input.name, files });
 }
 
-export function command(input: { name: string; prompt: string }): ScopedItem {
+export function command(input: { name: string; prompt: string; description?: string }): ScopedItem {
   return global({ id: `command-${input.name}`, kind: "command", ...input });
 }
 
@@ -49,4 +53,13 @@ export function inUnnamedRepo(scoped: ScopedItem): ScopedItem {
 /** The same item, switched off. */
 export function switchedOff(scoped: ScopedItem): ScopedItem {
   return { ...scoped, enabled: false };
+}
+
+/** The same items, with the user's hand-written notes (the instructions that have no marker) rewritten. */
+export function withNotesRewritten(items: ScopedItem[], text: string): ScopedItem[] {
+  return items.map((scoped) =>
+    scoped.item.kind === "instructions" && scoped.item.handWritten === true
+      ? { ...scoped, item: { ...scoped.item, text } }
+      : scoped,
+  );
 }

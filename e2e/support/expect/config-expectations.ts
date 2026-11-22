@@ -166,16 +166,20 @@ export function expectPlanToNeedSecret(
   }
 }
 
-/** The file's text includes this exactly once. */
-export async function expectFileToContainOnce(
-  folder: Folder,
-  call: { file: string; text: string },
-): Promise<void> {
-  const content = await folder.read(call.file);
-  const times = content === undefined ? 0 : content.split(call.text).length - 1;
-  if (times !== 1) {
+/** The app holds exactly this many items. */
+export function expectItemsSetUp(items: unknown[], count: number): void {
+  if (items.length !== count) {
     throw new Error(
-      `expected ${call.file} to contain ${JSON.stringify(call.text)} once, but it does ${String(times)} times`,
+      `expected ${String(count)} items set up in the app, but it holds ${String(items.length)}`,
     );
   }
+}
+
+/** The user's own files are as they were; only Agent Control's bookkeeping folder is new. */
+export function expectUserFilesToBeUnchanged(call: {
+  before: Record<string, string>;
+  after: Record<string, string>;
+}): void {
+  const own = Object.entries(call.after).filter(([file]) => !file.startsWith(".agentcontrol"));
+  expectSameFiles({ before: call.before, after: Object.fromEntries(own) });
 }

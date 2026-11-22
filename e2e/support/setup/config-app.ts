@@ -2,10 +2,10 @@ import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { createClient, type Client } from "@agentcontrol/sdk";
-import { launchApp } from "../../../support/setup/app-process.ts";
-import { onTestEnd } from "../../../support/setup/cleanup.ts";
-import { createLocalRepo } from "../../../support/setup/local-repo.ts";
-import { stopRelayDaemon } from "../../../support/setup/relay-client.ts";
+import { launchApp } from "./app-process.ts";
+import { onTestEnd } from "./cleanup.ts";
+import { createLocalRepo } from "./local-repo.ts";
+import { startRelayHost } from "./relay-host.ts";
 import { configUserOf, type ConfigUser } from "./config-user.ts";
 
 /** The files of a folder, by path relative to it; a file that does not exist reads as undefined. */
@@ -13,6 +13,8 @@ export interface Folder {
   readonly path: string;
   has(relativePath: string, content: string): Promise<void>;
   read(relativePath: string): Promise<string | undefined>;
+  /** Puts a folder where a config file is expected. */
+  hasAFolderAt(relativePath: string): Promise<void>;
   /** Edits a file by hand, the way a user would in an editor. */
   edits(relativePath: string, change: { replace: string; with: string }): Promise<void>;
   /** Every file below the folder with its content, except Agent Control's own backups. */
@@ -45,6 +47,9 @@ function folderAt(path: string, skip: string[] = []): Folder {
       await mkdir(dirname(join(path, relativePath)), { recursive: true });
       await writeFile(join(path, relativePath), content);
     },
+    hasAFolderAt: async (relativePath) => {
+      await mkdir(join(path, relativePath), { recursive: true });
+    },
     edits: async (relativePath, change) => {
       const before = await readFile(join(path, relativePath), "utf8");
       await writeFile(join(path, relativePath), before.replace(change.replace, change.with));
@@ -69,8 +74,10 @@ export async function startAppWithEmptyHome(): Promise<ConfigApp> {
   const dataDir = await temporaryFolder("agentcontrol-app-");
   const homePath = await temporaryFolder("agentcontrol-home-");
   const repoPath = await createLocalRepo();
-  onTestEnd(() => stopRelayDaemon(join(dataDir, "relay")));
-  const app = await launchApp({ dataDir, env: { AGENTCONTROL_CONFIG_HOME: homePath } });
+  const env = { AGENTCONTROL_CONFIG_HOME: homePath };
+  const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
+  onTestEnd(() => host.stop());
+  const app = await launchApp({ dataDir, env, host, onRelayConnectionEnded: () => undefined });
   onTestEnd(() => app.stop());
   const sdk = createClient({ baseUrl: app.baseUrl });
   const home = folderAt(homePath, [join(".agentcontrol", "backups")]);

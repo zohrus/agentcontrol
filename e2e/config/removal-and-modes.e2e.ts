@@ -4,12 +4,14 @@ import {
   expectHandWrittenConfigToBeKept,
   expectManagedEntriesToBeGone,
   expectModeAndVariableInBothAgents,
-} from "./support/expect/agent-expectations.ts";
+  expectNoLeftoverSections,
+} from "../support/expect/config-agent-expectations.ts";
 import {
+  startAppWithEveryKindOfItemApplied,
   startAppWithHandWrittenAgentConfig,
   startAppWithHandWrittenConfigAndAnAppliedSetup,
-} from "./support/setup/config-fixtures.ts";
-import { environment, permissionRule } from "./support/setup/items.ts";
+} from "../support/setup/config-fixtures.ts";
+import { environment, permissionRule } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -53,4 +55,22 @@ test("a permission mode and an environment variable are written for both agents"
   // ** THEN Claude Code and Codex both run in auto-edit mode and know the variable
   // ********************************************************************
   await expectModeAndVariableInBothAgents(app.home);
+});
+
+test("removing every item leaves no empty sections behind in the agents' files", async () => {
+  // ********************************************************************
+  // ** GIVEN every kind of item set up in the app and applied to both agents
+  // ********************************************************************
+  const app = await startAppWithEveryKindOfItemApplied();
+
+  // ********************************************************************
+  // ** WHEN the user removes every item and applies again
+  // ********************************************************************
+  await app.user.setsUp([]);
+  await app.user.reviewsAndAppliesThePlan();
+
+  // ********************************************************************
+  // ** THEN Claude Code's files hold no leftover empty sections
+  // ********************************************************************
+  await expectNoLeftoverSections(app.home);
 });

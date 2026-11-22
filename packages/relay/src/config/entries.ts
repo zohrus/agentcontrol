@@ -7,6 +7,7 @@ import type {
   SkillItem,
 } from "@agentcontrol/protocol";
 import { HOOK_MARK, keyOf } from "./json-editor.ts";
+import { REST_KEY } from "./markdown-editor.ts";
 import type { Entry, Mapped, Place } from "./types.ts";
 
 const NONE: Mapped = { entries: [], unsupported: [] };
@@ -34,7 +35,8 @@ export const compact = (obj: Record<string, unknown>): Record<string, unknown> =
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 
 export function instructionsEntry(item: InstructionsItem, file: string): Mapped {
-  return one({ file, format: "md", key: item.id, itemId: item.id, value: item.text });
+  const key = item.handWritten === true ? REST_KEY : item.id;
+  return one({ file, format: "md", key, itemId: item.id, value: item.text });
 }
 
 const safeRelative = (path: string): boolean =>
@@ -73,7 +75,7 @@ export function hookEntry(input: {
   const { item, file, event } = input;
   const matcher = item.matcher ?? input.matcher;
   const group = compact({
-    matcher,
+    matcher: matcher === "" ? undefined : matcher,
     hooks: [{ type: "command", command: `${item.command}${HOOK_MARK}${item.id}` }],
   });
   const key = keyOf("hooks", event, `#${item.id}`);

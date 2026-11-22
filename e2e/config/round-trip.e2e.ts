@@ -1,11 +1,20 @@
 import { afterEach, test } from "bun:test";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { expectEveryKindOfItemToBeImported } from "./support/expect/agent-expectations.ts";
-import { expectFileToContainOnce } from "./support/expect/config-expectations.ts";
+import {
+  expectEveryKindOfItemToBeImported,
+  expectInstructionBesideNotes,
+} from "../support/expect/config-agent-expectations.ts";
+import {
+  expectFileNotToContain,
+  expectPlanToChangeFiles,
+  expectUserFilesToBeUnchanged,
+} from "../support/expect/config-expectations.ts";
 import {
   startAppWithEveryKindOfItemApplied,
-  startAppWithHandWrittenHookAndNotes,
-} from "./support/setup/config-fixtures.ts";
+  startAppWithHandWrittenHooksNotesAndServer,
+  startAppWithNotesBesideAnAppliedInstruction,
+} from "../support/setup/config-fixtures.ts";
+import { withNotesRewritten } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -26,25 +35,45 @@ test("importing what the app itself applied returns every kind of item again", a
   expectEveryKindOfItemToBeImported(items);
 });
 
-test("applying an imported hand-written setup does not duplicate it", async () => {
+test("applying an imported hand-written setup leaves every file exactly as it was", async () => {
   // ********************************************************************
-  // ** GIVEN a hand-written Claude Code hook and notes
+  // ** GIVEN hand-written Claude Code hooks (one with two commands), notes and an MCP server
   // ********************************************************************
-  const app = await startAppWithHandWrittenHookAndNotes();
+  const app = await startAppWithHandWrittenHooksNotesAndServer();
+  const filesBefore = await app.home.snapshot();
   // AND the user imported them and kept them as items in the app
-  await app.user.setsUp(await app.user.importsTheExistingSetup());
+  await app.user.setsUp(await app.user.importsTheExistingSetup({ onlyForClaudeCode: true }));
 
   // ********************************************************************
   // ** WHEN the user reviews the plan and applies it
   // ********************************************************************
-  await app.user.reviewsAndAppliesThePlan();
+  const plan = await app.user.reviewsAndAppliesThePlan({ onlyForClaudeCode: true });
 
   // ********************************************************************
-  // ** THEN the hook is in the settings once, and the notes are in CLAUDE.md once
+  // ** THEN the plan changes no file, and every file is byte for byte as it was
   // ********************************************************************
-  await expectFileToContainOnce(app.home, { file: ".claude/settings.json", text: "echo done" });
-  await expectFileToContainOnce(app.home, {
-    file: ".claude/CLAUDE.md",
-    text: "Be kind to reviewers.",
-  });
+  expectPlanToChangeFiles(plan.plan, 0);
+  expectUserFilesToBeUnchanged({ before: filesBefore, after: await app.home.snapshot() });
+});
+
+test("rewriting imported hand-written notes replaces them and keeps the managed instruction", async () => {
+  // ********************************************************************
+  // ** GIVEN hand-written notes in CLAUDE.md beside an instruction the app applied
+  // ********************************************************************
+  const app = await startAppWithNotesBesideAnAppliedInstruction();
+  // AND the user imported both and rewrote the notes in the app
+  const imported = await app.user.importsTheExistingSetup({ onlyForClaudeCode: true });
+  await app.user.setsUp(withNotesRewritten(imported, "New notes."));
+
+  // ********************************************************************
+  // ** WHEN the user reviews the plan and applies it
+  // ********************************************************************
+  await app.user.reviewsAndAppliesThePlan({ onlyForClaudeCode: true });
+
+  // ********************************************************************
+  // ** THEN CLAUDE.md has the new notes beside the instruction, and the old notes are gone
+  // ********************************************************************
+  const file = ".claude/CLAUDE.md";
+  await expectInstructionBesideNotes(app.home, { file, notes: "New notes." });
+  await expectFileNotToContain(app.home, { file, text: "Old notes." });
 });

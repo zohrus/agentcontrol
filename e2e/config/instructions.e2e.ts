@@ -1,8 +1,8 @@
 import { afterEach, test } from "bun:test";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { expectInstructionBesideNotes } from "./support/expect/agent-expectations.ts";
-import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { instructions } from "./support/setup/items.ts";
+import { expectInstructionBesideNotes } from "../support/expect/config-agent-expectations.ts";
+import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import { instructions } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 

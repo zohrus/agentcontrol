@@ -4,15 +4,15 @@ import {
   expectClaudeCodeToListServer,
   expectCodexToListServer,
   expectHandWrittenConfigToBeKept,
-} from "./support/expect/agent-expectations.ts";
+} from "../support/expect/config-agent-expectations.ts";
 import {
   expectFileToContain,
   expectFilesToBeWrittenAsPlanned,
   expectPlanToChangeFiles,
-} from "./support/expect/config-expectations.ts";
-import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { startAppWithHandWrittenAgentConfig } from "./support/setup/config-fixtures.ts";
-import { mcpServer } from "./support/setup/items.ts";
+} from "../support/expect/config-expectations.ts";
+import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import { startAppWithHandWrittenAgentConfig } from "../support/setup/config-fixtures.ts";
+import { mcpServer } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 

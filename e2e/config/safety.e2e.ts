@@ -6,19 +6,16 @@ import {
   expectNoFile,
   expectPlanToChangeFiles,
   expectSameFiles,
-} from "./support/expect/config-expectations.ts";
-import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { instructions, mcpServer, onlyInRepo } from "./support/setup/items.ts";
+} from "../support/expect/config-expectations.ts";
+import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import {
+  startAppWithAnAppliedMcpServer,
+  startAppWithAReviewedPlan,
+} from "../support/setup/config-fixtures.ts";
+import { instructions, mcpServer, onlyInRepo } from "../support/setup/config-items.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
-
-async function startAppWithAnAppliedMcpServer() {
-  const app = await startAppWithEmptyHome();
-  await app.user.setsUp([mcpServer({ name: "docs", command: "npx" })]);
-  const applied = await app.user.reviewsAndAppliesThePlan();
-  return { app, applied };
-}
 
 test("applying the same setup twice changes nothing", async () => {
   // ********************************************************************
@@ -92,9 +89,7 @@ test("a plan is refused when a file it covers changed after the plan was made", 
   // ********************************************************************
   // ** GIVEN a plan the user has reviewed for a new MCP server
   // ********************************************************************
-  const app = await startAppWithEmptyHome();
-  await app.user.setsUp([mcpServer({ name: "docs", command: "npx" })]);
-  const plan = await app.user.reviewsThePlan();
+  const { app, plan } = await startAppWithAReviewedPlan();
 
   // ********************************************************************
   // ** WHEN Claude Code rewrites its own file and then the user applies the plan

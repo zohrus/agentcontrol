@@ -3,12 +3,12 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
   expectClaudeCodeToHaveRulesHookSkillAndCommand,
   expectCodexToHaveHookAndSkill,
-} from "./support/expect/agent-expectations.ts";
+} from "../support/expect/config-agent-expectations.ts";
 import {
   expectItemSupported,
   expectItemUnsupported,
-} from "./support/expect/config-expectations.ts";
-import { startAppWithRuleHookSkillAndCommand } from "./support/setup/config-fixtures.ts";
+} from "../support/expect/config-expectations.ts";
+import { startAppWithRuleHookSkillAndCommand } from "../support/setup/config-fixtures.ts";
 
 afterEach(cleanUpAfterTest);
 

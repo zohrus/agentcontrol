@@ -5,7 +5,7 @@ import {
   expectJsonValue,
   expectNoFile,
 } from "./config-expectations.ts";
-import { expectImportedItems } from "./import-expectations.ts";
+import { expectImportedItems } from "./config-import-expectations.ts";
 
 const CODEX = ".codex/config.toml";
 const HAND_WRITTEN_CODEX =
@@ -111,6 +111,16 @@ export function expectEveryKindOfItemToBeImported(
     { id: "codex:env", kind: "env" },
     { id: "codex:skill:review", kind: "skill" },
     { id: "audit", kind: "hook" },
+    { id: "format", kind: "hook" },
     { id: "team-rules", kind: "instructions" },
   ]);
+}
+
+/** Claude Code's settings and server file keep none of the sections the app had filled. */
+export async function expectNoLeftoverSections(home: Folder): Promise<void> {
+  const settings = ".claude/settings.json";
+  for (const path of ["permissions", "env", "hooks"]) {
+    await expectJsonValue(home, { file: settings, path, value: undefined });
+  }
+  await expectJsonValue(home, { file: ".claude.json", path: "mcpServers", value: undefined });
 }

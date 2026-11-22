@@ -1,6 +1,8 @@
 import type { ConfigAgent, UnsupportedItem } from "@agentcontrol/protocol";
+import { adoptHandWritten, sameValue } from "./adopt.ts";
 import { editors } from "./editors.ts";
 import { sha256 } from "./fs.ts";
+import { REST_KEY } from "./markdown-editor.ts";
 import type { Entry, Format, ManagedRef, ManifestFile, RenderCtx, RenderResult } from "./types.ts";
 
 interface FileJob {
@@ -28,12 +30,27 @@ function groupByFile(entries: Entry[]): Map<string, Entry[]> {
 function splitConflicts(job: FileJob): { fresh: Entry[]; conflicts: Entry[] } {
   const editor = editors[job.format];
   const ownedKeys = new Set(job.owned.map((o) => o.key));
-  const clashes = (e: Entry): boolean =>
-    !ownedKeys.has(e.key) && editor.get(job.current ?? "", e.key) !== undefined;
+  const clashes = (e: Entry): boolean => {
+    const existing = editor.get(job.current ?? "", e.key);
+    return (
+      !ownedKeys.has(e.key) &&
+      e.key !== REST_KEY &&
+      existing !== undefined &&
+      !sameValue(e, existing)
+    );
+  };
   return {
     fresh: job.entries.filter((e) => !clashes(e)),
     conflicts: job.entries.filter(clashes),
   };
+}
+
+/** An entry already in the file as wanted is left exactly as it is, formatting included. */
+function writeIfDifferent(content: string, entry: Entry): string {
+  const editor = editors[entry.format];
+  return sameValue(entry, editor.get(content, entry.key))
+    ? content
+    : editor.set(content, entry.key, entry.value);
 }
 
 function rewrite(job: FileJob, fresh: Entry[]): string {
@@ -41,7 +58,7 @@ function rewrite(job: FileJob, fresh: Entry[]): string {
   const keep = new Set(fresh.map((e) => e.key));
   let content = job.current ?? "";
   for (const old of job.owned) if (!keep.has(old.key)) content = editor.remove(content, old.key);
-  for (const entry of fresh) content = editor.set(content, entry.key, entry.value);
+  for (const entry of fresh) content = writeIfDifferent(content, entry);
   return content;
 }
 
@@ -85,7 +102,8 @@ async function jobsFor(input: {
       const prior = ctx.manifest.files[file];
       const format = formatOf(group, prior);
       const current = await ctx.readFile(file);
-      return { file, agent, format, entries: group, current, owned: prior?.entries ?? [] };
+      const entries = group.map((entry) => adoptHandWritten(entry, current));
+      return { file, agent, format, entries, current, owned: prior?.entries ?? [] };
     }),
   );
 }

@@ -24,7 +24,16 @@ export interface StoredPlan {
 /** The plan is unknown, or a file it covers changed after it was made: plan again. */
 export class StalePlanError extends Error {}
 
+const MAX_PLANS = 20;
 const stored = new Map<string, StoredPlan>();
+
+/** Only the latest plans are kept: each holds the text of every file it covers. */
+function remember(planId: string, plan: StoredPlan): void {
+  stored.set(planId, plan);
+  for (const old of [...stored.keys()].slice(0, Math.max(0, stored.size - MAX_PLANS))) {
+    stored.delete(old);
+  }
+}
 
 export const takePlan = (planId: string): StoredPlan | undefined => stored.get(planId);
 export const forgetPlan = (planId: string): void => void stored.delete(planId);
@@ -72,7 +81,7 @@ export async function planConfig(input: PlanInput): Promise<ConfigPlan> {
     managed: merged.managed,
   });
   const planId = randomUUID();
-  stored.set(planId, { homeDir: input.homeDir, changes, manifestBefore, manifestAfter });
+  remember(planId, { homeDir: input.homeDir, changes, manifestBefore, manifestAfter });
   const secrets = findSecrets(input.items.filter((s) => s.enabled).map((s) => s.item));
   return { planId, changes, unsupported: merged.unsupported, needsSecret: secrets };
 }

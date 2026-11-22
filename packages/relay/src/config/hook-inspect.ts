@@ -39,7 +39,8 @@ function hooksOfGroup(input: {
   return commandsOf(group).map(({ command, id }) => {
     const hookId =
       id ?? `${agent}:hook:${event}:${sha256(`${matcherOf(group)}|${command}`).slice(0, 8)}`;
-    const matcher = userMatcher(asText(asRecord(group).matcher));
+    const raw = asText(asRecord(group).matcher);
+    const matcher = raw === undefined ? "" : userMatcher(raw);
     return { id: hookId, kind: "hook", name: hookId, event: kind, matcher, command };
   });
 }

@@ -18,7 +18,25 @@ function separator(content: string): string {
 
 const block = (id: string, value: string): string => `${begin(id)}\n${value}\n${end(id)}`;
 
-export const markdownEditor: Editor = {
+/** The key of the text outside every managed block: what the user wrote by hand. */
+export const REST_KEY = "~rest";
+const BLOCKS = /<!-- agentcontrol:begin (\S+) -->\n[\s\S]*?\n<!-- agentcontrol:end \1 -->\n?/g;
+
+const restOf = (content: string): string => content.replace(BLOCKS, "").trim();
+
+function withRest(content: string, rest: string): string {
+  const blocks = [...content.matchAll(BLOCKS)].map((m) => m[0].trimEnd());
+  const parts = [rest, ...blocks].filter((part) => part !== "");
+  return parts.length === 0 ? "" : `${parts.join("\n\n")}\n`;
+}
+
+const byKey: Editor = {
+  get: (content) => restOf(content) || undefined,
+  set: (content, _key, value) => (restOf(content) === value ? content : withRest(content, value)),
+  remove: (content) => content,
+};
+
+const blockEditor: Editor = {
   get(content, id) {
     const at = span(content, id);
     if (!at) return undefined;
@@ -39,6 +57,12 @@ export const markdownEditor: Editor = {
     if (tail === "" && head.endsWith("\n\n")) head = head.slice(0, -1);
     return `${head}${tail}`.trim() === "" ? "" : `${head}${tail}`;
   },
+};
+
+export const markdownEditor: Editor = {
+  get: (content, key) => (key === REST_KEY ? byKey : blockEditor).get(content, key),
+  set: (content, key, value) => (key === REST_KEY ? byKey : blockEditor).set(content, key, value),
+  remove: (content, key) => (key === REST_KEY ? byKey : blockEditor).remove(content, key),
 };
 
 /** Whole-file ownership: the file is exactly the value. */

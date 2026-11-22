@@ -1,12 +1,12 @@
 import { afterEach, test } from "bun:test";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { expectRemoteServerInBothAgents } from "./support/expect/agent-expectations.ts";
+import { expectRemoteServerInBothAgents } from "../support/expect/config-agent-expectations.ts";
 import {
   expectItemUnsupported,
   expectPlanToNeedSecret,
-} from "./support/expect/config-expectations.ts";
-import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { inUnnamedRepo, mcpServer } from "./support/setup/items.ts";
+} from "../support/expect/config-expectations.ts";
+import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import { inUnnamedRepo, mcpServer } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 

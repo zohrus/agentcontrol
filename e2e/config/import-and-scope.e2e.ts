@@ -2,14 +2,15 @@ import { afterEach, test } from "bun:test";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
   expectFileToContain,
+  expectItemsSetUp,
   expectJsonValue,
   expectNoFile,
   expectPlanToChangeFiles,
-} from "./support/expect/config-expectations.ts";
-import { expectImportedItem } from "./support/expect/import-expectations.ts";
-import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { startAppWithHandWrittenSetupToImport } from "./support/setup/config-fixtures.ts";
-import { mcpServer, onlyInRepo, switchedOff } from "./support/setup/items.ts";
+} from "../support/expect/config-expectations.ts";
+import { expectImportedItem } from "../support/expect/config-import-expectations.ts";
+import { startAppWithEmptyHome } from "../support/setup/config-app.ts";
+import { startAppWithHandWrittenSetupToImport } from "../support/setup/config-fixtures.ts";
+import { mcpServer, onlyInRepo, switchedOff } from "../support/setup/config-items.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -32,6 +33,8 @@ test("importing an existing hand-written setup returns it as items", async () =>
   // AND the permission rule and the notes come back from Claude Code
   expectImportedItem(items, { id: "claude-code:permission", kind: "permission" });
   expectImportedItem(items, { id: "claude-code:instructions:global", kind: "instructions" });
+  // AND the command whose description is plain text
+  expectImportedItem(items, { id: "claude-code:command:hello", kind: "command" });
 });
 
 test("a repo-scoped item is written into the repository, not the home folder", async () => {
@@ -73,4 +76,24 @@ test("an item that is switched off is not written", async () => {
   // ** THEN the plan lists no file to change
   // ********************************************************************
   expectPlanToChangeFiles(plan, 0);
+});
+
+test("a server of the same name at home and in a repository is imported as two items", async () => {
+  // ********************************************************************
+  // ** GIVEN a server "db" in the home folder and a different "db" in the repository
+  // ********************************************************************
+  const app = await startAppWithEmptyHome();
+  await app.home.has(".claude.json", '{ "mcpServers": { "db": { "command": "home-db" } } }\n');
+  await app.repo.has(".mcp.json", '{ "mcpServers": { "db": { "command": "repo-db" } } }\n');
+
+  // ********************************************************************
+  // ** WHEN the user imports the setup including the repository and keeps all of it
+  // ********************************************************************
+  const imported = await app.user.importsTheExistingSetup({ includingTheRepo: true });
+  await app.user.setsUp(imported);
+
+  // ********************************************************************
+  // ** THEN the app holds both servers
+  // ********************************************************************
+  expectItemsSetUp(await app.user.looksAtWhatIsSetUp(), 2);
 });

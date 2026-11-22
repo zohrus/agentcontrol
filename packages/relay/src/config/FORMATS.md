@@ -88,19 +88,23 @@ Limits:
 Markdown: removing a block leaves a final newline that a file without one did not have. A file the
 app created and then emptied stays as an empty file.
 
-## Known limits of import then apply
+## Import then apply
 
-- A hand-written hook is adopted (not duplicated) only when its group holds one command and has the
-  same matcher; a hand-written group with several commands is imported as one item per command and
-  applied as separate marked groups, next to the original.
-- A hand-written instructions file is adopted into a marked block only when the whole file is the
-  imported text; otherwise the marked block is appended next to the original text.
-- A hand-written `PostToolUse` hook without a matcher is imported as `after-edit`, and applying
-  it adds the edit-only matcher: it is written next to the original, not over it.
-- Imported ids do not include the scope, so the same server name in the home folder and in a repo
-  gives two imported items with one id; saving them together is refused until one is renamed.
+An imported item round-trips to an identical file: an entry already in the file as the item
+describes it is adopted (recorded in the manifest, nothing rewritten, formatting kept). Hand-written
+hooks are adopted by pointing the manifest at the existing group (no marker is added), and the
+hand-written text of an instructions file is one item (`handWritten`) that owns the text outside
+the managed blocks. Imported ids carry the repo they came from (`:repo-<hash>`).
+
+Limits:
+- A hook with several commands in one group is imported as one item per command; they share the
+  group, so removing one of them in the app does not remove the group.
+- Removing the hand-written-notes item in the app leaves the text in the file.
+- An imported MCP server that differs in any way from what we would write (an explicit
+  `"type":"stdio"`, a Codex `env` sub-table) is left alone and reported, not adopted.
+- Config files that are symlinks are written through to their target. Deleting a managed
+  whole-file entry (a skill or command) removes the link, not the target. Symlinked skill folders
+  are not listed on import.
 - A managed JSON file that no longer parses fails the plan with a parse error; drift reports it
   as `drift`.
-- Config files that are symlinks are written through to their target. Deleting a managed whole-file
-  entry (a skill or command) removes the link, not the target. Symlinked skill folders are not
-  listed on import.
+- Plans are kept in memory (the latest 20 only).

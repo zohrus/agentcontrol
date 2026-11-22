@@ -26,6 +26,8 @@ export const InstructionsItem = z.object({
   kind: z.literal("instructions"),
   name,
   text: z.string(),
+  /** The text is what the user wrote in the file outside any managed block; it is kept without markers. */
+  handWritten: z.boolean().optional(),
 });
 export type InstructionsItem = z.infer<typeof InstructionsItem>;
 

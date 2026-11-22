@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { ConfigAgent, ConfigItem, ScopedItem } from "@agentcontrol/protocol";
+import { sha256 } from "./fs.ts";
 import type { ConfigCtx, Place } from "./types.ts";
 
 export type Obj = Record<string, unknown>;
@@ -28,11 +29,16 @@ export async function readJsonObject(ctx: ConfigCtx, path: string): Promise<Obj>
   }
 }
 
+/** Ids made up on import carry the repo they came from, so two repos never share an id. */
+function inScope(item: ConfigItem, repoPath: string): ConfigItem {
+  const imported = item.id.startsWith("claude-code:") || item.id.startsWith("codex:");
+  return imported ? { ...item, id: `${item.id}:repo-${sha256(repoPath).slice(0, 6)}` } : item;
+}
+
 export function scoped(item: ConfigItem, place: Place, ctx: ConfigCtx): ScopedItem {
-  const scope = place.global
-    ? { scope: "global" as const }
-    : { scope: "repo" as const, repoPath: ctx.repoPath ?? place.base };
-  return { item, scope, enabled: true };
+  if (place.global) return { item, scope: { scope: "global" }, enabled: true };
+  const repoPath = ctx.repoPath ?? place.base;
+  return { item: inScope(item, repoPath), scope: { scope: "repo", repoPath }, enabled: true };
 }
 
 export function places(ctx: ConfigCtx): Place[] {
@@ -58,7 +64,14 @@ export function instructionItems(input: {
   const rest = content.replace(BLOCK, "").trim();
   if (rest === "") return items;
   const id = `${agent}:instructions:${place.global ? "global" : "repo"}`;
-  return [...items, scoped({ id, kind: "instructions", name: "existing", text: rest }, place, ctx)];
+  const text = {
+    id,
+    kind: "instructions",
+    name: "existing",
+    text: rest,
+    handWritten: true,
+  } as const;
+  return [...items, scoped(text, place, ctx)];
 }
 
 /** Paths below a skills folder grouped by the skill folder they sit in. */
