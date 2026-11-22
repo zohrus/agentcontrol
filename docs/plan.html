@@ -156,7 +156,8 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
   <span class="eyebrow">Project plan · working draft</span>
   <h1>AgentControl</h1>
   <p class="lede">A local-first web app that runs Claude Code, Codex and other coding agents on your own machine or on SSH workspaces, shows which sessions are waiting on you, and lets each user rewrite the interface itself by asking a built-in agent.</p>
-  <div class="meta"><span>Updated 22 Nov 2026</span><span>Status: design</span><span>Agents: Claude Code, Codex, Gemini CLI, OpenCode</span></div>
+  <div class="meta"><span>Updated 22 Nov 2026</span><span>Status: building</span><span>Agents: Claude Code, Codex, Gemini CLI, OpenCode</span></div>
+  <p class="callout"><b>Live status.</b> What is done, in progress and not started is on the <a href="https://claude.ai/artifact/A88MyfyQ1j1KEUSjRidmRU">live status page</a>, also kept in the repo as <code>docs/status.html</code>. Smaller deferred tasks are in <code>TASKS.md</code>. This plan holds the decisions and the reasons for them.</p>
 </header>
 
 <section>
@@ -178,8 +179,10 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
     <tbody>
       <tr><td>Deployment</td><td>Self-contained app on the user's laptop. No central server, no accounts.</td><td>Privacy, zero ops, each user owns their data.</td></tr>
       <tr><td>Interface</td><td>Web UI on <code>localhost</code>, fully customizable.</td><td>Any browser, and web code is what agents edit best.</td></tr>
-      <tr><td>Agent protocol</td><td>ACP (Agent Client Protocol) for every agent.</td><td>One protocol for streaming, thinking, tool calls, diffs and permissions.</td></tr>
-      <tr><td>Remote execution</td><td>A small relay on each SSH workspace keeps sessions alive.</td><td>Sessions survive laptop sleep and SSH drops.</td></tr>
+      <tr><td>Agent protocol</td><td>ACP (Agent Client Protocol) for every agent. Agents that do not speak ACP are not in scope.</td><td>One protocol for streaming, thinking, tool calls, diffs and permissions.</td></tr>
+      <tr><td>Agent events</td><td>The raw ACP message is stored unchanged in the relay's log. The relay also attaches normalised, agent-neutral updates to each event, and the UI, usage and analytics read those. <i>This replaces the earlier decision that the UI sees the raw message.</i></td><td>The UI is user code that the Modify agent rewrites. If it parsed raw ACP, every adapter quirk would end up inside each user's copy, where we cannot fix it. The raw log stays the source of truth.</td></tr>
+      <tr><td>Remote execution</td><td>A small relay on each workspace keeps sessions alive. The local machine runs the same relay.</td><td>Sessions survive laptop sleep, SSH drops and closing the app.</td></tr>
+      <tr><td>Relay process model</td><td>The relay is a daemon on a unix socket with owner-only permissions. It keeps running when the app closes. <code>relay --stdio</code> is a thin bridge that starts the daemon when needed and passes messages to the socket. Over SSH (phase 5) the app runs the same bridge command.</td><td>Agents keep working while the app is closed, and local and remote workspaces share one code path.</td></tr>
       <tr><td>Storage</td><td>Embedded SQLite file in the app folder.</td><td>Embedded, no server, one file to back up.</td></tr>
       <tr><td>UI versions</td><td>A hidden git repository in the data folder, run by a bundled git library. Keep = commit; a default UI update = merge into the user's branch, conflicts resolved by the Modify agent. Users never see git.</td><td>Updates without losing the user's changes, using proven merge logic; no git install needed.</td></tr>
       <tr><td>Diff of a session</td><td>Git worktree per session. The diff shows every change since the base branch, committed or not, including new files.</td><td>Same result for every agent, including shell edits; agents often leave work uncommitted.</td></tr>
@@ -191,7 +194,10 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
       <tr><td>Language</td><td>TypeScript end to end on Bun: app, relay, SDK and UI.</td><td>One toolchain to install, and shared types from the relay protocol to the UI.</td></tr>
       <tr><td>Distribution</td><td>Run from source with <code>bun install &amp;&amp; bun dev</code>. Signed Mac <code>.dmg</code> and Homebrew cask for users.</td><td>Contributors start in one command; users install like any Mac app.</td></tr>
       <tr><td>Code quality</td><td>SOLID (single responsibility first) and KISS, written in <code>AGENTS.md</code>; aggressive complexity and size limits that break the build.</td><td>Code stays easy to change, whoever or whatever wrote it.</td></tr>
-      <tr><td>Testing</td><td>End-to-end tests only, in given / when / then form with readable setup and assertion helpers. No unit tests.</td><td>Tests check what users see and survive refactoring.</td></tr>
+      <tr><td>Testing</td><td>End-to-end tests only, in given / when / then form with readable setup and assertion helpers. No unit tests. The end-to-end suite must cover at least 95% of lines, in total and on the lines a change touches. The number must be deterministic, and it is required before any push. Tests run the relay and the app inside the test process, so the coverage tool can see them, and a few tests use the real separate processes.</td><td>Tests check what users see and survive refactoring. Code that no test runs does not ship.</td></tr>
+      <tr><td>How work lands</td><td>No pull requests. An orchestrator (Claude) splits work into briefs for parallel coding subagents (Sonnet) and research subagents (Opus). Each works in its own git worktree. Checked work is pushed straight to <code>main</code>. <code>main</code> must stay green; when it is not, revert first, then fix.</td><td>Fast, small steps with no review queue, and one red commit never blocks everyone else.</td></tr>
+      <tr><td>Code review</td><td>Every agent runs the <code>/code-review</code> skill on its own diff and fixes what it finds before it pushes or hands work back.</td><td>With no pull requests, the review has to happen before the push.</td></tr>
+      <tr><td>Dependency freshness</td><td>Newest versions that are at least 14 days old (Bun's <code>minimumReleaseAge</code>, checked and working). TypeScript is pinned to 6.0.x because typescript-eslint does not support 7 yet. All versions are exact. Overrides for <code>esbuild</code>, <code>minimatch</code> and <code>dompurify</code> clear known audit advisories.</td><td>A new release is rarely a bad one after two weeks, and exact pins make builds repeatable.</td></tr>
       <tr><td>Platform</td><td>The app runs on macOS only (Apple Silicon and Intel). Remote workspaces are Linux.</td><td>One desktop platform to build, sign and test.</td></tr>
       <tr><td>License</td><td>Open source under MIT.</td><td>Short, standard, and provides the software "as is", without warranty or liability for the authors.</td></tr>
       <tr><td>Out of scope</td><td>Linux and Windows as the laptop, Pi, terminal UIs, hosted multi-tenant service.</td><td>Not needed for the first version.</td></tr>
@@ -283,10 +289,10 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
   <details>
     <summary>Relay <small>the daemon on each workspace</small></summary>
     <div class="det">
-      <p>Deployed automatically on first connect (copied over SSH, started as a user service). It must keep working with no laptop attached.</p>
+      <p>The relay is built and runs on the laptop today. On SSH workspaces it will be deployed automatically on first connect (copied over SSH, started as a user service, phase 5). It must keep working with no laptop attached: it is a daemon on a unix socket (owner-only permissions) that keeps running when the app closes, and <code>relay --stdio</code> is a thin bridge that starts it when needed.</p>
       <ul>
         <li>Spawns ACP adapters per session and answers them as the ACP client. Advertises no <code>fs</code> or <code>terminal</code> capability, so agents use their own tools on the workspace.</li>
-        <li>Appends every ACP message to a JSONL file per session with a sequence number.</li>
+        <li>Appends every ACP message, unchanged, to a JSONL file per session with a sequence number. It also attaches normalised updates for the UI to read (see Abstractions below).</li>
         <li>Holds pending permission requests until the user answers, even hours later.</li>
         <li>Creates a git worktree per session, prepared by the repo's setup (below), and serves its diff on request.</li>
         <li><b>Session diff</b> = every change since the branch left its base, committed or not, new files included: the relay takes <code>git merge-base &lt;base&gt; HEAD</code> and diffs the working tree against it, staging untracked files into a throwaway index (<code>GIT_INDEX_FILE</code>) so the real index is never touched.</li>
@@ -294,7 +300,76 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
         <li>Reads agent logs (<code>~/.claude/projects</code>, <code>~/.codex/sessions</code>) or gateway logs for token and cost data.</li>
         <li>Writes skills, hooks and MCP config into each agent's native locations.</li>
       </ul>
-      <p class="muted">Evaluate Rivet's sandbox-agent before writing our own: it already runs Claude Code and Codex behind a daemon with a normalized event stream and remote approvals. It is young (v0.5, first release Jan 2026, one npm maintainer), so lean towards our own thin relay unless it saves a lot. Check its telemetry and whether its event model keeps enough ACP detail.</p>
+      <p class="muted">Decided: our own thin relay. Rivet's sandbox-agent runs Claude Code and Codex behind a daemon too, but it is young (v0.5, first release Jan 2026, one npm maintainer) and speaks HTTP + SSE with its own event model, so we would need an adapter for every relay method. We do not build that.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Relay as built <small>what the code does today</small></summary>
+    <div class="det">
+      <p>The relay runs on the laptop as the local workspace. Every item below has end-to-end tests that run against the mock agent.</p>
+      <ul>
+        <li><b>Agents.</b> One adapter process per session, started over stdio. The relay answers as the ACP client. A tap on the stream records every raw message in both directions, unchanged. The agent kinds today are <code>claude-code</code>, <code>codex</code> and the test-only <code>mock</code>.</li>
+        <li><b>Permission holding.</b> A permission request waits until the user answers, however long that takes. A restart closes anything the dead process left open.</li>
+        <li><b>Event log.</b> One append-only JSONL file per session. Every event gets the next sequence number for that session. The log survives crashes: a half-written last line is skipped, and the app resumes with "events after N".</li>
+        <li><b>Sessions.</b> Created, prompted, cancelled and archived through the relay. The status (starting, running, waiting, idle, done, failed, archived) is derived from the events, never stored separately.</li>
+        <li><b>Worktrees.</b> One per session, with the repo's files copied in, a setup script run, and a port block assigned. The diff since the base branch uses a throwaway git index, so the real one is never touched.</li>
+        <li><b>Files.</b> Tree, read (at base, head or working copy) and write. A save must carry the hash the user last saw, or it is refused. Any path that would escape the worktree is refused.</li>
+        <li><b>Repos store.</b> The repositories the relay knows about, each with its copy-files and setup-script settings.</li>
+        <li><b>Workspace check.</b> A checklist of what works on this machine (git, agents, repos) for the setup screen.</li>
+        <li><b>Usage.</b> Tokens and cost per finished turn, worked out from the events.</li>
+        <li><b>JSON-RPC over the socket.</b> The 18 request methods and 2 notifications below, each with a zod schema in <code>packages/protocol</code>. The bridge and the daemon also work from a compiled binary.</li>
+      </ul>
+      <p>The app side is built too: it connects to the relay and reconnects with backoff, copies events into SQLite, serves the HTTP API and one live SSE stream with Hono, and keeps UI versions in a hidden git repository. The default UI, the Modify agent and the Mac shell are still being built.</p>
+    </div>
+  </details>
+  <details>
+    <summary>What the ACP spike taught us <small>from docs/acp-notes.md</small></summary>
+    <div class="det">
+      <p>Tested with <code>@agentclientprotocol/sdk</code> 2.9.1, <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0. Claude Code is confirmed by real runs. Codex is not yet verified end to end: the OpenAI key we had has no quota, so only start-up and sign-in were seen.</p>
+      <ul>
+        <li><b>The adapters bring their agent.</b> Both packages bundle the agent binary, so no separate <code>claude</code> or <code>codex</code> install is needed. Claude's package is about 430 MB.</li>
+        <li><b>No <code>session/set_model</code>.</b> The SDK has no such method. The model and thinking level are config options, set with <code>session/set_config_option</code>.</li>
+        <li><b>19 update kinds, not 10.</b> <code>user_message_chunk</code>, <code>agent_message_chunk</code>, <code>agent_thought_chunk</code>, <code>tool_call</code>, <code>tool_call_update</code>, <code>plan</code>, <code>plan_update</code>, <code>plan_removed</code>, <code>available_commands_update</code>, <code>current_mode_update</code>, <code>config_option_update</code>, <code>session_info_update</code>, <code>usage_update</code>, <code>notice</code>, <code>compaction_update</code>, <code>compaction_summary_chunk</code>, <code>subagent_update</code>, <code>session_message</code>, <code>session_message_chunk</code>. The relay stores any kind it does not know, untouched.</li>
+        <li><b>Usage comes in two places.</b> <code>usage_update</code> reports how full the context window is and the cumulative cost. Per-turn token counts come with the result of the prompt.</li>
+        <li><b>Diffs arrive with the permission request.</b> Claude sends the old and new text inside <code>session/request_permission</code>, which is the diff to show on an approval screen. Permission option ids differ per adapter, so match on the option kind.</li>
+        <li><b>Loading a session replays it, coalesced.</b> Both adapters can load a session, but the replay merges small chunks into whole messages. Replayed messages must not be appended to our log. Our own log of live messages stays the record; <code>session/resume</code> may suit better than <code>load</code>.</li>
+        <li><b>Codex reconnects quietly.</b> It reports network trouble as a <code>session_info_update</code> and keeps retrying, so the relay needs its own turn timeout.</li>
+        <li><b>Thinking is unconfirmed.</b> No thought chunks appeared in two small prompts, even at high effort.</li>
+      </ul>
+    </div>
+  </details>
+  <details>
+    <summary>Abstractions <small>where change will come, and whether the seams are there</small></summary>
+    <div class="det">
+      <p>From <code>docs/abstractions-review.md</code>. A seam is worth building only when the plan commits to a second implementation, when knowledge already leaks across a package boundary, or when it makes the code testable. Otherwise the answer is "do not abstract yet".</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Area</th><th>What we have</th><th>Verdict</th><th>What we should have</th></tr></thead>
+        <tbody>
+          <tr><td>Where the relay runs, how we reach it</td><td>One connection that starts the relay, and a sync that reconnects.</td><td><span class="pill opt">good enough until SSH</span></td><td>A "workspace target" (how to start the bridge, install the relay, forward a port) and a version check, at the start of phase 5.</td></tr>
+          <tr><td>Agent and protocol</td><td>One agent interface, but raw ACP everywhere above it.</td><td><span class="pill build">missing, needed now</span></td><td>Normalised updates made by the relay. The UI, usage and tests read only those.</td></tr>
+          <tr><td>Where session history comes from</td><td>The relay's log and the app's store.</td><td><span class="pill opt">good enough until import</span></td><td>When import is decided, read-only sources become extra workspaces in the app, and the status logic is shared.</td></tr>
+          <tr><td>Storage</td><td>Interfaces for the log, the repos and the store. Drizzle stays inside the store.</td><td><span class="pill">good as is</span></td><td>A format version on events, and migrations that also work in the compiled binary.</td></tr>
+          <tr><td>Working copy of a session</td><td>Nothing: a git worktree is assumed everywhere.</td><td><span class="pill build">missing, needed now</span></td><td>A "workdir" with two kinds: git worktree and plain directory. The Modify agent needs the plain directory.</td></tr>
+          <tr><td>Commit, push, PR</td><td>Nothing built.</td><td><span class="pill opt">do not abstract</span></td><td>One relay feature that uses git and <code>gh</code>. No interface for other hosts.</td></tr>
+          <tr><td>Model routing and cost</td><td>Environment passed to the agent; one usage source. The chosen model is accepted, then dropped.</td><td><span class="pill opt">good enough until phase 7</span></td><td>Pass the model through. Later, usage readers as a list.</td></tr>
+          <tr><td>Harness config</td><td>Nothing built.</td><td><span class="pill">plan is right</span></td><td>One translator per agent, in one agent registry.</td></tr>
+          <tr><td>App to UI</td><td>A typed SDK over Hono. The UI still runs on example data.</td><td><span class="pill">good, one gap</span></td><td>The SDK takes a custom <code>fetch</code>, and the UI reads all data through one injected client.</td></tr>
+          <tr><td>Clock, ids, spawning, environment</td><td>The clock is injected where tests need it. The rest is direct.</td><td><span class="pill opt">good enough</span></td><td>In phase 5, build the agent's environment explicitly, because the daemon keeps the environment of whichever app first started it.</td></tr>
+          <tr><td>Waiting on you</td><td>The relay works it out; the app re-reads everything; the UI works it out again.</td><td><span class="pill build">partly missing</span></td><td>The relay keeps live summaries and pushes changes, including the pending permission request.</td></tr>
+          <tr><td>Several workspaces</td><td>The store supports them. The API and sync assume one relay.</td><td><span class="pill build">needed by phase 5, cheap now</span></td><td>A workspace id on every live message now; routing in phase 5.</td></tr>
+          <tr><td>Modify agent</td><td>UI versions and the staging workspace are built but not wired.</td><td><span class="pill build">blocked on two items above</span></td><td>Run it as a relay session in a plain directory.</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Five changes in progress now,</b> before more code sits on top:</p>
+      <ol>
+        <li><b>Normalised agent updates.</b> The relay attaches agent-neutral updates (text, tool, plan, mode, notice, usage) to each event. Raw ACP stays in the log.</li>
+        <li><b>A workdir with two kinds</b>, git worktree and plain directory, so the Modify agent can run as an ordinary relay session.</li>
+        <li><b>Live session summaries</b> pushed by the relay, including pending permission requests. This also ends the full-log re-reads on every file or diff request.</li>
+        <li><b>A workspace id on every live message</b>, and a store key of workspace plus session.</li>
+        <li><b>The UI reads all data through one client</b>, which can be given a different <code>fetch</code>, for example one that replays a recorded session.</li>
+      </ol>
+      <p><b>What waits.</b> Phase 5: the workspace target, a version check on <code>relay/hello</code>, an event format version, an explicit agent environment, one sync per workspace, the suite run over SSH to a local <code>sshd</code>, and a test with two local relays. Phase 6: the agent registry with one translator per agent, and MCP servers passed in <code>session/new</code>. Phase 7: usage readers as a list, prices in the app, and analytics that read normalised updates, never raw ACP.</p>
+      <p><b>Never build:</b> a transport or plugin framework; a dependency-injection container or injected id and clock generators nobody asserts on; other backends for the log or store without a requirement; an interface for other git hosts before a second host exists; an adapter that makes sandbox-agent look like our relay; dropping raw ACP from the log; a git abstraction for jj.</p>
     </div>
   </details>
   <details>
@@ -329,23 +404,28 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
     <summary>Data layer <small>what lives in SQLite</small></summary>
     <div class="det">
       <p>Append-only events are the source of truth; everything else is derived and can be rebuilt.</p>
-<pre>workspaces   (id, ssh_host, label, last_seen)
-sessions     (id, workspace_id, agent, model, cwd, worktree,
-              status: running|waiting|idle|done, waiting_reason,
-              started_at, last_event_seq, archived_at)
-events       (session_id, seq, ts, kind, payload_json)   -- raw ACP
+<p><b>Built today</b> (<code>packages/app/src/store/schema.ts</code>, three tables, with Drizzle migrations):</p>
+<pre>workspaces   (id, label, kind: local|ssh, ssh_host, last_seen_at)
+sessions     (id, workspace_id, agent, status, waiting_reason, title,
+              repo_path, branch, base_branch, last_seq,
+              created_at, archived_at)
+events       (workspace_id, session_id, seq, ts, kind, payload_json)
+             -- primary key (workspace_id, session_id, seq); the raw ACP
+             -- message is kept inside payload_json</pre>
+      <p><b>Still planned:</b></p>
+<pre>sessions     + model, workdir kind (worktree|directory)
+             -- key becomes (workspace_id, id)
 tool_calls   (session_id, tool_call_id, kind, title, status, ...)
 usage        (session_id, ts, model, input_tok, output_tok,
               cache_read_tok, cost_usd, source)
-ui_versions  (commit_hash, kind: change|update|undo, prompt,
-              template_version, status, created_at)
-             -- files live in the hidden git repo, not in SQLite
+             -- today the relay works usage out from events on request
 config_items (id, kind: mcp|skill|hook|instructions|agent|command|
               permission|env, name, body_json, version)
 config_scope (item_id, scope: global|workspace|repo, target, enabled)
 secrets      (name, keychain_ref)        -- values stay in OS keychain
 config_state (workspace_id, agent, item_id, deployed_hash,
               observed_hash, status: in_sync|drift|failed)</pre>
+      <p>UI versions are not in SQLite. They live in the hidden git repository (<code>ui.git</code>), so the earlier <code>ui_versions</code> table is dropped.</p>
       <p><b>Waiting on you</b> is derived: a session is waiting when it has an unanswered <code>session/request_permission</code>, or its last prompt returned <code>end_turn</code> with nothing sent since.</p>
     </div>
   </details>
@@ -359,7 +439,7 @@ config_state (workspace_id, agent, item_id, deployed_hash,
     <thead><tr><th>Boundary</th><th>Use</th><th>Status</th></tr></thead>
     <tbody>
       <tr><td>Relay ↔ agent</td><td>ACP (JSON-RPC 2.0 over stdio) with official adapters: <code>@agentclientprotocol/claude-agent-acp</code>, <code>@agentclientprotocol/codex-acp</code>; Gemini CLI and OpenCode are native. Client library: <code>@agentclientprotocol/sdk</code>.</td><td><span class="pill">reuse</span></td></tr>
-      <tr><td>Laptop ↔ relay</td><td>JSON-RPC 2.0 over an SSH channel (<code>ssh host relay --stdio</code>). Same framing as ACP, plus our methods for resume, diff, usage and config deploy. Or adopt sandbox-agent's HTTP + SSE API through an SSH tunnel.</td><td><span class="pill build">thin, ours</span></td></tr>
+      <tr><td>Laptop ↔ relay</td><td>JSON-RPC 2.0, one message per line. On the same machine it goes over the relay's unix socket through the <code>relay --stdio</code> bridge; over SSH (phase 5) the app runs <code>ssh host relay --stdio</code>, which is the same bridge. Same framing as ACP, plus our methods for resume, diff, usage and config deploy. We chose our own relay over sandbox-agent.</td><td><span class="pill build">thin, ours, built</span></td></tr>
       <tr><td>Browser ↔ local app</td><td>HTTP + SSE via Hono, whose typed client becomes the SDK. Hono has no dependencies and runs on Bun's own server.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>UI SDK</td><td><code>@agentcontrol/sdk</code>: typed functions over the API, with doc comments the Modify agent reads.</td><td><span class="pill build">ours</span></td></tr>
       <tr><td>Storage</td><td>SQLite (<code>bun:sqlite</code>) with Drizzle for queries and migrations.</td><td><span class="pill">reuse</span></td></tr>
@@ -379,26 +459,27 @@ config_state (workspace_id, agent, item_id, deployed_hash,
     <summary>Dependencies <small>the rule for adding one, and the audit (Nov 2026)</small></summary>
     <div class="det">
       <p><b>Bun first.</b> Bun already gives us SQLite, the HTTP server, the test runner, process spawning, hashing, globbing, <code>bun audit</code> and single-binary builds. Git and SSH are the system tools on the workspace, and JSON-RPC framing is a few lines of our own. A library is added only when it does something we'd otherwise write hundreds of lines for.</p>
-      <p><b>The bar for a new dependency</b>, checked in the pull request that adds it:</p>
+      <p><b>The bar for a new dependency</b>, checked by the orchestrator, the only one who adds dependencies (there are no pull requests):</p>
       <ul>
         <li>Owned by a known organisation or a long-standing maintainer, with a release in the last 12 months.</li>
         <li>Permissive license: MIT, Apache-2.0, BSD or ISC. Copyleft only for dev tools that never ship.</li>
         <li>Few dependencies of its own. Prefer zero.</li>
-        <li>Exact versions pinned, <code>bun.lock</code> committed, new releases installed only after a few days (Bun's <code>minimumReleaseAge</code>), updates via Dependabot. <code>knip</code> fails the build on any unused dependency.</li>
+        <li>Exact versions pinned, <code>bun.lock</code> committed, new releases installed only when they are at least 14 days old (Bun's <code>minimumReleaseAge</code>, checked and working), updates via Dependabot. <code>knip</code> fails the build on any unused dependency.</li>
       </ul>
       <div class="tablewrap"><table class="deps">
         <thead><tr><th>Library</th><th>Why it's trusted</th><th>Verdict</th></tr></thead>
         <tbody>
-          <tr><td><code>@agentclientprotocol/sdk</code> + <code>claude-agent-acp</code>, <code>codex-acp</code></td><td>Official ACP organisation, Apache-2.0, released weekly. They replace the older <code>@zed-industries</code> adapters. They move fast, so pin versions.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>hono</code></td><td>Since 2021, MIT, zero dependencies, released this week.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>drizzle-orm</code> + <code>drizzle-kit</code></td><td>Since 2021, very widely used, zero runtime dependencies. Still 0.x, so pin.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>zod</code></td><td>Since 2020, MIT, zero dependencies, the de facto TypeScript schema library.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>isomorphic-git</code></td><td>Since 2017, MIT, active (released yesterday), 10 dependencies. Replaces <code>jsdiff</code> and <code>node-diff3</code>.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>react</code>, <code>vite</code>, <code>@vitejs/plugin-react</code>, <code>tailwindcss</code></td><td>Industry standards, MIT, few dependencies.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td><code>monaco-editor</code></td><td>Microsoft, MIT, the editor inside VS Code.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td>shadcn/ui (Radix primitives, <code>lucide-react</code>, <code>clsx</code>, <code>tailwind-merge</code>, <code>class-variance-authority</code>)</td><td>Code is copied into the repo, not installed. Install individual <code>@radix-ui/react-*</code> primitives as needed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
-          <tr><td><code>@playwright/test</code></td><td>Microsoft, one dependency, already in our tooling.</td><td><span class="pill">keep, dev</span></td></tr>
-          <tr><td><code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code></td><td>Industry standards. TypeScript is now 7.x (native compiler): check in Step 1 that typescript-eslint supports it, or pin the version it supports.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>@agentclientprotocol/sdk</code> 2.9.1 (installed in the relay); <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0 (not installed: started with <code>bunx --bun &lt;package&gt;@&lt;exact version&gt;</code>)</td><td>Official ACP organisation, Apache-2.0, released weekly. They replace the older <code>@zed-industries</code> adapters. They move fast, so versions are exact.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>hono</code> 4.13.17 (app and SDK)</td><td>Since 2021, MIT, zero dependencies, released this week.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>drizzle-orm</code> 0.45.4 + <code>drizzle-kit</code> 0.31.11 (dev)</td><td>Since 2021, very widely used, zero runtime dependencies. Still 0.x, so exact pins.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>zod</code> 4.6.7</td><td>Since 2020, MIT, zero dependencies, the de facto TypeScript schema library. Version 4 is the one in use.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>isomorphic-git</code> 1.44.11 (app)</td><td>Since 2017, MIT, active, 10 dependencies. Replaces <code>jsdiff</code> and <code>node-diff3</code>.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>react</code> and <code>react-dom</code> 19.3.1, <code>vite</code> 8.3.6, <code>@vitejs/plugin-react</code> 6.2.1, <code>tailwindcss</code> and <code>@tailwindcss/vite</code> 4.3.5 (default UI)</td><td>Industry standards, MIT, few dependencies. Tailwind 4 is configured through the Vite plugin.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>monaco-editor</code> 0.57.0 (default UI)</td><td>Microsoft, MIT, the editor inside VS Code.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td>shadcn/ui pieces: <code>@radix-ui/react-dialog</code> 1.3.1, <code>-scroll-area</code> 1.4.0, <code>-slot</code> 1.5.0, <code>-tabs</code> 1.2.1; <code>lucide-react</code> 1.70.0, <code>clsx</code>, <code>tailwind-merge</code>, <code>class-variance-authority</code></td><td>Code is copied into the repo, not installed. Only the individual <code>@radix-ui/react-*</code> primitives in use are installed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
+          <tr><td><code>@playwright/test</code></td><td>Not a dependency of the repo today. Browser tests will use a Playwright that is already installed on the machine. Whether to add it as a pinned dev dependency is still to be decided, when the browser tests are written.</td><td><span class="pill build">to be decided</span></td></tr>
+          <tr><td><code>typescript</code> 6.0.3, <code>eslint</code> 10.14.0, <code>typescript-eslint</code> 8.72.1, <code>@types/bun</code></td><td>Industry standards. TypeScript is pinned to 6.0.x because typescript-eslint does not support 7 (the native compiler) yet. Dependabot is told to skip TypeScript major versions until it does.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td>Overrides: <code>esbuild</code> 0.25.12, <code>minimatch</code> 11.0.9, <code>dompurify</code> 3.4.17</td><td>Transitive packages (through Vite, the lint tools and Monaco) that had audit advisories. The root <code>package.json</code> forces a fixed version so <code>bun audit</code> passes. Remove each override when its parent catches up.</td><td><span class="pill build">override</span></td></tr>
           <tr><td><code>eslint-plugin-sonarjs</code></td><td>SonarSource, since 2018, for cognitive complexity. LGPL-3.0, which is fine for a dev tool that never ships.</td><td><span class="pill">keep, dev</span></td></tr>
           <tr><td><code>@eslint-community/eslint-plugin-eslint-comments</code></td><td>ESLint community organisation, two dependencies.</td><td><span class="pill">keep, dev</span></td></tr>
           <tr><td><code>dependency-cruiser</code>, <code>knip</code>, <code>jscpd</code></td><td>Each the reference tool for its job (layering, dead code, duplication), active for years, released this month.</td><td><span class="pill">keep, dev</span></td></tr>
