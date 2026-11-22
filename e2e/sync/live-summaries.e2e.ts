@@ -1,14 +1,12 @@
 import { afterEach, test } from "bun:test";
-import {
-  expectSessionWaitingForApproval,
-  expectSessionWaitingForReply,
-} from "../support/expect/app-expectations.ts";
+import { expectSessionWaitingForApproval } from "../support/expect/app-expectations.ts";
 import {
   expectEveryMessageToNameTheWorkspace,
   expectRecordHoldsRequestToRunCommand,
   expectStreamPushedRequestToRunCommand,
   expectStreamPushedSessionWaitingForReply,
 } from "../support/expect/live-stream-expectations.ts";
+import { userOpensReadmeOfFinishedSession } from "../support/setup/app-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { listensToTheLiveStream } from "../support/setup/live-stream.ts";
 import { startAppWithLocalWorkspace } from "../support/setup/start-app.ts";
@@ -70,10 +68,7 @@ test("records and live messages about a session all name its workspace", async (
   // ********************************************************************
   const app = await startAppWithLocalWorkspace();
   const stream = await listensToTheLiveStream(app);
-  app.mockAgent.willReply("Ready");
-  const session = await app.user.startsSession({ prompt: "Look at the readme" });
-  await expectSessionWaitingForReply(app, session);
-  const opened = await app.user.opensFile(session, "README.md");
+  const { session, opened } = await userOpensReadmeOfFinishedSession(app);
   await app.sdk.files.tree(session.id);
 
   // ********************************************************************

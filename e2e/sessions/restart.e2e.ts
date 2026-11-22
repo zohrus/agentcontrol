@@ -2,9 +2,9 @@ import { afterEach, test } from "bun:test";
 import {
   expectSessionHistoryToBeReplayed,
   expectSessionListedAs,
-  expectSessionWaitingForApproval,
   expectSessionWaitingForReply,
 } from "../support/expect/session-expectations.ts";
+import { startRelayWithSessionWaitingToRunNpmTest } from "../support/setup/relay-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
@@ -37,10 +37,7 @@ test("after the relay restarts, a session whose turn was open is listed as faile
   // ********************************************************************
   // ** GIVEN a session whose agent is waiting for approval to run `npm test`
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willAskToRunCommand("npm test");
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForApproval(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingToRunNpmTest();
 
   // ********************************************************************
   // ** WHEN the relay daemon restarts

@@ -1,6 +1,7 @@
 import { afterEach, test } from "bun:test";
 import { expectDiffToListChangedFile } from "../support/expect/diff-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
+import { startRelayWithSessionWhereAgentEdited } from "../support/setup/relay-sessions.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
 afterEach(cleanUpAfterTest);
@@ -28,11 +29,8 @@ test("the session diff includes a new untracked file and a committed change toge
   // ********************************************************************
   // ** GIVEN an agent that will create src/server.ts without committing it
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willEditFile("src/server.ts");
+  const { relay, session } = await startRelayWithSessionWhereAgentEdited("src/server.ts");
   // AND the agent has finished its turn in a new session
-  const session = await relay.user.startsSession({ prompt: "Add a server" });
-  await relay.user.waitsForTheAgentToFinish(session);
 
   // ********************************************************************
   // ** WHEN a change to README.md is committed on the session's branch

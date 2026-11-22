@@ -4,6 +4,7 @@ import {
   type JsonRpcFailure,
   type JsonRpcMessage,
   type JsonRpcSuccess,
+  linesOf,
   parseMessageLine,
   RelayName,
   RelayNotifications,
@@ -40,16 +41,6 @@ export interface RelayClient {
 interface Pending {
   resolve: (result: unknown) => void;
   reject: (error: Error) => void;
-}
-
-async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<string> {
-  const decoder = new TextDecoder();
-  let rest = "";
-  for await (const chunk of stream) {
-    const lines = (rest + decoder.decode(chunk, { stream: true })).split("\n");
-    rest = lines.pop() ?? "";
-    yield* lines.filter((line) => line !== "");
-  }
 }
 
 interface ClientState {

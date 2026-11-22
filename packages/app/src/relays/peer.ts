@@ -2,9 +2,9 @@ import {
   type JsonRpcFailure,
   type JsonRpcMessage,
   type JsonRpcSuccess,
+  linesOf,
   parseMessageLine,
 } from "@agentcontrol/protocol";
-import { linesOf } from "./lines.ts";
 
 /** A failure answered by the relay, with its JSON-RPC code and optional data. */
 export class RelayCallError extends Error {

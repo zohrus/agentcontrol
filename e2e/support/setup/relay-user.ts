@@ -1,20 +1,15 @@
 import { join } from "node:path";
 import { RelayName } from "@agentcontrol/protocol";
-import type { PermissionOption, SessionEvent } from "@agentcontrol/protocol";
+import type { SessionEvent } from "@agentcontrol/protocol";
 import { editorUserOf } from "./editor-user.ts";
 import { git } from "./git.ts";
+import { optionOfKind } from "./permission-option.ts";
 import type { RelayAccess, Session } from "./relay.ts";
 import { forSession, worktreeOf } from "./session-events.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
 
 const isRequestFor = (session: Session) => forSession(session, "permission-requested");
-
-function optionOfKind(options: PermissionOption[], kind: string, title: string): string {
-  const option = options.find((candidate) => candidate.kind === kind);
-  if (!option) throw new Error(`the agent offered no "${kind}" option for "${title}"`);
-  return option.optionId;
-}
 
 async function answer(relay: RelayAccess, call: { session: Session; kind: string }): Promise<void> {
   const { session } = call;

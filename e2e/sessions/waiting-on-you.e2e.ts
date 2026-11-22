@@ -7,6 +7,7 @@ import {
   expectSessionWaitingForReply,
   expectSessionWaitingForSetupFix,
 } from "../support/expect/session-expectations.ts";
+import { startRelayWithSessionWaitingToRunNpmTest } from "../support/setup/relay-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
@@ -37,12 +38,10 @@ test("after the user allows the command the agent finishes and the session waits
   // ********************************************************************
   // ** GIVEN an agent that will ask to run `npm test`, then reply "Tests pass"
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willAskToRunCommand("npm test");
-  relay.mockAgent.willReply("Tests pass");
   // AND the user has started a session that is waiting for approval
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForApproval(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingToRunNpmTest({
+    thenReplies: "Tests pass",
+  });
 
   // ********************************************************************
   // ** WHEN the user allows the command

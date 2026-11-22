@@ -131,7 +131,7 @@ Limits only ever go down.
 | Types | `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`, `noUnused*`, `noFallthroughCasesInSwitch`; typescript-eslint `strict-type-checked` |
 | Architecture | dependency-cruiser: layering above, no cycles, no feature internals |
 | Dead code | knip: unused files, exports, dependencies |
-| Duplication | jscpd: 50+ tokens, threshold 1% |
+| Duplication | jscpd: 50+ tokens, no clones allowed (threshold 0) |
 | Escape hatches | `--max-warnings 0`; every `eslint-disable` needs a written reason; unused disables are errors |
 | Formatting | Biome (formatter only) |
 | Security | `bun audit`, gitleaks, Dependabot |

@@ -5,16 +5,17 @@ import {
   expectSaveToBeRefusedAsStale,
 } from "../support/expect/file-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
+import { startRelayWithSessionWhereAgentEdited } from "../support/setup/relay-sessions.ts";
 
 afterEach(cleanUpAfterTest);
 
-async function startSessionWhereAgentEditedReadme() {
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willEditFile("README.md");
-  const session = await relay.user.startsSession({ prompt: "Reword the readme" });
-  await relay.user.waitsForTheAgentToFinish(session);
-  return { relay, session };
+const startSessionWhereAgentEditedReadme = () => startRelayWithSessionWhereAgentEdited("README.md");
+
+async function startSessionWithReadmeOpened() {
+  const { relay, session } = await startSessionWhereAgentEditedReadme();
+  const path = "README.md";
+  const seen = await relay.user.readsFile(session, { path, ref: "working" });
+  return { relay, session, path, seen };
 }
 
 test("reading a changed file at base and in the working copy returns the old and new content", async () => {
@@ -40,9 +41,7 @@ test("saving a file with the hash the user last saw succeeds", async () => {
   // ********************************************************************
   // ** GIVEN a session whose README.md the user has opened
   // ********************************************************************
-  const { relay, session } = await startSessionWhereAgentEditedReadme();
-  const path = "README.md";
-  const seen = await relay.user.readsFile(session, { path, ref: "working" });
+  const { relay, session, path, seen } = await startSessionWithReadmeOpened();
 
   // ********************************************************************
   // ** WHEN the user saves new content with the hash they saw
@@ -59,9 +58,7 @@ test("saving a file with a stale hash is refused", async () => {
   // ********************************************************************
   // ** GIVEN a session whose README.md the user opened, and then changed elsewhere
   // ********************************************************************
-  const { relay, session } = await startSessionWhereAgentEditedReadme();
-  const path = "README.md";
-  const seen = await relay.user.readsFile(session, { path, ref: "working" });
+  const { relay, session, path, seen } = await startSessionWithReadmeOpened();
   await relay.user.savesFile(session, { path, content: "# Elsewhere\n", hash: seen.hash });
 
   // ********************************************************************

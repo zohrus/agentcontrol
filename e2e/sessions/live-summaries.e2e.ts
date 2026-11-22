@@ -9,6 +9,7 @@ import {
   expectSessionWaitingForApproval,
   expectSessionWaitingForReply,
 } from "../support/expect/session-expectations.ts";
+import { startRelayWithSessionWaitingToRunNpmTest } from "../support/setup/relay-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { forSession } from "../support/setup/session-events.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
@@ -38,11 +39,9 @@ test("answering the request removes it from the session's list row", async () =>
   // ********************************************************************
   // ** GIVEN a session waiting for approval to run `npm test`
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willAskToRunCommand("npm test");
-  relay.mockAgent.willReply("Tests pass");
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForApproval(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingToRunNpmTest({
+    thenReplies: "Tests pass",
+  });
 
   // ********************************************************************
   // ** WHEN the user allows the command
@@ -90,10 +89,7 @@ test("after the relay restarts, a session that was waiting for approval has no r
   // ********************************************************************
   // ** GIVEN a session waiting for approval to run `npm test`
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willAskToRunCommand("npm test");
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForApproval(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingToRunNpmTest();
 
   // ********************************************************************
   // ** WHEN the relay daemon restarts, which ends the agent

@@ -1,6 +1,7 @@
-import type { FileContent, PermissionOption, SessionEvent } from "@agentcontrol/sdk";
+import type { FileContent, SessionEvent } from "@agentcontrol/sdk";
 import { ApiError } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
+import { optionOfKind } from "./permission-option.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
 
@@ -8,12 +9,6 @@ type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>
 export type SaveOutcome =
   | { saved: true; hash: string }
   | { saved: false; status: number; code: string; currentHash: string | undefined };
-
-function optionOfKind(options: PermissionOption[], kind: string, title: string): string {
-  const option = options.find((candidate) => candidate.kind === kind);
-  if (!option) throw new Error(`the agent offered no "${kind}" option for "${title}"`);
-  return option.optionId;
-}
 
 const isRequestFor = (session: Session) => (event: SessionEvent) =>
   event.kind === "permission-requested" && event.sessionId === session.id;

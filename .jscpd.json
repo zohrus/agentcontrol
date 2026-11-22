@@ -1,9 +1,10 @@
 {
-  "path": ["packages", "e2e", "spike"],
+  "//": "Any clone of 50+ tokens fails the build (threshold 0), so growth cannot dilute the gate; prove-gates checks it, and CI runs prove-gates. Ignored: node_modules and dist (not our code), packages/app/drizzle (generated migrations), e2e/fixtures (recorded agent data repeats by nature).",
+  "path": ["packages", "e2e", "spike", "scripts"],
   "format": ["typescript", "tsx"],
   "minTokens": 50,
-  "threshold": 1,
-  "ignore": ["**/node_modules/**"],
+  "threshold": 0,
+  "ignore": ["**/node_modules/**", "**/dist/**", "packages/app/drizzle/**", "e2e/fixtures/**"],
   "reporters": ["console"],
   "gitignore": true
 }
