@@ -1,0 +1,22 @@
+/** Every relay method and notification name, as constants. */
+export const RelayName = {
+  hello: "relay/hello",
+  sessionsList: "relay/sessions.list",
+  sessionsCreate: "relay/sessions.create",
+  eventsSubscribe: "relay/events.subscribe",
+  prompt: "relay/prompt",
+  permissionRespond: "relay/permission.respond",
+  cancel: "relay/cancel",
+  diff: "relay/diff",
+  sessionsArchive: "relay/sessions.archive",
+  workspaceCheck: "relay/workspace.check",
+  reposAdd: "relay/repos.add",
+  reposList: "relay/repos.list",
+  reposSetSetup: "relay/repos.setSetup",
+  fsTree: "relay/fs.tree",
+  fsRead: "relay/fs.read",
+  fsWrite: "relay/fs.write",
+  fsWatch: "relay/fs.watch",
+  event: "relay/event",
+  fsChanged: "relay/fs.changed",
+} as const;
