@@ -35,7 +35,7 @@ export function configHandlers(homeDir: string): Pick<Handlers, ConfigMethods> {
       planConfig({ items, agents, homeDir, repoPath }),
     [N.configApply]: ({ planId }) => reportStale(applyConfig({ planId })),
     [N.configRollback]: async ({ backupId }) => ({
-      restored: await rollbackConfig({ backupId, homeDir }),
+      restored: await reportStale(rollbackConfig({ backupId, homeDir })),
     }),
     [N.configDrift]: () => detectDrift({ homeDir }),
   };

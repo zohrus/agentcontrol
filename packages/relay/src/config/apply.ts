@@ -3,7 +3,7 @@ import type { ApplyResult, ConfigFileChange } from "@agentcontrol/protocol";
 import { createBackup, rollbackConfig } from "./backup.ts";
 import { readText, writeAtomic } from "./fs.ts";
 import { manifestPath, serializeManifest } from "./manifest.ts";
-import { type StoredPlan, StalePlanError, forgetPlan, takePlan } from "./plan.ts";
+import { type StoredPlan, StalePlanError, takePlan } from "./plan.ts";
 
 async function assertUnchanged(plan: StoredPlan): Promise<void> {
   const checks = [
@@ -49,7 +49,6 @@ export async function applyConfig(input: { planId: string }): Promise<ApplyResul
     throw new StalePlanError("unknown plan: it was never made or has already been applied");
   await assertUnchanged(plan);
   const backupId = await backUpAndWrite(plan);
-  forgetPlan(input.planId);
   const written = plan.changes.filter((c) => c.action !== "delete").map((c) => c.path);
   return { backupId, written };
 }

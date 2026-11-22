@@ -89,9 +89,16 @@ const formatOf = (group: Entry[], prior: ManifestFile | undefined): Format =>
 const under = (path: string, root: string | undefined): boolean =>
   root !== undefined && path.startsWith(`${root}/`);
 
-/** A file this plan can speak for: in the home folder or in the repo the plan was made for. */
+const GLOBAL_FOLDERS = [".claude", ".codex", ".agents", ".agentcontrol"];
+
+/** The agents' own files in the home folder, not the repos that happen to live below it. */
+const isGlobalFile = (file: string, home: string): boolean =>
+  file === `${home}/.claude.json` ||
+  GLOBAL_FOLDERS.some((folder) => under(file, `${home}/${folder}`));
+
+/** A file this plan can speak for: the agents' global files, or the repo the plan was made for. */
 const inScope = (file: string, ctx: RenderCtx): boolean =>
-  under(file, ctx.homeDir) || under(file, ctx.repoPath);
+  isGlobalFile(file, ctx.homeDir) || under(file, ctx.repoPath);
 
 /** What we own in repos this plan does not cover stays owned, untouched. */
 function carryOver(input: {

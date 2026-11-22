@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { isMissing, writeAtomic } from "./fs.ts";
+import { StalePlanError } from "./plan.ts";
 
 interface BackupMeta {
   files: { path: string; blob: string | null }[];
@@ -38,7 +39,9 @@ export async function rollbackConfig(input: {
   homeDir: string;
 }): Promise<string[]> {
   const dir = backupDir(input.homeDir, input.backupId);
-  const meta = JSON.parse(await readFile(join(dir, "meta.json"), "utf8")) as BackupMeta;
+  const text = await readFile(join(dir, "meta.json"), "utf8").catch(() => undefined);
+  if (text === undefined) throw new StalePlanError(`there is no backup "${input.backupId}"`);
+  const meta = JSON.parse(text) as BackupMeta;
   for (const { path, blob } of meta.files) {
     if (blob === null) await rm(path, { force: true });
     else await writeAtomic(path, await readFile(join(dir, blob)));

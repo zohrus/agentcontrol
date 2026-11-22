@@ -137,3 +137,20 @@ test("two different items with the same id are refused instead of one silently w
   // ********************************************************************
   expectRequestToBeRefusedAs(refusal, "invalid-request");
 });
+
+test("rolling back to a backup that does not exist is refused", async () => {
+  // ********************************************************************
+  // ** GIVEN the app with an empty home folder
+  // ********************************************************************
+  const app = await startAppWithEmptyHome();
+
+  // ********************************************************************
+  // ** WHEN the user asks to roll back to a backup that was never made
+  // ********************************************************************
+  const refusal = await app.user.triesToRollBackTo("2020-01-01-abcdef");
+
+  // ********************************************************************
+  // ** THEN the app says the plan or backup is no longer there
+  // ********************************************************************
+  expectRequestToBeRefusedAs(refusal, "config-plan-stale");
+});

@@ -35,8 +35,12 @@ function remember(planId: string, plan: StoredPlan): void {
   }
 }
 
-export const takePlan = (planId: string): StoredPlan | undefined => stored.get(planId);
-export const forgetPlan = (planId: string): void => void stored.delete(planId);
+/** A plan can be applied once: taking it removes it, so a repeated or concurrent apply finds none. */
+export function takePlan(planId: string): StoredPlan | undefined {
+  const plan = stored.get(planId);
+  stored.delete(planId);
+  return plan;
+}
 
 function mergeResults(results: RenderResult[]): RenderResult {
   return {
