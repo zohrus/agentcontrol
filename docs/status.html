@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 22:20 UTC";
+const UPDATED = "22 Nov 2026, 23:10 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -207,6 +207,7 @@ const C = [
   { id:"coverage", phase:"p0", name:"Coverage gate", status:"done", desc:"End-to-end line coverage must be at least 95%, in total and on changed lines; now 97.95%. Deterministic: five identical runs. Enforced in the check, before every push and in CI. The UI package is not counted yet.", path:"scripts/coverage.ts" },
   { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"progress", desc:"Done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages. In progress: workdir seam (worktree or plain folder), single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
+  { id:"server-security", phase:"p2", name:"Local server lock-down", status:"progress", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app.", path:"packages/app/src/security" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
@@ -223,15 +224,15 @@ const C = [
   { id:"sync", phase:"p2", name:"Sync", status:"done", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
   { id:"session-status", phase:"p2", name:"Session status", status:"done", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
   { id:"api", phase:"p2", name:"API", status:"done", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
-  { id:"workspace-setup", phase:"p1", name:"Workspace setup", status:"progress", desc:"Guided checklist with Check and repair: machine, relay, agents, repos, imported config.", path:"packages/app/src/setup" },
+  { id:"workspace-setup", phase:"p1", name:"Workspace setup", status:"done", desc:"Guided checklist with Check and repair: machine, relay, agents, repos, imported config.", path:"packages/app/src/setup" },
   { id:"archive", phase:"p1", name:"Archive", status:"done", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
   // Phase 3
   { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"done", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
-  { id:"ui-shell", phase:"p3", name:"Default UI", status:"progress", desc:"Scaffold done: shell, session list, session view, Monaco changes panel, with example data. Now adding dialogs and the Modify panel; live data comes next.", path:"packages/ui-template" },
-  { id:"ui-server", phase:"p3", name:"UI server", status:"progress", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
-  { id:"session-list", phase:"p3", name:"Session list", status:"progress", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
-  { id:"session-view", phase:"p3", name:"Session view", status:"progress", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
-  { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"progress", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
+  { id:"ui-shell", phase:"p3", name:"Default UI", status:"done", desc:"Runs on live data through the SDK: start a session, prompt, cancel, approve, archive, diff, editor, workspace setup. 10 browser tests. Not yet connected: the Modify panel and Analytics.", path:"packages/ui-template" },
+  { id:"ui-server", phase:"p3", name:"UI server", status:"done", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
+  { id:"session-list", phase:"p3", name:"Session list", status:"done", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
+  { id:"session-view", phase:"p3", name:"Session view", status:"done", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
+  { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"done", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
   { id:"html-preview", phase:"p3", name:"HTML preview (browser support)", status:"planned", desc:"Render an HTML file from a session's worktree inside the app, in a sandboxed Preview tab that refreshes when the agent edits it.", path:"" },
   { id:"md-preview", phase:"p3", name:"Markdown preview", status:"planned", desc:"Rendered Markdown in the Preview tab. Only if a maintained open-source library passes our dependency rules (marked, markdown-it or micromark to evaluate).", path:"" },
   // Phase 4
@@ -258,7 +259,8 @@ const C = [
 ];
 
 const NOW = [
-  "Three finished branches being rebased onto the coverage gate, landing one at a time: UI on live data, Modify backend, harness config",
+  "Modify backend and harness config: being rebased onto the coverage gate, landing one at a time",
+  "Local server lock-down: Host check, Origin check, secret token",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
@@ -281,6 +283,7 @@ const LOG = [
   ["22 Nov 2026 20:30", "Plan brought fully up to date and republished. New task: console access from inside the app for SSH workspaces (phase 5), using xterm.js. All subagents resumed after a usage-limit pause; no work lost."],
   ["22 Nov 2026 21:15", "Landed through the integrate script: normalised agent updates (14 tests), live session summaries and workspace ids (listing 50 big sessions went from about 350 ms to 2 ms), and the duplication gate tightened to zero clones. Found and fixed four gate proofs that had silently stopped failing; proofs now run in CI."],
   ["22 Nov 2026 22:20", "Coverage gate landed: 97.95% of lines covered by end-to-end tests, five identical runs, 44 new tests, suite down from about 23 s to 4 s by running the relay and app in-process. Finished on their branches and waiting to land: UI on live data with 8 browser tests, Modify backend with 11 tests, harness config verified against real Claude Code and Codex."],
+  ["22 Nov 2026 23:10", "UI on live data landed: every action wired through the SDK, served by the app with hot reload, 10 browser tests, reading normalised updates only. Playwright added as a dependency so browser tests run in CI. Local server lock-down started."],
 ];
 /* ===== END DATA ===== */
 

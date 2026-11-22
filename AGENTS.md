@@ -148,7 +148,7 @@ Approved: `@agentclientprotocol/sdk`, `claude-agent-acp`, `codex-acp`, `hono`, `
 `drizzle-kit`, `zod`, `isomorphic-git`, `react`, `vite`, `@vitejs/plugin-react`, `tailwindcss`,
 `monaco-editor` (used directly), shadcn/ui code copied in with individual `@radix-ui/react-*`
 primitives, `lucide-react`, `clsx`, `tailwind-merge`, `class-variance-authority`; dev:
-`@playwright/test`, `typescript`, `eslint`, `typescript-eslint`, `eslint-plugin-sonarjs`,
+`playwright` (pinned to the version whose browser CI installs), `typescript`, `eslint`, `typescript-eslint`, `eslint-plugin-sonarjs`,
 `@eslint-community/eslint-plugin-eslint-comments`, `dependency-cruiser`, `knip`, `jscpd`,
 `@biomejs/biome`, `lefthook`.
 
