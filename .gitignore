@@ -8,5 +8,3 @@ coverage/
 .env.*
 !.env.example
 
-# ACP spike logs
-spike/logs/

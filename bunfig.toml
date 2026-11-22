@@ -1,8 +1,3 @@
 [install]
-# Only install packages published at least 14 days ago (seconds)
+# Only install packages published at least 14 days ago (seconds).
 minimumReleaseAge = 1209600
-
-[test]
-# Bun only auto-discovers *.test.ts / *.spec.ts / _test_ / _spec_ files; e2e tests are
-# named *.e2e.ts, so the "test" script passes the e2e directory explicitly.
-root = "e2e"

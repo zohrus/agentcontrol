@@ -21,7 +21,7 @@ const stepSchema = z.discriminatedUnion("kind", [
 ]);
 
 /** One list of steps per prompt turn: the first prompt runs turn 0, the second turn 1, and so on. */
-export const scriptSchema = z.object({ turns: z.array(z.array(stepSchema)) });
+const scriptSchema = z.object({ turns: z.array(z.array(stepSchema)) });
 
 export type Step = z.infer<typeof stepSchema>;
 export type MockAgentScript = z.infer<typeof scriptSchema>;

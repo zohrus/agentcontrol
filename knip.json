@@ -2,32 +2,10 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
-      "entry": [
-        "scripts/*.ts",
-        "spike/*.ts",
-        "eslint.config.js"
-      ],
-      "project": [
-        "scripts/**/*.ts",
-        "spike/**/*.ts"
-      ]
+      "entry": ["scripts/*.ts", "spike/*.ts"],
+      "project": ["scripts/**/*.ts", "spike/**/*.ts"]
     },
-    "packages/*": {
-      "entry": [
-        "src/index.ts"
-      ],
-      "project": [
-        "src/**/*.ts",
-        "src/**/*.tsx"
-      ]
-    },
-    "e2e": {
-      "entry": [
-        "**/*.e2e.ts"
-      ],
-      "project": [
-        "**/*.ts"
-      ]
-    }
+    "packages/*": { "project": ["src/**/*.ts"] },
+    "e2e": { "entry": ["**/*.e2e.ts", "support/mock-agent/main.ts"], "project": ["**/*.ts"] }
   }
 }
