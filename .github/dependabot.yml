@@ -1,10 +1,22 @@
+# The orchestrator applies these updates by hand (no pull requests are merged). Grouping keeps
+# the noise to one weekly pull request per ecosystem.
 version: 2
 updates:
   - package-ecosystem: bun
     directory: /
     schedule:
       interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      # Pinned to 6.0.x until typescript-eslint supports 7 (docs/decisions/0001).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

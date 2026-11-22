@@ -1,24 +1,52 @@
 name: ci
+# scripts/integrate.ts runs the full check before it lands anything on main, so CI on main is the
+# second opinion on a clean machine. queue/** branches can be pushed by hand to try a candidate.
+# There are no pull requests, so there is no pull_request trigger.
 on:
   push:
-  pull_request:
+    branches: [main, "queue/**"]
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  # Never cancel a run on main: a red commit must always report back.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # The audit needs the network and the advisory feed, so it runs in audit.yml instead.
+      CHECK_SKIP: audit
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: node_modules/.cache
+          key: tools-${{ runner.os }}-${{ hashFiles('bun.lock', 'eslint.config.js', 'tsconfig*.json') }}
+          restore-keys: tools-${{ runner.os }}-
       - run: bun install --frozen-lockfile
+      - name: Git identity for the tests that create repositories
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.invalid
+          git config --global init.defaultBranch main
       - run: bun run check
 
   gitleaks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
