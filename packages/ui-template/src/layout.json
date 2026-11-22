@@ -1,0 +1,9 @@
+{
+  "topBar": ["brand", "search", "spacer", "config", "analytics", "modify", "new-session"],
+  "panes": [
+    { "slot": "sessions", "width": 260 },
+    { "slot": "session" },
+    { "slot": "changes", "width": 420 }
+  ],
+  "statusBar": ["waiting", "running", "today", "spacer", "connections"]
+}

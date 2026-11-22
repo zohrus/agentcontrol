@@ -1,0 +1,28 @@
+import type { SlotMap } from "./bar-slots.tsx";
+
+export type StatusStats = {
+  waiting: number;
+  running: number;
+  /** Cost so far today, already formatted, for example "$14.20". */
+  today: string;
+  /** Names of the connected workspaces. */
+  connected: readonly string[];
+};
+
+function Count({ value, label }: { value: string | number; label: string }) {
+  return (
+    <span>
+      <b className="font-medium text-fg">{value}</b> {label}
+    </span>
+  );
+}
+
+/** Default status bar slots: waiting, running, cost today and connected workspaces. */
+export function defaultStatusBarSlots(stats: StatusStats): SlotMap {
+  return {
+    waiting: <Count value={stats.waiting} label="waiting" />,
+    running: <Count value={stats.running} label="running" />,
+    today: <Count value={stats.today} label="today" />,
+    connections: <span>{stats.connected.map((name) => `${name} connected`).join(" · ")}</span>,
+  };
+}

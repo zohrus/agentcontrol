@@ -68,6 +68,6 @@ module.exports = {
       exportsFields: ["exports"],
       conditionNames: ["import", "require", "node", "default", "types"],
     },
-    exclude: { path: "(^|/)node_modules/" },
+    exclude: { path: "(^|/)(node_modules|dist)/" },
   },
 };
