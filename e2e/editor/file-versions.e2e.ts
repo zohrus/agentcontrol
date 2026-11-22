@@ -4,6 +4,7 @@ import { expectFileToRead } from "../support/expect/file-expectations.ts";
 import { expectRefusal } from "../support/expect/refusal-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
+import { startRelayWithSessionWhereAgentEdited } from "../support/setup/relay-sessions.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -34,10 +35,7 @@ test("reading a file the agent created at the base version is refused", async ()
   // ********************************************************************
   // ** GIVEN a session where the agent created src/server.ts
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willEditFile("src/server.ts");
-  const session = await relay.user.startsSession({ prompt: "Add a server" });
-  await relay.user.waitsForTheAgentToFinish(session);
+  const { relay, session } = await startRelayWithSessionWhereAgentEdited("src/server.ts");
 
   // ********************************************************************
   // ** WHEN the user opens src/server.ts at its base version

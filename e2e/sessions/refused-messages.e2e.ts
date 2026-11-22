@@ -5,11 +5,11 @@ import {
   expectPendingRequestWithdrawn,
   expectSessionRunning,
   expectSessionWaitingForApproval,
-  expectSessionWaitingForReply,
   expectSessionWaitingForSetupFix,
 } from "../support/expect/session-expectations.ts";
 import { expectNoCommandToHaveRun } from "../support/expect/turn-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
+import { startRelayWithSessionWaitingForReply } from "../support/setup/relay-sessions.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
 afterEach(cleanUpAfterTest);
@@ -18,10 +18,7 @@ test("a message to a session whose agent is gone is refused", async () => {
   // ********************************************************************
   // ** GIVEN a session whose agent finished its turn, and then the relay restarted
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willReply("Tests pass");
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForReply(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingForReply("Tests pass");
   await relay.restartsTheRelay();
 
   // ********************************************************************

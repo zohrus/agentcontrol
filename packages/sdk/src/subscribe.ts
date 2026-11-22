@@ -45,12 +45,32 @@ async function readStream(url: string, handlers: Handlers, signal: AbortSignal):
   }
 }
 
-/** Waits before the next reconnect. An unsubscribe is noticed when it ends, at most `ms` later. */
-function pause(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/** A reconnect pause that can be cut short: `wake` ends it now and clears its timer. */
+function reconnectPause() {
+  let wake = (): void => undefined;
+  const pause = (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+    });
+  return {
+    pause,
+    wake: () => {
+      wake();
+    },
+  };
 }
 
-async function keepReading(url: string, handlers: Handlers, signal: AbortSignal): Promise<void> {
+async function keepReading(options: {
+  url: string;
+  handlers: Handlers;
+  signal: AbortSignal;
+  pause: (ms: number) => Promise<void>;
+}): Promise<void> {
+  const { url, handlers, signal, pause } = options;
   while (!signal.aborted) {
     await readStream(url, handlers, signal).catch(() => undefined);
     await pause(RECONNECT_MS);
@@ -60,8 +80,15 @@ async function keepReading(url: string, handlers: Handlers, signal: AbortSignal)
 /** Opens the live stream and keeps it open, reconnecting after drops. Returns the unsubscribe function. */
 export function subscribeTo(streamUrl: string, listeners: Listeners): () => void {
   const abort = new AbortController();
-  void keepReading(streamUrl, handlersOf(listeners), abort.signal);
+  const { pause, wake } = reconnectPause();
+  void keepReading({
+    url: streamUrl,
+    handlers: handlersOf(listeners),
+    signal: abort.signal,
+    pause,
+  });
   return () => {
     abort.abort();
+    wake();
   };
 }

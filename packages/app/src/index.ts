@@ -8,4 +8,4 @@ export { createUiWorkspace } from "./ui-workspace/index.ts";
 export type { AppOptions, RunningApp } from "./start.ts";
 export { startApp } from "./start.ts";
 export type { RelayClient, RelayTransport } from "./relays/index.ts";
-export { relayClientOver } from "./relays/index.ts";
+export { relayClientOver, spawnRelayBridge } from "./relays/index.ts";

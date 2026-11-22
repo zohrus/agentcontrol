@@ -2,11 +2,10 @@ import { afterEach, test } from "bun:test";
 import {
   expectSessionHistoryToBeReplayed,
   expectSessionListedAs,
-  expectSessionWaitingForReply,
 } from "../support/expect/session-expectations.ts";
 import { startRelayWithSessionWaitingToRunNpmTest } from "../support/setup/relay-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
+import { startRelayWithSessionWaitingForReply } from "../support/setup/relay-sessions.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -14,10 +13,7 @@ test("after the relay restarts, a session that finished its turn is still listed
   // ********************************************************************
   // ** GIVEN a session whose agent replied "Tests pass" and finished its turn
   // ********************************************************************
-  const relay = await startRelayWithLocalRepo();
-  relay.mockAgent.willReply("Tests pass");
-  const session = await relay.user.startsSession({ prompt: "Run the tests" });
-  await expectSessionWaitingForReply(relay, session);
+  const { relay, session } = await startRelayWithSessionWaitingForReply("Tests pass");
 
   // ********************************************************************
   // ** WHEN the relay daemon restarts and the app follows the session from its start

@@ -1,4 +1,7 @@
-import { expectSessionWaitingForApproval } from "../expect/session-expectations.ts";
+import {
+  expectSessionWaitingForApproval,
+  expectSessionWaitingForReply,
+} from "../expect/session-expectations.ts";
 import type { Session } from "./relay.ts";
 import { type RunningRelay, startRelayWithLocalRepo } from "./start-relay.ts";
 
@@ -22,5 +25,16 @@ export async function startRelayWithSessionWhereAgentEdited(
   relay.mockAgent.willEditFile(path);
   const session = await relay.user.startsSession({ prompt: "Make the change" });
   await relay.user.waitsForTheAgentToFinish(session);
+  return { relay, session };
+}
+
+/** A relay with a session whose agent replied and finished its turn, waiting for the user. */
+export async function startRelayWithSessionWaitingForReply(
+  reply: string,
+): Promise<{ relay: RunningRelay; session: Session }> {
+  const relay = await startRelayWithLocalRepo();
+  relay.mockAgent.willReply(reply);
+  const session = await relay.user.startsSession({ prompt: "Run the tests" });
+  await expectSessionWaitingForReply(relay, session);
   return { relay, session };
 }

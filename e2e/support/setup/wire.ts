@@ -1,3 +1,4 @@
+import { spawnRelayBridge } from "@agentcontrol/app";
 import { connect, type Socket } from "node:net";
 
 /** A line-based channel to a relay, the way the app has one. */
@@ -52,22 +53,6 @@ export function bridgeWire(options: {
   dataDir: string;
   env: Record<string, string>;
 }): Wire {
-  const bridge = Bun.spawn(["bun", options.relayMain, "--stdio", "--data-dir", options.dataDir], {
-    stdin: "pipe",
-    stdout: "pipe",
-    stderr: "inherit",
-    env: { ...Bun.env, ...options.env },
-  });
-  return {
-    output: bridge.stdout,
-    closed: bridge.exited,
-    send: (line) => {
-      void bridge.stdin.write(line);
-      void bridge.stdin.flush();
-    },
-    close: async () => {
-      void bridge.stdin.end();
-      await bridge.exited;
-    },
-  };
+  const { relayMain, dataDir, env } = options;
+  return spawnRelayBridge({ command: ["bun", relayMain], dataDir, env });
 }
