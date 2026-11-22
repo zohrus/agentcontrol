@@ -1,0 +1,49 @@
+name: build
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Build the app and an unsigned dmg for each architecture
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            swift_arch=$([ "$arch" = x64 ] && echo x86_64 || echo arm64)
+            (cd packages/mac && swift build -c release --arch "$swift_arch")
+            scripts/mac/make-app.sh "$arch"
+            # No secrets here, so this is an ad-hoc signed dmg for testing.
+            scripts/mac/sign-and-notarize.sh "$arch"
+          done
+      # TODO: pin this action to a commit SHA like the others (Dependabot can do it).
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: agentcontrol-mac
+          path: |
+            dist/*.dmg
+            dist/agentcontrol-*
+            dist/manifest.json
+          if-no-files-found: error
+
+  linux-relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run build:relay-linux-x64
+      - run: bun scripts/smoke-binary.ts dist/agentcontrol-relay-linux-x64

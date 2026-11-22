@@ -1,0 +1,24 @@
+# Homebrew cask template. The release step copies this into the tap repository
+# (zohrus/homebrew-agentcontrol, Casks/agentcontrol.rb) with VERSION and the two SHA256 values
+# filled in from the release's manifest.json / .dmg files.
+cask "agentcontrol" do
+  arch arm: "arm64", intel: "x64"
+
+  version "@VERSION@"
+  sha256 arm:   "@SHA256_ARM64@",
+         intel: "@SHA256_X64@"
+
+  url "https://github.com/zohrus/agentcontrol/releases/download/v#{version}/AgentControl-#{version}-#{arch}.dmg"
+  name "AgentControl"
+  desc "Run and review coding agents from a menu bar app"
+  homepage "https://github.com/zohrus/agentcontrol"
+
+  depends_on macos: ">= :ventura"
+
+  app "AgentControl.app"
+
+  zap trash: [
+    "~/.agentcontrol",
+    "~/Library/Logs/AgentControl",
+  ]
+end
