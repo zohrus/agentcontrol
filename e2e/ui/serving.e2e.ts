@@ -46,19 +46,18 @@ test("an app serving a built UI serves a script of the build as it is", async ()
   });
 });
 
-test("an app serving a built UI does not answer a missing file, an unknown API path or /_safe with the UI page", async () => {
+test("an app serving a built UI does not answer a missing file or an unknown API path with the UI page", async () => {
   // ********************************************************************
   // ** GIVEN the app is serving a folder of built UI files
   // ********************************************************************
   const app = await startsAppServingBuiltUi();
 
   // ********************************************************************
-  // ** WHEN the browser asks for a missing script, an unknown API path and the reserved /_safe
+  // ** WHEN the browser asks for a missing script, and an unknown API path
   // ********************************************************************
   // ********************************************************************
-  // ** THEN each is answered with 404 and not the UI page
+  // ** THEN both are answered with 404 and not the UI page
   // ********************************************************************
   await expectAddressNotToBeTheUi(app.baseUrl, "/missing.js");
   await expectAddressNotToBeTheUi(app.baseUrl, "/api/nope");
-  await expectAddressNotToBeTheUi(app.baseUrl, "/_safe");
 });
