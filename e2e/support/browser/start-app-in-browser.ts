@@ -14,6 +14,8 @@ export type AppInBrowser = RunningApp & { readonly page: AppPage };
 export type BrowserOptions = {
   viewport?: { width: number; height: number };
   colorScheme?: "light" | "dark";
+  /** The repo holds this many files besides its readme. */
+  repoFiles?: number;
 };
 
 async function waitUntilConnected(page: Page): Promise<void> {
@@ -23,7 +25,10 @@ async function waitUntilConnected(page: Page): Promise<void> {
 
 /** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
 export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
-  const app = await startAppWithLocalWorkspace({ withUi: true });
+  const app = await startAppWithLocalWorkspace({
+    withUi: true,
+    ...(options.repoFiles === undefined ? {} : { repoFiles: options.repoFiles }),
+  });
   const browser = await launchChromium();
   onTestEnd(() => browser.close());
   const tab = await browser.newPage(options);

@@ -86,6 +86,8 @@ export interface StartOptions {
   modify?: ModifyConfig;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  /** The repo holds this many files besides its readme, so a worktree has plenty. */
+  repoFiles?: number;
   /** Stop the relay before the app starts, so the app finds none. */
   relayStopped?: boolean;
 }
@@ -98,10 +100,14 @@ function uiOf(options: StartOptions): { root?: string; dist?: string } {
 }
 
 /** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
-async function prepareWorkspace(relayEnv: Record<string, string> = {}) {
+async function prepareWorkspace(options: {
+  relayEnv?: Record<string, string>;
+  repoFiles?: number;
+}) {
+  const relayEnv = options.relayEnv ?? {};
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
   onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
-  const repoPath = await createLocalRepo();
+  const repoPath = await createLocalRepo({ extraFiles: options.repoFiles ?? 0 });
   const mockAgent = await createMockAgent();
   const env = { ...mockAgentEnvironment(mockAgent), ...relayEnv };
   const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
@@ -128,7 +134,7 @@ function accessOf(options: {
 
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
-  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options);
   if (options.relayStopped) await host.stop();
   const heard = newHeard();
   const ui = uiOf(options);
