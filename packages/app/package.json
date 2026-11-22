@@ -8,8 +8,9 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@agentcontrol/protocol": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "@agentcontrol/protocol": "workspace:*"
+    "isomorphic-git": "1.44.11"
   },
   "devDependencies": {
     "drizzle-kit": "0.31.11"
