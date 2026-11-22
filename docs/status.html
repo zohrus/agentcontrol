@@ -1,0 +1,395 @@
+<title>AgentControl Status</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one 1100px column. Summary strip, then the architecture diagram coloured by status, then components by phase, then the update log. */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --fg:#151a23; --muted:#5b6475; --line:#dce1e9; --code:#eceff4;
+  --accent:#2f5bd3;
+  --done:#1d7a52; --done-soft:#e1f3ea;
+  --prog:#2f5bd3; --prog-soft:#e4ebfb;
+  --block:#a35f00; --block-soft:#fbefd9;
+  --plan:#6b7385; --plan-soft:#eef0f4;
+  --ext:#8a8f99;
+  --local:#ece9fb; --local-ink:#40359a; --remote:#e3f3ee; --remote-ink:#0f5c48;
+  --f-display:"Space Grotesk","IBM Plex Sans",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#10131a; --surface:#181c25; --fg:#e5e8ee; --muted:#9aa3b4; --line:#2a303c; --code:#20252f;
+  --accent:#86a5ff;
+  --done:#6fd3a5; --done-soft:#16302a; --prog:#86a5ff; --prog-soft:#1d2640;
+  --block:#f0b75a; --block-soft:#33270f; --plan:#9aa3b4; --plan-soft:#222733; --ext:#7d8494;
+  --local:#221f3b; --local-ink:#c9c2ff; --remote:#14302a; --remote-ink:#9fe1cb;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10131a; --surface:#181c25; --fg:#e5e8ee; --muted:#9aa3b4; --line:#2a303c; --code:#20252f;
+  --accent:#86a5ff;
+  --done:#6fd3a5; --done-soft:#16302a; --prog:#86a5ff; --prog-soft:#1d2640;
+  --block:#f0b75a; --block-soft:#33270f; --plan:#9aa3b4; --plan-soft:#222733; --ext:#7d8494;
+  --local:#221f3b; --local-ink:#c9c2ff; --remote:#14302a; --remote-ink:#9fe1cb;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1100px;margin:0 auto;padding-block:40px 72px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:2.1rem;font-weight:600}
+h2{font-size:1.35rem;font-weight:600}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:16px;min-width:0}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.muted{color:var(--muted)}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-family:var(--f-mono);font-size:.8rem;color:var(--muted)}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--f-display);font-size:1.8rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:.85rem;color:var(--muted)}
+.stat.done b{color:var(--done)} .stat.prog b{color:var(--prog)} .stat.block b{color:var(--block)}
+@media (max-width:700px){.summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--plan-soft)}
+.bar i{display:block;height:100%}
+.now{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.now{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.panel ul{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:4px}
+.panel.warn{border-color:var(--block);background:var(--block-soft)}
+
+/* status pill */
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap;font-weight:500}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.done{background:var(--done-soft);color:var(--done)}
+.pill.progress{background:var(--prog-soft);color:var(--prog)}
+.pill.blocked{background:var(--block-soft);color:var(--block)}
+.pill.planned{background:var(--plan-soft);color:var(--plan)}
+.pill.external{background:var(--plan-soft);color:var(--ext)}
+
+/* diagram */
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:.85rem}
+.diagram{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.diagram svg{display:block;min-width:860px;width:100%;height:auto}
+svg text{font-family:var(--f-body)}
+.grp rect{stroke:var(--line)}
+.grp text{font-family:var(--f-display);font-size:14px;font-weight:600}
+.node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.2}
+.node .t{font-size:12.5px;font-weight:600;fill:var(--fg)}
+.node .s{font-size:10.5px;fill:var(--muted)}
+.node .st{stroke-width:0}
+.node.done rect.box{stroke:var(--done);stroke-width:2}  .node.done rect.st{fill:var(--done)}
+.node.progress rect.box{stroke:var(--prog);stroke-width:2} .node.progress rect.st{fill:var(--prog)}
+.node.blocked rect.box{stroke:var(--block);stroke-width:2} .node.blocked rect.st{fill:var(--block)}
+.node.planned rect.st{fill:var(--plan-soft)}
+.node.external rect.box{stroke-dasharray:4 3} .node.external rect.st{fill:transparent}
+.node{cursor:pointer}
+.node:hover rect.box,.node:focus rect.box{stroke:var(--accent);stroke-width:2}
+.node:focus{outline:none}
+.edge{fill:none;stroke:var(--muted);stroke-width:1.3}
+.edge.dash{stroke-dasharray:5 4}
+.elabel{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
+
+/* components */
+.phase{display:flex;flex-direction:column;gap:10px}
+.phase-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.phase-head .count{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.phase-head .bar{flex:1 1 160px;max-width:260px;align-self:center}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.card h3{font-family:var(--f-body);font-size:.95rem}
+.card p{font-size:.86rem;color:var(--muted)}
+.card .path{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);overflow-wrap:anywhere}
+.card.flash{box-shadow:0 0 0 2px var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filters button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:4px 12px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.filters button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* log */
+.log{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.log div{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:.9rem}
+.log div:last-child{border-bottom:0}
+.log time{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+@media (max-width:600px){.log div{grid-template-columns:1fr;gap:2px}}
+footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <span class="eyebrow">Project status · updated by Claude as work lands</span>
+  <h1>AgentControl</h1>
+  <p style="max-width:68ch">A local-first Mac app to run Claude Code and Codex sessions, see which ones are waiting on you, review their changes, and reshape its own interface by asking a built-in agent.</p>
+  <div class="meta"><span id="updated"></span><span>Repo: zohrus/agentcontrol</span><span>Branch: main</span></div>
+</header>
+
+<section aria-labelledby="sum-h">
+  <h2 id="sum-h" class="eyebrow" style="font-family:var(--f-mono);font-size:.72rem;font-weight:400">Summary</h2>
+  <div class="summary" id="summary"></div>
+  <div class="bar" id="overall-bar" aria-hidden="true"></div>
+  <div class="now">
+    <div class="panel"><h3>Working on now</h3><ul id="now-list"></ul></div>
+    <div class="panel" id="blocked-panel"><h3>Blocked or waiting on you</h3><ul id="blocked-list"></ul></div>
+  </div>
+</section>
+
+<section aria-labelledby="arch-h">
+  <span class="eyebrow">Architecture</span>
+  <h2 id="arch-h">Every component and how they connect</h2>
+  <p class="muted" style="max-width:75ch">The MVP runs entirely on your Mac: the app talks to a relay on the same machine. Remote SSH workspaces run the same relay later, in phase 5. Each box is coloured by its status. Click a box to jump to its card.</p>
+  <div class="legend" id="legend"></div>
+  <div class="diagram">
+    <svg id="arch" viewBox="0 0 1000 770" role="img" aria-labelledby="arch-t arch-d">
+      <title id="arch-t">AgentControl architecture</title>
+      <desc id="arch-d">Your Mac runs the browser UI, a menu bar app and the local Bun server (API, UI server, Modify agent, UI versions, store, sync, session status, workspace setup, relay connections). The server talks over stdio to a local relay that runs the ACP client, event log, permissions and worktrees, and drives Claude Code, Codex or the mock agent. In phase 5 the same relay runs on SSH workspaces with an optional AI gateway, config deploy, usage reader and browser VS Code.</desc>
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="var(--muted)" stroke-width="1.5"/></marker></defs>
+      <g id="groups"></g><g id="edges"></g><g id="nodes"></g>
+    </svg>
+  </div>
+</section>
+
+<section aria-labelledby="comp-h">
+  <span class="eyebrow">Components</span>
+  <h2 id="comp-h">Status by phase</h2>
+  <div class="filters" role="group" aria-label="Filter by status" id="filters"></div>
+  <div id="phases" style="display:flex;flex-direction:column;gap:28px"></div>
+</section>
+
+<section aria-labelledby="log-h">
+  <span class="eyebrow">History</span>
+  <h2 id="log-h">Updates</h2>
+  <div class="log" id="log"></div>
+</section>
+
+<footer>Source: <code>docs/status.html</code> in the repo. The full plan is <code>docs/plan.html</code>.</footer>
+</div>
+
+<script>
+/* ===== DATA: edit this block to update the page ===== */
+const UPDATED = "22 Nov 2026, 16:05 UTC";
+const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
+
+const PHASES = [
+  { id:"p0",  name:"Phase 0 · Foundation", note:"Repo, tooling, test harness, mock agent" },
+  { id:"p0s", name:"Phase 0 · Spike", note:"Drive the real agents and log every ACP event" },
+  { id:"p1",  name:"Phase 1 · Relay", note:"MVP" },
+  { id:"p2",  name:"Phase 2 · Local app", note:"MVP" },
+  { id:"p3",  name:"Phase 3 · SDK and default UI", note:"MVP" },
+  { id:"p4",  name:"Phase 4 · Modify agent", note:"MVP" },
+  { id:"rel", name:"MVP release · Mac app", note:"After phase 4" },
+  { id:"p5",  name:"Phase 5 · Remote workspaces", note:"" },
+  { id:"p6",  name:"Phase 6 · Harness config", note:"" },
+  { id:"p7",  name:"Phase 7 · Analytics", note:"" },
+];
+
+const C = [
+  // Phase 0
+  { id:"repo", phase:"p0", name:"Repository and workspace", status:"progress", desc:"Bun workspace, packages layout, bun dev and bun test from a fresh clone, MIT license.", path:"package.json" },
+  { id:"plan-docs", phase:"p0", name:"Plan, TASKS.md, CLAUDE.md, AGENTS.md", status:"blocked", desc:"Committing the final plan and handoff files from the planning session.", path:"docs/plan.html" },
+  { id:"ci", phase:"p0", name:"CI and code quality", status:"planned", desc:"GitHub Actions on every push: typecheck, lint with complexity limits, tests.", path:".github/workflows/" },
+  { id:"protocol", phase:"p0", name:"Shared protocol types", status:"planned", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
+  { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"planned", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"packages/mock-agent" },
+  { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"planned", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
+  { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
+  // Spike
+  { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"blocked", desc:"Run the Claude Code and Codex adapters locally and log every update. Needs API keys or your Mac attached.", path:"spike/" },
+  // Phase 1
+  { id:"relay-core", phase:"p1", name:"Relay daemon", status:"planned", desc:"JSON-RPC over stdio, keeps sessions alive when the app closes, version handshake.", path:"packages/relay" },
+  { id:"acp-client", phase:"p1", name:"ACP client", status:"planned", desc:"Spawns claude-agent-acp and codex-acp per session and answers them as the client.", path:"packages/relay/src/acp" },
+  { id:"event-log", phase:"p1", name:"Event log", status:"planned", desc:"Appends every ACP message to a JSONL file per session with a sequence number.", path:"packages/relay/src/log" },
+  { id:"permissions", phase:"p1", name:"Permission holding", status:"planned", desc:"Keeps pending permission requests until you answer, even hours later.", path:"packages/relay/src/permissions" },
+  { id:"worktrees", phase:"p1", name:"Worktrees and diff", status:"planned", desc:"Git worktree per session, copies .env files, runs the setup script, assigns a port block, serves the full diff since base.", path:"packages/relay/src/worktrees" },
+  { id:"relay-fs", phase:"p1", name:"Worktree files", status:"planned", desc:"fs.tree, fs.read, fs.write with hash check, fs.watch for the editor.", path:"packages/relay/src/fs" },
+  // Phase 2
+  { id:"relay-conn", phase:"p2", name:"Relay connections", status:"planned", desc:"Starts and talks to relays: the local one over stdio now, SSH in phase 5.", path:"packages/app/src/relays" },
+  { id:"store", phase:"p2", name:"Store", status:"planned", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
+  { id:"sync", phase:"p2", name:"Sync", status:"planned", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
+  { id:"session-status", phase:"p2", name:"Session status", status:"planned", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
+  { id:"api", phase:"p2", name:"API", status:"planned", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
+  { id:"workspace-setup", phase:"p2", name:"Workspace setup", status:"planned", desc:"Guided checklist with Check and repair: machine, relay, agents, repos, imported config.", path:"packages/app/src/setup" },
+  { id:"archive", phase:"p2", name:"Archive", status:"planned", desc:"Stops the agent, removes the worktree after a warning, keeps the branch.", path:"packages/app/src/archive" },
+  // Phase 3
+  { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"planned", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
+  { id:"ui-shell", phase:"p3", name:"Default UI", status:"planned", desc:"Vite, React, Tailwind, shadcn/ui template copied to the data folder.", path:"packages/ui-template" },
+  { id:"ui-server", phase:"p3", name:"UI server", status:"planned", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
+  { id:"session-list", phase:"p3", name:"Session list", status:"planned", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
+  { id:"session-view", phase:"p3", name:"Session view", status:"planned", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
+  { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"planned", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
+  // Phase 4
+  { id:"modify", phase:"p4", name:"Modify agent", status:"planned", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
+  { id:"ui-versions", phase:"p4", name:"UI versions", status:"planned", desc:"Keep and Undo, snapshots in SQLite, version history.", path:"packages/app/src/ui-versions" },
+  { id:"safe", phase:"p4", name:"/_safe recovery page", status:"planned", desc:"Served by the app itself so a broken UI can always be rolled back.", path:"" },
+  // Release
+  { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"planned", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
+  { id:"packaging", phase:"rel", name:"Signed .dmg and Homebrew", status:"planned", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
+  // Phase 5
+  { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"planned", desc:"Copies and starts the relay on a workspace with your ssh config.", path:"" },
+  { id:"gateway", phase:"p5", name:"AI gateway", status:"planned", desc:"Optional LiteLLM proxy per workspace for uniform cost logs.", path:"" },
+  { id:"ide", phase:"p5", name:"Browser VS Code", status:"planned", desc:"openvscode-server on the workspace, tunnelled over SSH.", path:"" },
+  // Phase 6
+  { id:"config-deploy", phase:"p6", name:"Harness config", status:"planned", desc:"One config for MCP, skills, hooks and instructions; inspect, plan, apply, rollback, drift.", path:"" },
+  // Phase 7
+  { id:"usage", phase:"p7", name:"Usage and analytics", status:"planned", desc:"Reads agent logs for tokens and cost per session, model and workspace.", path:"" },
+  // External (diagram only)
+  { id:"claude", phase:null, name:"Claude Code", status:"external", desc:"via claude-agent-acp" },
+  { id:"codex", phase:null, name:"Codex", status:"external", desc:"via codex-acp" },
+  { id:"git", phase:null, name:"Git repo", status:"external", desc:"" },
+];
+
+const NOW = [
+  "Collecting the final plan and handoff files from the planning session",
+  "Repository scaffold",
+];
+const BLOCKED = [
+  "Pushing to GitHub: the Claude GitHub App has no access to zohrus/agentcontrol yet",
+  "Final plan handover: confirm it in the “Agent Control” session",
+  "ACP spike: needs Anthropic and OpenAI API keys, or your Mac attached",
+];
+const LOG = [
+  ["22 Nov 2026 16:05", "Status page and architecture diagram published. Waiting for the final plan handover."],
+  ["22 Nov 2026 16:10", "First commit ready locally; push refused because the GitHub App can't write to the repo yet."],
+];
+/* ===== END DATA ===== */
+
+/* Diagram layout: node id -> [x, y, w, h, title, subtitle] */
+const N = {
+  "ui-shell":[50,78,200,58,"Default UI","React · yours to change"],
+  "sdk":[270,78,180,58,"@agentcontrol/sdk","typed API client"],
+  "safe":[470,78,180,58,"/_safe page","recovery, always works"],
+  "mac-shell":[700,78,270,58,"Menu bar app","starts server · waiting count"],
+  "api":[50,218,170,58,"API","Hono · HTTP + SSE"],
+  "ui-server":[240,218,170,58,"UI server","Vite · hot reload"],
+  "modify":[430,218,170,58,"Modify agent","local session · ui-staging/"],
+  "ui-versions":[620,218,170,58,"UI versions","Keep · Undo · history"],
+  "workspace-setup":[810,218,160,58,"Workspace setup","check and repair"],
+  "store":[50,332,170,58,"Store","SQLite · Drizzle"],
+  "session-status":[240,332,170,58,"Session status","waiting on you"],
+  "sync":[430,332,170,58,"Sync","resume after seq N"],
+  "relay-conn":[620,332,350,58,"Relay connections","local stdio now · SSH in phase 5"],
+  "relay-core":[30,504,520,50,"Relay daemon","JSON-RPC over stdio · outlives the app"],
+  "acp-client":[30,580,120,58,"ACP client","spawns adapters"],
+  "event-log":[163,580,120,58,"Event log","JSONL per session"],
+  "permissions":[296,580,120,58,"Permissions","held until answered"],
+  "worktrees":[429,580,121,58,"Worktrees","diff · setup · ports"],
+  "claude":[30,676,120,58,"Claude Code","claude-agent-acp"],
+  "codex":[163,676,120,58,"Codex","codex-acp"],
+  "mock-agent":[296,676,120,58,"Mock agent","used by every test"],
+  "git":[429,676,121,58,"Git repo","one worktree each"],
+  "relay-deploy":[610,504,360,50,"Same relay, deployed over SSH","survives laptop sleep"],
+  "gateway":[610,580,170,58,"AI gateway","LiteLLM · optional"],
+  "config-deploy":[800,580,170,58,"Harness config","MCP · skills · hooks"],
+  "ide":[610,676,170,58,"Browser VS Code","openvscode-server"],
+  "usage":[800,676,170,58,"Usage reader","tokens and cost"],
+};
+const GROUPS = [
+  [10,10,980,420,"Your Mac","var(--bg)","var(--fg)",""],
+  [30,44,640,108,"","var(--surface)","var(--fg)",""],
+  [30,184,950,226,"","var(--local)","var(--local-ink)",""],
+  [10,470,560,290,"This Mac · local relay (MVP)","var(--remote)","var(--remote-ink)",""],
+  [590,470,400,290,"SSH workspace · phase 5 and later","var(--bg)","var(--remote-ink)","5 4"],
+];
+const GLABELS = [[44,62,"Browser · localhost:4747"],[44,202,"Local app · Bun server"]];
+/* edges: points, label, label position, dashed */
+const E = [
+  [[250,107,270,107]],
+  [[360,136,360,166,135,166,135,218],"HTTP + SSE",[150,160]],
+  [[560,136,560,166,360,166]],
+  [[835,136,835,166,560,166]],
+  [[300,218,300,184,200,184,200,138],"hot reload",[306,198],true],
+  [[135,276,135,332],"read · write",[141,306]],
+  [[430,247,412,247]],
+  [[600,247,618,247]],
+  [[240,361,222,361]],
+  [[515,390,515,402,135,402,135,392],"events",[340,398]],
+  [[620,361,602,361]],
+  [[890,276,890,330]],
+  [[700,390,700,446,290,446,290,502],"JSON-RPC · stdio",[540,440]],
+  [[920,390,920,502],"SSH",[926,450],true],
+  [[90,554,90,578]],[[223,554,223,578]],[[356,554,356,578]],[[489,554,489,578]],
+  [[90,638,90,674],"ACP",[96,660]],
+  [[120,638,120,656,223,656,223,674]],
+  [[150,656,356,656,356,674]],
+  [[489,638,489,674]],
+  [[695,554,695,578]],[[885,554,885,578]],
+  [[780,554,780,664,695,664,695,674]],
+  [[780,664,885,664,885,674]],
+];
+
+const byId = Object.fromEntries(C.map(c=>[c.id,c]));
+const svgNS="http://www.w3.org/2000/svg";
+function el(tag,attrs,parent,text){const e=document.createElementNS(svgNS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;parent&&parent.appendChild(e);return e}
+
+function drawDiagram(){
+  const g=document.getElementById("groups"),eg=document.getElementById("edges"),ng=document.getElementById("nodes");
+  for(const [x,y,w,h,label,fill,ink,dash] of GROUPS){
+    const gg=el("g",{class:"grp"},g);
+    el("rect",{x,y,width:w,height:h,rx:14,fill,"stroke-dasharray":dash||"none"},gg);
+    if(label) el("text",{x:x+18,y:y+24,fill:ink},gg,label);
+  }
+  for(const [x,y,t] of GLABELS) el("text",{x,y,"font-size":12,"font-weight":600,fill:"var(--muted)","font-family":"var(--f-mono)"},g,t);
+  for(const [pts,label,lp,dash] of E){
+    const d=[];for(let i=0;i<pts.length;i+=2)d.push((i?"L":"M")+pts[i]+" "+pts[i+1]);
+    el("path",{d:d.join(" "),class:"edge"+(dash?" dash":""),"marker-end":"url(#ah)"},eg);
+    if(label&&lp) el("text",{x:lp[0],y:lp[1],class:"elabel"},eg,label);
+  }
+  for(const id in N){
+    const [x,y,w,h,t,s]=N[id]; const c=byId[id]; const st=c?c.status:"planned";
+    const a=el("g",{class:"node "+st,tabindex:0,role:"link","aria-label":t+": "+(STATUS[st]||st)},ng);
+    el("title",{},a,t+" · "+(STATUS[st]||st));
+    el("rect",{class:"box",x,y,width:w,height:h,rx:8},a);
+    el("rect",{class:"st",x:x+1,y:y+1,width:5,height:h-2,rx:2},a);
+    el("text",{class:"t",x:x+w/2+2,y:y+h/2-3,"text-anchor":"middle"},a,t);
+    el("text",{class:"s",x:x+w/2+2,y:y+h/2+12,"text-anchor":"middle"},a,s);
+    if(c&&c.phase){const go=()=>jump(id);a.addEventListener("click",go);a.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}})}
+  }
+}
+function jump(id){
+  setFilter("all");
+  const card=document.getElementById("c-"+id); if(!card)return;
+  card.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"center"});
+  card.classList.add("flash"); setTimeout(()=>card.classList.remove("flash"),1600);
+}
+function pill(st){return `<span class="pill ${st}">${STATUS[st]}</span>`}
+function esc(s){return String(s).replace(/[&<>"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]))}
+function barHTML(list){
+  const n=list.length||1, f=k=>list.filter(c=>c.status===k).length/n*100;
+  return `<i style="width:${f("done")}%;background:var(--done)"></i><i style="width:${f("progress")}%;background:var(--prog)"></i><i style="width:${f("blocked")}%;background:var(--block)"></i>`;
+}
+let filter="all";
+function setFilter(f){filter=f;document.querySelectorAll("#filters button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.f===f));renderPhases()}
+function renderPhases(){
+  const root=document.getElementById("phases"); root.innerHTML="";
+  for(const p of PHASES){
+    const all=C.filter(c=>c.phase===p.id); const list=all.filter(c=>filter==="all"||c.status===filter);
+    if(!list.length)continue;
+    const done=all.filter(c=>c.status==="done").length;
+    const div=document.createElement("div"); div.className="phase";
+    div.innerHTML=`<div class="phase-head"><h3>${esc(p.name)}</h3><span class="count">${done} of ${all.length} done${p.note?" · "+esc(p.note):""}</span><div class="bar" aria-hidden="true">${barHTML(all)}</div></div>
+    <div class="cards">${list.map(c=>`<article class="card" id="c-${c.id}"><div class="top"><h3>${esc(c.name)}</h3>${pill(c.status)}</div><p>${esc(c.desc)}</p>${c.path?`<span class="path">${esc(c.path)}</span>`:""}</article>`).join("")}</div>`;
+    root.appendChild(div);
+  }
+  if(!root.children.length) root.innerHTML='<p class="muted">No components with this status yet.</p>';
+}
+function render(){
+  document.getElementById("updated").textContent="Updated "+UPDATED;
+  const built=C.filter(c=>c.phase);
+  const cnt=k=>built.filter(c=>c.status===k).length;
+  document.getElementById("summary").innerHTML=
+    `<div class="stat done"><b>${cnt("done")}</b><span>done</span></div><div class="stat prog"><b>${cnt("progress")}</b><span>in progress</span></div><div class="stat block"><b>${cnt("blocked")}</b><span>blocked</span></div><div class="stat"><b>${cnt("planned")}</b><span>not started, of ${built.length}</span></div>`;
+  document.getElementById("overall-bar").innerHTML=barHTML(built);
+  document.getElementById("now-list").innerHTML=NOW.map(s=>`<li>${esc(s)}</li>`).join("");
+  document.getElementById("blocked-list").innerHTML=BLOCKED.length?BLOCKED.map(s=>`<li>${esc(s)}</li>`).join(""):"<li>Nothing</li>";
+  if(BLOCKED.length) document.getElementById("blocked-panel").classList.add("warn");
+  document.getElementById("legend").innerHTML=["done","progress","blocked","planned","external"].map(pill).join("");
+  document.getElementById("filters").innerHTML=[["all","All"],["done","Done"],["progress","In progress"],["blocked","Blocked"],["planned","Not started"]]
+    .map(([f,l])=>`<button type="button" id="f-${f}" data-f="${f}" aria-pressed="${f===filter}">${l}</button>`).join("");
+  document.querySelectorAll("#filters button").forEach(b=>b.addEventListener("click",()=>setFilter(b.dataset.f)));
+  document.getElementById("log").innerHTML=LOG.slice().reverse().map(([t,s])=>`<div><time>${esc(t)}</time><span>${esc(s)}</span></div>`).join("");
+  drawDiagram(); renderPhases();
+}
+render();
+</script>
