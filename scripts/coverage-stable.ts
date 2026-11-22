@@ -14,7 +14,8 @@ async function runOnce(): Promise<{ exitCode: number; covered: CoveredLines }> {
   rmSync("coverage/covered-lines.json", { force: true });
   const run = Bun.spawn(["bun", "scripts/coverage.ts"], { stdout: "inherit", stderr: "inherit" });
   const exitCode = await run.exited;
-  const covered = (await Bun.file("coverage/covered-lines.json").json()) as CoveredLines;
+  const file = Bun.file("coverage/covered-lines.json");
+  const covered = (await file.exists()) ? ((await file.json()) as CoveredLines) : {};
   return { exitCode, covered };
 }
 
@@ -33,12 +34,26 @@ function flipsOf(runs: CoveredLines[]): string[] {
     .sort();
 }
 
+/** Why a run cannot be compared with the others, if it cannot. */
+function problemWithRun(finished: { exitCode: number; covered: CoveredLines }): string | undefined {
+  if (!GATE_PASSED_OR_FAILED.includes(finished.exitCode)) {
+    return `stopped with exit code ${String(finished.exitCode)}, see above`;
+  }
+  return Object.keys(finished.covered).length === 0
+    ? "wrote no coverage: the gate could not run, see above"
+    : undefined;
+}
+
 async function collect(count: number): Promise<CoveredLines[] | undefined> {
   const results: CoveredLines[] = [];
   for (let run = 1; run <= count; run++) {
     console.log(`\n===== coverage run ${String(run)} of ${String(count)} =====`);
     const finished = await runOnce();
-    if (!GATE_PASSED_OR_FAILED.includes(finished.exitCode)) return undefined;
+    const problem = problemWithRun(finished);
+    if (problem !== undefined) {
+      console.log(`run ${String(run)}: ${problem}`);
+      return undefined;
+    }
     await Bun.write(`${KEPT_DIR}/run-${String(run)}.json`, JSON.stringify(finished.covered));
     results.push(finished.covered);
   }

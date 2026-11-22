@@ -64,6 +64,9 @@ function reconnectPause() {
   };
 }
 
+/** No wait at all once unsubscribed, so no timer is left behind. */
+const reconnectDelay = (signal: AbortSignal): number => (signal.aborted ? 0 : RECONNECT_MS);
+
 async function keepReading(options: {
   url: string;
   handlers: Handlers;
@@ -73,7 +76,7 @@ async function keepReading(options: {
   const { url, handlers, signal, pause } = options;
   while (!signal.aborted) {
     await readStream(url, handlers, signal).catch(() => undefined);
-    await pause(RECONNECT_MS);
+    await pause(reconnectDelay(signal));
   }
 }
 

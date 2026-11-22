@@ -32,10 +32,10 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     workspace,
     connect: options.connectRelay,
   });
-  await sync.ready;
-  const server = await Promise.try(() =>
-    startServer({ port: options.port, deps: { store, hub, workspace, relay: sync } }),
-  ).catch(async (error: unknown) => {
+  const server = await Promise.try(async () => {
+    await sync.ready;
+    return startServer({ port: options.port, deps: { store, hub, workspace, relay: sync } });
+  }).catch(async (error: unknown) => {
     await sync.stop();
     store.close();
     throw error;
