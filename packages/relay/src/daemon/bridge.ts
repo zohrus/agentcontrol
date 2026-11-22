@@ -8,10 +8,12 @@ import { socketPathIn, tryConnect } from "./socket.ts";
 const START_TIMEOUT_MS = 15_000;
 const RETRY_MS = 50;
 const mainFile = join(import.meta.dir, "../main.ts");
+/** A compiled binary is its own entry point, so it takes no script path. */
+const entryArgs = import.meta.dir.startsWith("/$bunfs/") ? [] : [mainFile];
 
 function startDetachedDaemon(dataDir: string): void {
   const log = openSync(join(dataDir, "relay.log"), "a");
-  const child = spawn(process.execPath, [mainFile, "daemon", "--data-dir", dataDir], {
+  const child = spawn(process.execPath, [...entryArgs, "daemon", "--data-dir", dataDir], {
     detached: true,
     stdio: ["ignore", log, log],
   });
