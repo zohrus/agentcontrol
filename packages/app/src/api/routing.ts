@@ -7,7 +7,7 @@ import { ApiFailure } from "./errors.ts";
  * runs a single relay link today, so only the workspace it serves is known; phase 5 replaces this
  * body with a lookup in a registry of links, and no route changes.
  */
-export function linkForWorkspace(deps: ApiDeps, workspaceId: string): Link {
+function linkForWorkspace(deps: ApiDeps, workspaceId: string): Link {
   if (workspaceId !== deps.workspace.id) {
     throw new ApiFailure(404, {
       code: "workspace-not-found",

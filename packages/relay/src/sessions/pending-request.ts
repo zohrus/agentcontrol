@@ -23,7 +23,7 @@ function details(call: ToolCallShape): Omit<PendingToolCall, "title"> {
 }
 
 /** A small agent-neutral view of a raw tool call; a call it cannot read still gets a title. */
-export function summarizeToolCall(raw: unknown): PendingToolCall {
+function summarizeToolCall(raw: unknown): PendingToolCall {
   const parsed = ToolCallShape.safeParse(raw);
   const call = parsed.success ? parsed.data : {};
   const found = details(call);

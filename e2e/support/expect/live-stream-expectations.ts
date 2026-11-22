@@ -12,8 +12,10 @@ export async function expectStreamPushedRequestToRunCommand(
   const { session, command } = call;
   await stream.sessions.waitFor(
     (row) =>
-      isRowOf(session)(row) && row.pendingPermissions.some((r) => r.toolCall.command === command),
-    `expected the live stream to push session "${session.title}" with a request to run \`${command}\``,
+      isRowOf(session)(row) &&
+      row.turnRunning &&
+      row.pendingPermissions.some((r) => r.toolCall.command === command),
+    `expected the live stream to push session "${session.title}" with a request to run \`${command}\` in an open turn`,
   );
 }
 
@@ -29,17 +31,6 @@ export async function expectStreamPushedSessionWaitingForReply(
       row.pendingPermissions.length === 0 &&
       !row.turnRunning,
     `expected the live stream to push session "${session.title}" waiting for a reply with no request`,
-  );
-}
-
-/** The live stream pushed the session's row with a turn running. */
-export async function expectStreamPushedTurnRunning(
-  stream: LiveStream,
-  session: Session,
-): Promise<void> {
-  await stream.sessions.waitFor(
-    (row) => isRowOf(session)(row) && row.turnRunning,
-    `expected the live stream to push session "${session.title}" with a turn running`,
   );
 }
 

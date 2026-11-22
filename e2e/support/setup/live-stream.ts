@@ -6,7 +6,7 @@ import { Timeline } from "./timeline.ts";
 const STREAM_WAIT_MS = 5000;
 
 /** A file change as the live stream delivers it. */
-export interface StreamedFileChange {
+interface StreamedFileChange {
   workspaceId: string;
   sessionId: string;
   paths: string[];
