@@ -109,14 +109,10 @@ function contextOf(options: {
 }): SessionContext {
   let portIndex = options.sessionCount;
   let recording = true;
-  const { log } = options;
+  const { log, repos, worktreesDir, hostEnv, summaries } = options;
   return {
-    log,
-    repos: options.repos,
-    worktreesDir: options.worktreesDir,
-    hostEnv: options.hostEnv,
+    ...{ log, repos, worktreesDir, hostEnv, summaries },
     permissions: createPendingPermissions(),
-    summaries: options.summaries,
     live: new Map(),
     stopRecording: () => {
       recording = false;
