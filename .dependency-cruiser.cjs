@@ -26,9 +26,16 @@ module.exports = {
     layer(
       "sdk-no-relay",
       "sdk",
-      ["relay", "app", "ui-template", "mac"],
+      ["relay", "ui-template", "mac"],
       "sdk reaches the app over HTTP, never by import",
     ),
+    {
+      name: "sdk-app-types-only",
+      comment: "sdk may import the app's types (the API's AppType), never its code",
+      severity: "error",
+      from: { path: "^packages/sdk/" },
+      to: { path: pkg(["app"]), dependencyTypesNot: ["type-only"] },
+    },
     layer(
       "ui-template-only-sdk-and-protocol",
       "ui-template",

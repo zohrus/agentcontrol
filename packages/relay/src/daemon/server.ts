@@ -8,6 +8,7 @@ import { createRpcConnection, type Handlers } from "../rpc/index.ts";
 import { createSessions, type Sessions } from "../sessions/index.ts";
 import { fileHandlers } from "./handlers-files.ts";
 import { sessionHandlers } from "./handlers-sessions.ts";
+import { usageHandlers } from "./handlers-usage.ts";
 import { workspaceHandlers } from "./handlers-workspace.ts";
 import { socketPathIn, tryConnect } from "./socket.ts";
 
@@ -69,6 +70,7 @@ export async function startDaemon(options: { dataDir: string }): Promise<Daemon>
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
     ...fileHandlers(sessions),
+    ...usageHandlers(sessions),
     ...workspaceHandlers(repos),
   };
   const server = createServer((socket) => {

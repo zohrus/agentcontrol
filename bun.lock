@@ -27,11 +27,15 @@
       "version": "0.0.0",
       "dependencies": {
         "@agentcontrol/protocol": "workspace:*",
+        "@agentcontrol/sdk": "workspace:*",
       },
     },
     "packages/app": {
       "name": "@agentcontrol/app",
       "version": "0.0.0",
+      "bin": {
+        "agentcontrol": "./src/main.ts",
+      },
       "dependencies": {
         "@agentcontrol/protocol": "workspace:*",
         "drizzle-orm": "0.45.4",
@@ -70,6 +74,8 @@
       "name": "@agentcontrol/sdk",
       "version": "0.0.0",
       "dependencies": {
+        "@agentcontrol/app": "workspace:*",
+        "@agentcontrol/protocol": "workspace:*",
         "hono": "4.13.17",
       },
     },

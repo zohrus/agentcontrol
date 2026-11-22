@@ -33,4 +33,4 @@ export async function git(args: string[], options: GitOptions): Promise<string> 
   }
   return result.stdout;
 }
-export { parseStatus, type StatusEntry } from "./status.ts";
+export { parseStatus } from "./status.ts";

@@ -17,6 +17,7 @@ export const RelayName = {
   fsRead: "relay/fs.read",
   fsWrite: "relay/fs.write",
   fsWatch: "relay/fs.watch",
+  usage: "relay/usage",
   event: "relay/event",
   fsChanged: "relay/fs.changed",
 } as const;

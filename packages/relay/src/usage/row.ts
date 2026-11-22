@@ -1,4 +1,4 @@
-import type { UsageRow } from "./types.ts";
+import type { UsageRow } from "@agentcontrol/protocol";
 
 export interface Tokens {
   inputTokens: number;

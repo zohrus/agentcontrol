@@ -9,11 +9,12 @@ import type { z } from "zod";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
+import { createWorktree, portBaseFor } from "../worktrees/index.ts";
 import { archiveSession } from "./archive.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
 import { answerRequest, cancelRequests } from "./permissions.ts";
 import { recoverSessions } from "./recovery.ts";
-import { plannedLocation, runInBackground } from "./start.ts";
+import { runInBackground } from "./start.ts";
 import { followEvents } from "./subscribe.ts";
 import { summarize } from "./summarize.ts";
 import { liveAgent, startTurn } from "./turn.ts";
@@ -30,6 +31,8 @@ export interface Sessions {
   list(): Promise<SessionSummary[]>;
   /** Where the session's worktree is; fails with sessionNotFound for an unknown session. */
   info(sessionId: SessionId): Promise<SessionInfo>;
+  /** Every event of the session; fails with sessionNotFound for an unknown session. */
+  events(sessionId: SessionId): Promise<SessionEvent[]>;
   /** Replays events after the client's cursors, then streams new ones; returns how to stop. */
   follow(
     params: z.infer<typeof EventsSubscribeParams>,
@@ -48,17 +51,22 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
   const repo =
     (await ctx.repos.findByPath(params.repoPath)) ?? (await ctx.repos.add(params.repoPath));
   const sessionId = SessionId.parse(crypto.randomUUID());
+  const worktree = await createWorktree({
+    repoPath: repo.path,
+    baseBranch: params.baseBranch,
+    sessionId,
+    worktreesDir: ctx.worktreesDir,
+    setup: repo.setup,
+    portBase: portBaseFor(ctx.nextPortIndex()),
+  });
+  const { worktreePath, branch } = worktree;
+  const created = { agent: params.agent, repoPath: repo.path, baseBranch: params.baseBranch };
+  const title = titleOf(params);
   await ctx.log.append(sessionId, {
     kind: "session-created",
-    payload: {
-      agent: params.agent,
-      repoPath: repo.path,
-      baseBranch: params.baseBranch,
-      title: titleOf(params),
-      ...plannedLocation(ctx, sessionId),
-    },
+    payload: { ...created, title, worktreePath, branch },
   });
-  runInBackground(ctx, { sessionId, repo, params });
+  runInBackground(ctx, { sessionId, repo, params, worktree });
   return sessionId;
 }
 
@@ -128,6 +136,10 @@ export async function createSessions(options: {
     archive: (call) => archiveSession(ctx, call),
     list: () => listAll(ctx),
     info: (sessionId) => sessionInfo(ctx, sessionId),
+    events: async (sessionId) => {
+      await sessionInfo(ctx, sessionId);
+      return options.log.readAfter(sessionId, 0);
+    },
     follow: (params, send) => followEvents({ log: options.log, params, send }),
     shutdown: () => shutdown(ctx),
   };

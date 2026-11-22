@@ -1,5 +1,7 @@
 import { realpath } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { ErrorCode } from "@agentcontrol/protocol";
+import { RelayError } from "../rpc/index.ts";
 
 function isInside(root: string, target: string): boolean {
   const rel = relative(root, target);
@@ -21,7 +23,8 @@ export async function resolveInside(worktreePath: string, path: string): Promise
   const target = resolve(root, path);
   const real = await realpathOfExisting(target);
   if (isAbsolute(path) || !isInside(root, target) || !isInside(root, real)) {
-    throw new Error(`The path "${path}" is outside the session's folder, so it was not used.`);
+    const message = `The path "${path}" is outside the session's folder, so it was not used.`;
+    throw new RelayError(ErrorCode.invalidParams, message);
   }
   return target;
 }

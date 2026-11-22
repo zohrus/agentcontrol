@@ -73,7 +73,7 @@ const failed = (fold: Fold): Status | undefined => {
 };
 
 const setupFailed = (fold: Fold): Status | undefined =>
-  fold.setupExitCode !== undefined && fold.setupExitCode !== 0 && !fold.agentStarted
+  fold.setupExitCode !== undefined && fold.setupExitCode !== 0
     ? { status: "waiting", waitingReason: "setup-failed" }
     : undefined;
 

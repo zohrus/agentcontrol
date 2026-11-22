@@ -8,6 +8,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@agentcontrol/app": "workspace:*",
+    "@agentcontrol/protocol": "workspace:*",
     "hono": "4.13.17"
   }
 }

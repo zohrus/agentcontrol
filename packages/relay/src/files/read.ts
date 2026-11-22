@@ -16,7 +16,7 @@ async function readCommitted(options: {
 }
 
 /** Reads the current content of a file in the worktree; a missing file is an Error. */
-export async function readWorking(worktreePath: string, path: string): Promise<string> {
+async function readWorking(worktreePath: string, path: string): Promise<string> {
   const file = Bun.file(await resolveInside(worktreePath, path));
   if (!(await file.exists())) throw new Error(`"${path}" does not exist.`);
   return file.text();

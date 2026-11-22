@@ -4,5 +4,4 @@ export type {
   AgentProcess,
   PermissionAnswer,
   PermissionRequest,
-  StartAgentOptions,
 } from "./types.ts";

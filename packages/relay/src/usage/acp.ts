@@ -1,7 +1,6 @@
-import type { SessionEvent } from "@agentcontrol/protocol";
+import type { SessionEvent, UsageRow } from "@agentcontrol/protocol";
 import { z } from "zod";
 import { makeRow, NO_TOKENS, type Tokens } from "./row.ts";
-import type { UsageRow } from "./types.ts";
 
 const num = z.number().catch(0);
 

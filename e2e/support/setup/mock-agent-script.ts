@@ -13,15 +13,18 @@ export interface MockAgent {
   willEditFile(path: string): void;
   willAskToRunCommand(command: string): void;
   willFinishWith(stopReason: StopReason): void;
+  /** The turn stays open until the user cancels it, then ends with stop reason `cancelled`. */
+  willWaitUntilCancelled(): void;
+  /** The turn reports this usage, in a `usage_update` and in the prompt result, like the adapters. */
+  willReportUsage(usage: ReportedUsage): void;
   /** Steps added after this call run on the next prompt instead of the current one. */
   onNextPrompt(): void;
   writeScript(): Promise<void>;
 }
 
-type ScriptedSteps = Pick<
-  MockAgent,
-  "willReply" | "willThink" | "willPlan" | "willEditFile" | "willAskToRunCommand" | "willFinishWith"
->;
+type ReportedUsage = Omit<Extract<Step, { kind: "reportUsage" }>, "kind">;
+
+type ScriptedSteps = Omit<MockAgent, "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript">;
 
 function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
   return {
@@ -42,6 +45,12 @@ function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
     },
     willFinishWith: (stopReason) => {
       add({ kind: "finish", stopReason });
+    },
+    willWaitUntilCancelled: () => {
+      add({ kind: "waitUntilCancelled" });
+    },
+    willReportUsage: (usage) => {
+      add({ kind: "reportUsage", ...usage });
     },
   };
 }

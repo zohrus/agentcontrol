@@ -1,11 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RelayName } from "@agentcontrol/protocol";
 import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
-import { connectToRelay, type RelayClient, stopRelayDaemon } from "./relay-client.ts";
+import { actionsOf } from "./relay-actions.ts";
+import { stopRelayDaemon } from "./relay-client.ts";
 import type { RelayAccess, Session } from "./relay.ts";
 import { type User, userOf } from "./relay-user.ts";
 
@@ -18,43 +18,18 @@ export interface RunningRelay extends RelayAccess {
   closesTheApp(): Promise<void>;
   /** Connects again, as the app does on launch; nothing is followed until the app asks. */
   opensTheApp(): void;
+  /** Stops the relay daemon and starts it again; sessions are read back from their logs. */
+  restartsTheRelay(): Promise<void>;
   /** Follows one session on the current connection, receiving only events after `afterSeq`. */
   followsSessionAfter(session: Session, afterSeq: number): Promise<void>;
   /** Makes the repo's worktree setup run this script (it runs in each new session's worktree). */
   repoSetupScriptIs(script: string): Promise<void>;
 }
 
-function connectApp(dataDir: string, env: Record<string, string>): RelayClient {
-  const client = connectToRelay({ dataDir, env });
-  onTestEnd(() => client.disconnect());
-  return client;
-}
-
 function relayEnvironment(mockAgent: MockAgent): Record<string, string> {
   return {
     AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify(["bun", mockAgentMain]),
     MOCK_AGENT_SCRIPT: mockAgent.scriptPath,
-  };
-}
-
-function actionsOf(relay: { dataDir: string; repoPath: string; env: Record<string, string> }) {
-  let app = connectApp(relay.dataDir, relay.env);
-  const follow = (): Promise<unknown> => app.call(RelayName.eventsSubscribe, { afterSeq: {} });
-  return {
-    follow,
-    current: () => app,
-    closesTheApp: () => app.disconnect(),
-    opensTheApp: () => {
-      app = connectApp(relay.dataDir, relay.env);
-    },
-    followsSessionAfter: async (session: Session, afterSeq: number) => {
-      await app.call(RelayName.eventsSubscribe, { sessionId: session.id, afterSeq });
-    },
-    repoSetupScriptIs: async (script: string) => {
-      const repo = await app.call(RelayName.reposAdd, { path: relay.repoPath });
-      const setup = { copyFiles: [".env*"], setupScript: script };
-      await app.call(RelayName.reposSetSetup, { repoId: repo.repoId, setup });
-    },
   };
 }
 
@@ -77,6 +52,9 @@ export async function startRelayWithLocalRepo(): Promise<RunningRelay> {
     call: (method, params) => current().call(method, params),
     get events() {
       return current().events;
+    },
+    get fileChanges() {
+      return current().fileChanges;
     },
   };
   await follow();

@@ -2,13 +2,11 @@ import { join } from "node:path";
 import type { RepoSetup } from "@agentcontrol/protocol";
 import { git } from "../git/index.ts";
 import { copyFiles } from "./copy-files.ts";
-import { type OutputHandler, runSetupScript } from "./setup-script.ts";
 
 export interface CreatedWorktree {
   worktreePath: string;
   branch: string;
   env: Record<string, string>;
-  setupExitCode: number;
 }
 
 const PORT_START = 41000;
@@ -19,7 +17,7 @@ export function portBaseFor(index: number): number {
   return PORT_START + index * PORT_BLOCK;
 }
 
-/** Order: add a worktree on a new branch from baseBranch, copy files, assign ports, run setup. */
+/** Adds a worktree on a new branch from baseBranch, copies the setup files and assigns the ports. */
 export async function createWorktree(options: {
   repoPath: string;
   baseBranch: string;
@@ -27,7 +25,6 @@ export async function createWorktree(options: {
   worktreesDir: string;
   setup: RepoSetup;
   portBase: number;
-  onSetupOutput: OutputHandler;
 }): Promise<CreatedWorktree> {
   const branch = `agentcontrol/${options.sessionId}`;
   const worktreePath = join(options.worktreesDir, options.sessionId);
@@ -40,11 +37,5 @@ export async function createWorktree(options: {
   });
   const port = String(options.portBase);
   const env = { PORT: port, AGENTCONTROL_PORT_BASE: port };
-  const setupExitCode = await runSetupScript({
-    script: options.setup.setupScript,
-    cwd: worktreePath,
-    env,
-    onOutput: options.onSetupOutput,
-  });
-  return { worktreePath, branch, env, setupExitCode };
+  return { worktreePath, branch, env };
 }

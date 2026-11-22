@@ -26,7 +26,7 @@ async function gitRoot(path: string): Promise<string> {
 }
 
 /** Validates the folder is a git repo and builds its record with the default setup. */
-export async function newRepo(path: string): Promise<RepoWithSetup> {
+async function newRepo(path: string): Promise<RepoWithSetup> {
   const root = await gitRoot(path);
   const defaultBranch = await detectDefaultBranch(root);
   return {

@@ -1,37 +1,12 @@
 import { join } from "node:path";
-import { RelayName, type SessionEvent, type SessionSummary } from "@agentcontrol/protocol";
+
+import type { SessionSummary } from "@agentcontrol/protocol";
 import { z } from "zod";
 import type { RelayAccess, Session } from "../setup/relay.ts";
+import { forSession } from "../setup/session-events.ts";
+import { expectListedAs } from "./session-list.ts";
 
 const ToolCall = z.object({ title: z.string() });
-
-const forSession = (session: Session, kind: SessionEvent["kind"]) => (event: SessionEvent) =>
-  event.sessionId === session.id && event.kind === kind;
-
-function describeStatus(summary: SessionSummary): string {
-  const reasons = { permission: "approval", reply: "a reply", "setup-failed": "a setup fix" };
-  const reason = summary.waitingReason;
-  return reason ? `waiting for ${reasons[reason]}` : summary.status;
-}
-
-async function seesSession(relay: RelayAccess, session: Session): Promise<SessionSummary> {
-  const { sessions } = await relay.call(RelayName.sessionsList, {});
-  const listed = sessions.find((candidate) => candidate.id === session.id);
-  if (!listed) throw new Error(`expected session "${session.title}" to be listed, but it is not`);
-  return listed;
-}
-
-async function expectListedAs(
-  relay: RelayAccess,
-  call: { session: Session; status: SessionSummary["status"]; reason: string; wanted: string },
-): Promise<void> {
-  const { session } = call;
-  const summary = await seesSession(relay, session);
-  if (summary.status === call.status && describeStatus(summary) === call.wanted) return;
-  throw new Error(
-    `expected session "${session.title}" to be ${call.wanted}, but it is ${describeStatus(summary)}`,
-  );
-}
 
 /** The session list flags the session as waiting on the user's approval. */
 export async function expectSessionWaitingForApproval(
@@ -45,7 +20,6 @@ export async function expectSessionWaitingForApproval(
   await expectListedAs(relay, {
     session,
     status: "waiting",
-    reason: "permission",
     wanted: "waiting for approval",
   });
 }
@@ -62,7 +36,6 @@ export async function expectSessionWaitingForReply(
   await expectListedAs(relay, {
     session,
     status: "waiting",
-    reason: "reply",
     wanted: "waiting for a reply",
   });
 }
@@ -79,7 +52,6 @@ export async function expectSessionWaitingForSetupFix(
   await expectListedAs(relay, {
     session,
     status: "waiting",
-    reason: "setup-failed",
     wanted: "waiting for a setup fix",
   });
 }
@@ -137,4 +109,22 @@ export async function expectExactlyTheLaterEvents(
       `expected the app to receive events ${logged.join(", ")} after ${String(afterSeq)}, but it received ${received.join(", ")}`,
     );
   }
+}
+
+/** The session list shows the session in this state (for example "failed" or "idle"). */
+export async function expectSessionListedAs(
+  relay: RelayAccess,
+  call: { session: Session; status: SessionSummary["status"] },
+): Promise<void> {
+  await expectListedAs(relay, { ...call, wanted: call.status });
+}
+
+/** The app, following the session from the start, was given the events recorded before. */
+export async function expectSessionHistoryToBeReplayed(
+  relay: RelayAccess,
+  session: Session,
+): Promise<void> {
+  const reason = `expected the app to be given the history of session "${session.title}"`;
+  await relay.events.waitFor(forSession(session, "session-created"), `${reason}: its creation`);
+  await relay.events.waitFor(forSession(session, "prompt-sent"), `${reason}: its first prompt`);
 }

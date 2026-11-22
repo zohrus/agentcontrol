@@ -7,6 +7,8 @@ export interface TurnContext {
   readonly sessionId: string;
   /** The agent's working directory, from session/new; edits are written below it. */
   readonly cwd: string;
+  /** Resolves when the client sends session/cancel (also if it did so before the turn began). */
+  readonly cancelled: Promise<void>;
 }
 
 /** A handler returns a stop reason to end the turn early, or nothing to carry on. */
@@ -108,6 +110,23 @@ const askToRunCommand: Handler<"askToRunCommand"> = async (step, turn) => {
 
 const finish: Handler<"finish"> = (step) => Promise.resolve(step.stopReason);
 
+const waitUntilCancelled: Handler<"waitUntilCancelled"> = async (_step, turn) => {
+  await turn.cancelled;
+  return "cancelled";
+};
+
+/** Shaped like the real adapters: a `usage_update` with the model in `_meta` and a cumulative cost. */
+const reportUsage: Handler<"reportUsage"> = async (step, turn) => {
+  await send(turn, {
+    sessionUpdate: "usage_update",
+    used: step.inputTokens + step.outputTokens,
+    size: 200000,
+    cost: { amount: step.costUsd, currency: "USD" },
+    _meta: { "_claude/model": step.model },
+  });
+  return undefined;
+};
+
 const handlers: { [K in Step["kind"]]: Handler<K> } = {
   reply,
   think,
@@ -115,6 +134,8 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   editFile,
   askToRunCommand,
   finish,
+  waitUntilCancelled,
+  reportUsage,
 };
 
 export function runStep(step: Step, turn: TurnContext): Promise<StopReason | undefined> {

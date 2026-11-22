@@ -18,6 +18,11 @@
     "drizzle-kit": "0.31.11"
   },
   "scripts": {
+    "start": "bun src/main.ts",
+    "dev": "bun --watch src/main.ts",
     "db:generate": "drizzle-kit generate --config src/drizzle.config.ts"
+  },
+  "bin": {
+    "agentcontrol": "./src/main.ts"
   }
 }

@@ -1,9 +1,8 @@
-import { join } from "node:path";
 import { RawAcpMessage, type SessionId, type SessionsCreateParams } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { type AgentProcess, startAgent } from "../agents/index.ts";
 import type { RepoWithSetup } from "../repos/index.ts";
-import { type CreatedWorktree, createWorktree, portBaseFor } from "../worktrees/index.ts";
+import { type CreatedWorktree, runSetupScript } from "../worktrees/index.ts";
 import type { SessionContext } from "./context.ts";
 import { holdForUser } from "./permissions.ts";
 import { startTurn } from "./turn.ts";
@@ -14,48 +13,32 @@ export interface NewSession {
   sessionId: SessionId;
   repo: RepoWithSetup;
   params: CreateParams;
-}
-
-/** Where the session's worktree and branch will be: createWorktree uses the same names. */
-export function plannedLocation(ctx: SessionContext, sessionId: SessionId) {
-  return {
-    worktreePath: join(ctx.worktreesDir, sessionId),
-    branch: `agentcontrol/${sessionId}`,
-  };
+  worktree: CreatedWorktree;
 }
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function prepareWorktree(
-  ctx: SessionContext,
-  session: NewSession,
-): Promise<CreatedWorktree | undefined> {
-  const { sessionId, repo, params } = session;
-  try {
-    const worktree = await createWorktree({
-      repoPath: repo.path,
-      baseBranch: params.baseBranch,
-      sessionId,
-      worktreesDir: ctx.worktreesDir,
-      setup: repo.setup,
-      portBase: portBaseFor(ctx.nextPortIndex()),
-      onSetupOutput: (stream, text) => {
-        ctx.record(sessionId, { kind: "setup-output", payload: { stream, text } });
-      },
-    });
+/** Runs the repo's setup script in the new worktree; true when it succeeded. */
+async function runSetup(ctx: SessionContext, session: NewSession): Promise<boolean> {
+  const { sessionId, repo, worktree } = session;
+  const exitCode = await runSetupScript({
+    script: repo.setup.setupScript,
+    cwd: worktree.worktreePath,
+    env: worktree.env,
+    onOutput: (stream, text) => {
+      ctx.record(sessionId, { kind: "setup-output", payload: { stream, text } });
+    },
+  }).catch(async (error: unknown) => {
     await ctx.log.append(sessionId, {
-      kind: "setup-finished",
-      payload: { exitCode: worktree.setupExitCode },
+      kind: "setup-output",
+      payload: { stream: "stderr", text: `${reasonOf(error)}\n` },
     });
-    return worktree.setupExitCode === 0 ? worktree : undefined;
-  } catch (error) {
-    const text = `${reasonOf(error)}\n`;
-    await ctx.log.append(sessionId, { kind: "setup-output", payload: { stream: "stderr", text } });
-    await ctx.log.append(sessionId, { kind: "setup-finished", payload: { exitCode: 1 } });
-    return undefined;
-  }
+    return 1;
+  });
+  await ctx.log.append(sessionId, { kind: "setup-finished", payload: { exitCode } });
+  return exitCode === 0;
 }
 
 function tapAcp(ctx: SessionContext, sessionId: SessionId) {
@@ -75,14 +58,12 @@ function watchExit(ctx: SessionContext, sessionId: SessionId, agent: AgentProces
   });
 }
 
-/** `agent-started` is recorded as the launch begins, so the ACP handshake follows it in the log. */
+/** `agent-started` is recorded once the ACP handshake is done, so it means the agent is up. */
 async function launchAgent(
   ctx: SessionContext,
-  call: { session: NewSession; worktree: CreatedWorktree },
+  session: NewSession,
 ): Promise<AgentProcess | undefined> {
-  const { session, worktree } = call;
-  const { sessionId } = session;
-  await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
+  const { sessionId, worktree } = session;
   try {
     const agent = await startAgent({
       kind: session.params.agent,
@@ -92,6 +73,7 @@ async function launchAgent(
       onPermissionRequest: (request) => holdForUser(ctx, { sessionId, request }),
     });
     ctx.live.set(sessionId, agent);
+    await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
     watchExit(ctx, sessionId, agent);
     return agent;
   } catch (error) {
@@ -103,9 +85,8 @@ async function launchAgent(
 }
 
 async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
-  const worktree = await prepareWorktree(ctx, session);
-  if (!worktree) return;
-  const agent = await launchAgent(ctx, { session, worktree });
+  if (!(await runSetup(ctx, session))) return;
+  const agent = await launchAgent(ctx, session);
   if (!agent) return;
   await startTurn(ctx, { sessionId: session.sessionId, agent, text: session.params.prompt });
 }

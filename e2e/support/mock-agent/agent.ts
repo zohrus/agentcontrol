@@ -10,9 +10,22 @@ async function runSteps(steps: readonly Step[], turn: TurnContext): Promise<Stop
   return "end_turn";
 }
 
+/** The `usage` of the prompt result, as the real adapters report it, when the turn reports usage. */
+function usageOf(steps: readonly Step[]) {
+  const report = steps.find((step) => step.kind === "reportUsage");
+  if (!report) return {};
+  const { inputTokens, outputTokens, cachedReadTokens, cachedWriteTokens } = report;
+  const totalTokens = inputTokens + outputTokens;
+  return { usage: { totalTokens, inputTokens, outputTokens, cachedReadTokens, cachedWriteTokens } };
+}
+
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
   let cwd = process.cwd();
+  let cancel = (): void => undefined;
+  const cancelled = new Promise<void>((resolve) => {
+    cancel = resolve;
+  });
   return agent({ name: "mock-agent" })
     .onRequest(methods.agent.initialize, () => ({
       protocolVersion: PROTOCOL_VERSION,
@@ -23,9 +36,13 @@ export function createMockAgent(script: MockAgentScript) {
       cwd = params.cwd;
       return { sessionId: "mock-session-1" };
     })
+    .onNotification(methods.agent.session.cancel, () => {
+      cancel();
+    })
     .onRequest(methods.agent.session.prompt, async ({ params, client }) => {
       const steps = script.turns[turnsStarted++] ?? [];
-      const stopReason = await runSteps(steps, { client, sessionId: params.sessionId, cwd });
-      return { stopReason };
+      const turn = { client, sessionId: params.sessionId, cwd, cancelled };
+      const stopReason = await runSteps(steps, turn);
+      return { stopReason, ...usageOf(steps) };
     });
 }

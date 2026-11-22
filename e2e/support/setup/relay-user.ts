@@ -1,11 +1,14 @@
+import { join } from "node:path";
 import { RelayName } from "@agentcontrol/protocol";
 import type { PermissionOption, SessionEvent } from "@agentcontrol/protocol";
+import { editorUserOf } from "./editor-user.ts";
+import { git } from "./git.ts";
 import type { RelayAccess, Session } from "./relay.ts";
+import { forSession, worktreeOf } from "./session-events.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
 
-const isRequestFor = (session: Session) => (event: SessionEvent) =>
-  event.kind === "permission-requested" && event.sessionId === session.id;
+const isRequestFor = (session: Session) => forSession(session, "permission-requested");
 
 function optionOfKind(options: PermissionOption[], kind: string, title: string): string {
   const option = options.find((candidate) => candidate.kind === kind);
@@ -24,8 +27,14 @@ async function answer(relay: RelayAccess, call: { session: Session; kind: string
   await relay.call(RelayName.permissionRespond, { sessionId: session.id, requestId, optionId });
 }
 
-/** The things a person does in the app, as relay calls. Extend this when a test needs a new one. */
-export function userOf(relay: RelayAccess) {
+async function commit(worktree: string, file: { path: string; content: string }): Promise<void> {
+  await Bun.write(join(worktree, file.path), file.content);
+  await git(worktree, "add", file.path);
+  await git(worktree, "commit", "-m", `Update ${file.path}`);
+}
+
+/** The things a person does with a session in the app, as relay calls. */
+function sessionUserOf(relay: RelayAccess) {
   return {
     /** Starts a session on the local repo; the first prompt is sent once the agent is up. */
     startsSession: async (options: { prompt: string }): Promise<Session> => {
@@ -44,6 +53,39 @@ export function userOf(relay: RelayAccess) {
       await relay.call(RelayName.prompt, { sessionId: session.id, text });
     },
   };
+}
+
+/** What a person does to a session's turn and life: wait, cancel, archive, commit by hand. */
+function sessionLifeOf(relay: RelayAccess) {
+  return {
+    /** Waits until the agent has ended its current turn. */
+    waitsForTheAgentToFinish: async (session: Session): Promise<void> => {
+      await relay.events.waitFor(
+        forSession(session, "turn-ended"),
+        `expected the agent of session "${session.title}" to finish its turn`,
+      );
+    },
+    cancelsTheTurn: async (session: Session): Promise<void> => {
+      await relay.events.waitFor(
+        forSession(session, "prompt-sent"),
+        `expected the agent of session "${session.title}" to be given its prompt before cancelling`,
+      );
+      await relay.call(RelayName.cancel, { sessionId: session.id });
+    },
+    archivesSession: (session: Session) =>
+      relay.call(RelayName.sessionsArchive, { sessionId: session.id }),
+    archivesSessionAnyway: (session: Session) =>
+      relay.call(RelayName.sessionsArchive, { sessionId: session.id, force: true }),
+    /** Commits a file change on the session's branch, as a person would from a terminal. */
+    commitsInTheWorktree: async (session: Session, file: { path: string; content: string }) => {
+      await commit(await worktreeOf(relay, session), file);
+    },
+  };
+}
+
+/** The things a person does in the app, as relay calls. Extend this when a test needs a new one. */
+export function userOf(relay: RelayAccess) {
+  return { ...sessionUserOf(relay), ...sessionLifeOf(relay), ...editorUserOf(relay) };
 }
 
 export type User = ReturnType<typeof userOf>;

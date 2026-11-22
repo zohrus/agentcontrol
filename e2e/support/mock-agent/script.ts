@@ -18,6 +18,16 @@ const stepSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("askToRunCommand"), command: z.string() }),
   z.object({ kind: z.literal("finish"), stopReason }),
+  z.object({ kind: z.literal("waitUntilCancelled") }),
+  z.object({
+    kind: z.literal("reportUsage"),
+    model: z.string(),
+    inputTokens: z.number(),
+    outputTokens: z.number(),
+    cachedReadTokens: z.number(),
+    cachedWriteTokens: z.number(),
+    costUsd: z.number(),
+  }),
 ]);
 
 /** One list of steps per prompt turn: the first prompt runs turn 0, the second turn 1, and so on. */

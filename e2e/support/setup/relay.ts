@@ -1,4 +1,5 @@
 import type {
+  FsChangedParams,
   RelayMethodName,
   RelayParams,
   RelayResult,
@@ -23,4 +24,6 @@ export interface RelayAccess {
   call<M extends RelayMethodName>(method: M, params: RelayParams<M>): Promise<RelayResult<M>>;
   /** The events the app's current connection has received. */
   readonly events: Timeline<SessionEvent>;
+  /** The file-change notifications the app's current connection has received. */
+  readonly fileChanges: Timeline<FsChangedParams>;
 }

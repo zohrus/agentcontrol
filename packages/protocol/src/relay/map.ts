@@ -2,6 +2,7 @@ import type { z } from "zod";
 import * as f from "../files/index.ts";
 import * as s from "../sessions/index.ts";
 import * as w from "../workspace/index.ts";
+import { UsageParams, UsageResult } from "../usage/index.ts";
 import { DiffParams, DiffResult } from "../worktrees/index.ts";
 import { RelayName as N } from "./names.ts";
 
@@ -24,6 +25,7 @@ export const RelayMethods = {
   [N.fsRead]: { params: f.FsReadParams, result: f.FsReadResult },
   [N.fsWrite]: { params: f.FsWriteParams, result: f.FsWriteResult },
   [N.fsWatch]: { params: f.FsSessionParams, result: f.FsWatchResult },
+  [N.usage]: { params: UsageParams, result: UsageResult },
 } as const;
 
 /** The name of a relay request method. */

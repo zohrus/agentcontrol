@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  type FsChangedParams,
   type JsonRpcFailure,
   type JsonRpcMessage,
   type JsonRpcSuccess,
@@ -14,10 +15,10 @@ import {
 import { Timeline } from "./timeline.ts";
 
 const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
-const EVENT_WAIT_MS = 4000;
+const EVENT_WAIT_MS = 10_000;
 
 /** A failure answered by the relay, with its JSON-RPC code. */
-class RelayCallError extends Error {
+export class RelayCallError extends Error {
   constructor(
     readonly code: number,
     message: string,
@@ -30,6 +31,8 @@ export interface RelayClient {
   call<M extends RelayMethodName>(method: M, params: RelayParams<M>): Promise<RelayResult<M>>;
   /** Every `relay/event` this client has been sent, in order. */
   readonly events: Timeline<SessionEvent>;
+  /** Every `relay/fs.changed` this client has been sent, in order. */
+  readonly fileChanges: Timeline<FsChangedParams>;
   /** Closes the connection, as the app does when it quits; the relay itself keeps running. */
   disconnect(): Promise<void>;
 }
@@ -52,6 +55,7 @@ async function* linesOf(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
 interface ClientState {
   pending: Map<unknown, Pending>;
   events: Timeline<SessionEvent>;
+  fileChanges: Timeline<FsChangedParams>;
 }
 
 function settle(message: JsonRpcSuccess | JsonRpcFailure, pending: Map<unknown, Pending>): void {
@@ -68,6 +72,8 @@ function dispatch(message: JsonRpcMessage, state: ClientState): void {
   if (!("method" in message)) settle(message, state.pending);
   else if (message.method === RelayName.event) {
     state.events.record(RelayNotifications[RelayName.event].parse(message.params).event);
+  } else if (message.method === RelayName.fsChanged) {
+    state.fileChanges.record(RelayNotifications[RelayName.fsChanged].parse(message.params));
   }
 }
 
@@ -96,13 +102,18 @@ export function connectToRelay(options: {
   env: Record<string, string>;
 }): RelayClient {
   const bridge = spawnBridge(options);
-  const state: ClientState = { pending: new Map(), events: new Timeline(EVENT_WAIT_MS) };
+  const state: ClientState = {
+    pending: new Map(),
+    events: new Timeline(EVENT_WAIT_MS),
+    fileChanges: new Timeline(EVENT_WAIT_MS),
+  };
   void listen(bridge.stdout, (message) => {
     dispatch(message, state);
   });
   let nextId = 1;
   return {
     events: state.events,
+    fileChanges: state.fileChanges,
     call: (method, params) => {
       const id = nextId++;
       const answered = new Promise((resolve, reject) => state.pending.set(id, { resolve, reject }));
