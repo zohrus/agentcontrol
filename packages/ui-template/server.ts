@@ -48,7 +48,7 @@ export async function createUiDevServer(options: { root: string }): Promise<UiDe
   const vite = await createViteServer({
     root: options.root,
     appType: "spa",
-    server: { middlewareMode: true, hmr: { port: await freePort() } },
+    server: { middlewareMode: true, hmr: { host: "127.0.0.1", port: await freePort() } },
   });
   const inner = createHttpServer(vite.middlewares);
   const port = await listenOnFreePort(inner);

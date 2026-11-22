@@ -4,7 +4,7 @@ import type { RelayClient } from "./relays/index.ts";
 import { startServer } from "./server/index.ts";
 import { createStore, type Workspace } from "./store/index.ts";
 import { createHub, startSync } from "./sync/index.ts";
-import { startUi, type UiSource } from "./ui-serving/index.ts";
+import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
 
 export interface AppOptions {
   dataDir: string;
@@ -30,8 +30,9 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const hub = createHub();
   const workspace: Workspace = { id: "local", label: "This Mac", kind: "local" };
   const sync = startSync({ store, hub, workspace, connect: options.connectRelay });
-  const ui = await startUi(options.ui ?? {});
+  let ui: UiHandler | undefined;
   const server = await Promise.try(async () => {
+    ui = await startUi(options.ui ?? {});
     await sync.ready;
     return startServer({ port: options.port, deps: { store, hub, workspace, relay: sync }, ui });
   }).catch(async (error: unknown) => {

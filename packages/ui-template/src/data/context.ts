@@ -1,4 +1,4 @@
-import { ApiError, type Client } from "@agentcontrol/sdk";
+import type { Client } from "@agentcontrol/sdk";
 import type { DataState } from "./model.ts";
 import type { Store } from "./store.ts";
 
@@ -10,12 +10,12 @@ export type Context = {
 };
 
 /**
- * Runs a load nobody is waiting for. The app answering with an error is reported; the app being
- * unreachable is not, since the connection indicator already says so and the load repeats on reconnect.
+ * Runs a load nobody is waiting for. Any failure is reported except the app being
+ * unreachable (a `TypeError` from fetch), since the connection indicator already says so and the load repeats on reconnect.
  */
 export function inBackground(ctx: Context, work: Promise<unknown>): void {
   work.catch((error: unknown) => {
-    if (error instanceof ApiError) ctx.report(error);
+    if (!(error instanceof TypeError)) ctx.report(error);
   });
 }
 

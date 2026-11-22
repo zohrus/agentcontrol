@@ -10,7 +10,11 @@ async function readCommitted(options: {
   commit: string;
 }): Promise<string> {
   const args = ["show", `${options.commit}:${options.path}`];
-  const result = await runGit(args, { cwd: options.worktreePath });
+  const result = await runGit(args, {
+    cwd: options.worktreePath,
+    // English messages, so "does not exist" can be recognised on any machine.
+    env: { LC_ALL: "C" },
+  });
   if (result.exitCode === 0) return result.stdout;
   if (/does not exist in|exists on disk, but not in/.test(result.stderr)) {
     throw new RelayError(
