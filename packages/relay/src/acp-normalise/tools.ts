@@ -22,25 +22,25 @@ const ToolCallShape = z.looseObject({
   rawInput: z.unknown().optional(),
 });
 
-const CommandInput = z.looseObject({ command: z.string() });
+const CommandInput = z.looseObject({ command: z.union([z.string(), z.array(z.string())]) });
 
-const KINDS: Record<string, ToolDescription["kind"]> = {
-  read: "read",
-  search: "search",
-  edit: "edit",
-  delete: "edit",
-  move: "edit",
-  execute: "execute",
-  fetch: "fetch",
-  think: "think",
-};
+const KINDS = new Map<string, ToolDescription["kind"]>([
+  ["read", "read"],
+  ["search", "search"],
+  ["edit", "edit"],
+  ["delete", "edit"],
+  ["move", "edit"],
+  ["execute", "execute"],
+  ["fetch", "fetch"],
+  ["think", "think"],
+]);
 
-const STATUSES: Record<string, ToolDescription["status"]> = {
-  pending: "pending",
-  in_progress: "running",
-  completed: "completed",
-  failed: "failed",
-};
+const STATUSES = new Map<string, ToolDescription["status"]>([
+  ["pending", "pending"],
+  ["in_progress", "running"],
+  ["completed", "completed"],
+  ["failed", "failed"],
+]);
 
 function filesOf(content: unknown[] | undefined): FileChange[] | undefined {
   const diffs = (content ?? []).flatMap((item) => {
@@ -54,21 +54,30 @@ function filesOf(content: unknown[] | undefined): FileChange[] | undefined {
   return diffs.length > 0 ? diffs : undefined;
 }
 
+/** A patch holds only the fields the agent sent, so merging it never erases a known value. */
+function withoutUndefined<T extends object>(fields: T): T {
+  return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined)) as T;
+}
+
 function pathsOf(call: z.infer<typeof ToolCallShape>): string[] | undefined {
   const paths = (call.locations ?? []).map((location) => location.path);
   return paths.length > 0 ? paths : filesOf(call.content)?.map((file) => file.path);
 }
 
 function patchOf(call: z.infer<typeof ToolCallShape>) {
+  return withoutUndefined(allFieldsOf(call));
+}
+
+function allFieldsOf(call: z.infer<typeof ToolCallShape>) {
   const command = CommandInput.safeParse(call.rawInput);
   return {
     toolCallId: call.toolCallId,
     title: call.title,
-    kind: call.kind === undefined ? undefined : (KINDS[call.kind] ?? "other"),
-    status: call.status === undefined ? undefined : STATUSES[call.status],
+    kind: call.kind === undefined ? undefined : (KINDS.get(call.kind) ?? "other"),
+    status: call.status === undefined ? undefined : STATUSES.get(call.status),
     paths: pathsOf(call),
     files: filesOf(call.content),
-    command: command.success ? command.data.command : undefined,
+    command: command.success ? [command.data.command].flat().join(" ") : undefined,
     input: call.rawInput,
   };
 }

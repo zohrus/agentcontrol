@@ -53,7 +53,7 @@ const text = { text: z.string(), messageId: z.string().optional() };
  * the UI, usage and analytics read this and never the raw shape. Discriminated on `type`.
  */
 export const AgentUpdate = z.discriminatedUnion("type", [
-  /** The user's message to the agent. */
+  /** The user's message: seen once as sent, and again if the agent replays history on resume (ignore replays). */
   z.object({ type: z.literal("user-text"), ...text }),
   /** A piece of the agent's reply; chunks that share a `messageId` form one message. */
   z.object({ type: z.literal("agent-text"), ...text }),
