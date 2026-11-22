@@ -56,7 +56,11 @@ export async function createUiDevServer(options: { root: string }): Promise<UiDe
     fetch: async (request) => {
       const { pathname, search } = new URL(request.url);
       const target = `http://127.0.0.1:${String(port)}${pathname}${search}`;
-      const answer = await fetch(target, { headers: request.headers }).catch(() => undefined);
+      const answer = await fetch(target, {
+        headers: request.headers,
+        redirect: "manual",
+        signal: request.signal,
+      }).catch(() => undefined);
       if (answer === undefined) return new Response("The UI is not available.", { status: 503 });
       return new Response(answer.body, {
         status: answer.status,

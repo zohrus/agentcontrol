@@ -17,7 +17,9 @@ const withDetail = new Set(["setup-failed", "invalid-request", "internal-error"]
 /** A failure in plain words for a toast or an inline message. */
 export function describeError(error: unknown): string {
   if (!(error instanceof ApiError)) {
-    return "AgentControl cannot be reached right now. It keeps trying to reconnect.";
+    return error instanceof TypeError
+      ? "AgentControl cannot be reached right now. It keeps trying to reconnect."
+      : "Something went wrong in the page. Try again, or reload it.";
   }
   const base = messages[error.code] ?? "Something went wrong.";
   return withDetail.has(error.code) ? `${base} ${error.message}` : base;

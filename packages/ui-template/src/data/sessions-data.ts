@@ -66,9 +66,7 @@ function catchUp(ctx: Context): void {
 export async function loadSessions(ctx: Context): Promise<void> {
   const fetched = await ctx.client.sessions.list();
   ctx.store.update((s) => ({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }));
-  for (const row of fetched) {
-    if (row.status !== "archived") inBackground(ctx, loadUsage(ctx, row.id));
-  }
+  for (const row of fetched) inBackground(ctx, loadUsage(ctx, row.id));
   catchUp(ctx);
 }
 

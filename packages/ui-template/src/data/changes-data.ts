@@ -7,8 +7,10 @@ const STALE_NOTICE =
   "This file changed on disk while you were editing, so your edit was not saved. " +
   "The editor now shows the newer version; make your edit again on top of it.";
 
-const MISSING = { content: "", hash: "" };
-const NO_FILE: FileVersions = { base: "", working: "", hash: "", notice: undefined };
+/** What the relay calls the hash of a file that is missing or empty (sha256 of nothing). */
+const EMPTY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+const MISSING = { content: "", hash: EMPTY_HASH };
+const NO_FILE: FileVersions = { base: "", working: "", hash: EMPTY_HASH, notice: undefined };
 
 /** A file version, empty when that version does not exist (a new or deleted file). */
 async function readVersion(ctx: Context, call: { id: SessionId; path: string; ref: FileRef }) {
