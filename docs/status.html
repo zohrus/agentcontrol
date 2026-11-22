@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 20:30 UTC";
+const UPDATED = "22 Nov 2026, 21:15 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -200,11 +200,12 @@ const C = [
   // Phase 0
   { id:"repo", phase:"p0", name:"Repository and workspace", status:"done", desc:"Bun workspace, packages layout, bun dev and bun test from a fresh clone, MIT license.", path:"package.json" },
   { id:"plan-docs", phase:"p0", name:"Plan, TASKS.md, AGENTS.md", status:"done", desc:"Final plan, deferred tasks, and the coding rules every agent follows (CLAUDE.md imports AGENTS.md).", path:"AGENTS.md" },
-  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"done", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, duplication, formatting, audit. Each gate proven to break the build. GitHub Actions, Dependabot, gitleaks, lefthook.", path:".github/workflows/" },
+  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"done", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, zero duplicated blocks, no raw ACP outside the relay, formatting, audit. 24 gate proofs, now also run in CI.", path:".github/workflows/" },
   { id:"protocol", phase:"p0", name:"Shared protocol types", status:"done", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
   { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"done", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
   { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
   { id:"coverage", phase:"p0", name:"Coverage gate", status:"progress", desc:"End-to-end line coverage of at least 95%, deterministic, required before any push. Tests run the relay and app in-process so coverage sees them.", path:"scripts/coverage.ts" },
+  { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"progress", desc:"Done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages. In progress: workdir seam (worktree or plain folder), single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
@@ -257,9 +258,7 @@ const C = [
 ];
 
 const NOW = [
-  "Priority: coverage gate, 95% of lines covered by end-to-end tests, deterministic, required before any push",
-  "Abstraction changes: normalised agent updates; live session summaries pushed by the relay; workspace id on live messages",
-  "Plan update: docs/plan.html and TASKS.md brought up to date with every decision so far",
+  "Priority: coverage gate is built (98% of lines, five identical runs); being rebased onto the latest main before it lands",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
@@ -280,6 +279,7 @@ const LOG = [
   ["22 Nov 2026 19:20", "main is up to date and every gate is green: 16 test files pass. Landed: app server with sync and live stream, SDK, 13 more relay tests, UI wave 2, UI workspace, packaging and Swift menu bar app (not yet built on a Mac). New rules in AGENTS.md: /code-review before any push and 95% end-to-end coverage. Five subagents started on the next wave."],
   ["22 Nov 2026 20:05", "Development loop landed: parallel timed check (about 33 s), quick check, integrate script, done-report, guardrails, decision log; CI workflow green on main. Abstractions review done and its five changes started. New tasks added: HTML preview inside the app and Markdown preview."],
   ["22 Nov 2026 20:30", "Plan brought fully up to date and republished. New task: console access from inside the app for SSH workspaces (phase 5), using xterm.js. All subagents resumed after a usage-limit pause; no work lost."],
+  ["22 Nov 2026 21:15", "Landed through the integrate script: normalised agent updates (14 tests), live session summaries and workspace ids (listing 50 big sessions went from about 350 ms to 2 ms), and the duplication gate tightened to zero clones. Found and fixed four gate proofs that had silently stopped failing; proofs now run in CI."],
 ];
 /* ===== END DATA ===== */
 
