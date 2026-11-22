@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 17:15 UTC";
+const UPDATED = "22 Nov 2026, 17:30 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -216,7 +216,7 @@ const C = [
   { id:"relay-fs", phase:"p1", name:"Worktree files", status:"progress", desc:"fs.tree, fs.read, fs.write with hash check, fs.watch for the editor.", path:"packages/relay/src/fs" },
   // Phase 2
   { id:"relay-conn", phase:"p2", name:"Relay connections", status:"planned", desc:"Starts and talks to relays: the local one over stdio now, SSH in phase 5.", path:"packages/app/src/relays" },
-  { id:"store", phase:"p2", name:"Store", status:"progress", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
+  { id:"store", phase:"p2", name:"Store", status:"done", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
   { id:"sync", phase:"p2", name:"Sync", status:"planned", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
   { id:"session-status", phase:"p2", name:"Session status", status:"progress", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
   { id:"api", phase:"p2", name:"API", status:"planned", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
@@ -224,11 +224,11 @@ const C = [
   { id:"archive", phase:"p1", name:"Archive", status:"progress", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
   // Phase 3
   { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"planned", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
-  { id:"ui-shell", phase:"p3", name:"Default UI", status:"planned", desc:"Vite, React, Tailwind, shadcn/ui template copied to the data folder.", path:"packages/ui-template" },
+  { id:"ui-shell", phase:"p3", name:"Default UI", status:"progress", desc:"Vite, React, Tailwind, shadcn/ui template copied to the data folder.", path:"packages/ui-template" },
   { id:"ui-server", phase:"p3", name:"UI server", status:"planned", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
-  { id:"session-list", phase:"p3", name:"Session list", status:"planned", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
-  { id:"session-view", phase:"p3", name:"Session view", status:"planned", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
-  { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"planned", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
+  { id:"session-list", phase:"p3", name:"Session list", status:"progress", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
+  { id:"session-view", phase:"p3", name:"Session view", status:"progress", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
+  { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"progress", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
   // Phase 4
   { id:"modify", phase:"p4", name:"Modify agent", status:"planned", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
   { id:"ui-versions", phase:"p4", name:"UI versions", status:"planned", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
@@ -253,7 +253,7 @@ const C = [
 
 const NOW = [
   "Wiring the relay: daemon that outlives the app, session lifecycle, archive, first relay end-to-end tests",
-  "App store: SQLite with Drizzle (Phase 2)",
+  "Default UI scaffold: Vite, React, Tailwind, the session list, session view and Monaco diff components (Phase 3)",
   "Written, waiting for end-to-end tests: event log, ACP client, permissions, worktrees, diff, files",
 ];
 const BLOCKED = [
@@ -266,6 +266,7 @@ const LOG = [
   ["22 Nov 2026 16:40", "Quality gates done: 23 deliberately bad samples each break the build. Mock ACP agent and test harness done: 4 end-to-end tests pass. CI, Dependabot, gitleaks and git hooks added."],
   ["22 Nov 2026 16:55", "Shared protocol package done: JSON-RPC envelope, events and 17 relay methods. Phase 1 relay started with three parallel subagents."],
   ["22 Nov 2026 17:15", "Relay parts written and pushed: event log, ACP client with message tap, permission holding, worktrees, session diff, worktree files, repo store. Spike ran real Claude Code turns. Now wiring the relay together and starting the app store."],
+  ["22 Nov 2026 17:30", "App store done: SQLite with Drizzle, 5,000 events saved in about 75 ms, safe to re-save. Default UI scaffold started."],
 ];
 /* ===== END DATA ===== */
 
