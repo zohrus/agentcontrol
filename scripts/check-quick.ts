@@ -3,7 +3,7 @@
 // dependency rules. No knip, duplication, audit or tests: `bun run check` runs those.
 import { existsSync } from "node:fs";
 import { changedFiles, mergeBase } from "./lib/changes.ts";
-import { runCapture, type StepResult, skippedStep } from "./lib/proc.ts";
+import { enterRepoRoot, runCapture, type StepResult, skippedStep } from "./lib/proc.ts";
 
 const SOURCE = /^(packages|e2e|spike|scripts)\/.*\.(ts|tsx)$/;
 const FORMATTED = /\.(ts|tsx|css|json|js)$/;
@@ -29,6 +29,7 @@ function steps(paths: string[]): Promise<StepResult>[] {
 
 async function main(): Promise<void> {
   const started = performance.now();
+  enterRepoRoot();
   const paths = targetPaths(process.argv.slice(2));
   console.log(`check:quick on ${String(paths.length)} path(s)`);
   const results = await Promise.all(steps(paths));

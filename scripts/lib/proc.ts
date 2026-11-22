@@ -44,6 +44,11 @@ export async function runLive(command: string[], options: RunOptions = {}): Prom
   return child.exited;
 }
 
+/** Moves to the repository root, so paths from git are valid whatever directory we started in. */
+export function enterRepoRoot(): void {
+  process.chdir(git(["rev-parse", "--show-toplevel"]).out);
+}
+
 /** Runs git synchronously. `ok` is false on a non-zero exit; `out` is trimmed stdout. */
 export function git(args: string[], options: RunOptions = {}): { ok: boolean; out: string } {
   const run = Bun.spawnSync(["git", ...args], spawnBase(options));
@@ -53,6 +58,7 @@ export function git(args: string[], options: RunOptions = {}): { ok: boolean; ou
 }
 
 export function gitLines(args: string[], options: RunOptions = {}): string[] {
-  const { out } = git(args, options);
+  const { ok, out } = git(args, options);
+  if (!ok) throw new Error(`git ${args.join(" ")} failed: ${out}`);
   return out === "" ? [] : out.split("\n");
 }

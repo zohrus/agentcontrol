@@ -12,7 +12,14 @@
 // REVERT FIRST: if main is ever red, whoever sees it reverts the offending commit
 // (`git revert <sha>`, then `bun run integrate` that revert) before doing anything else.
 // Nobody builds on a red main; the fix goes through this script like any other change.
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  linkSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { git, gitLines, runLive } from "./lib/proc.ts";
@@ -33,15 +40,28 @@ function processAlive(pid: number): boolean {
   }
 }
 
-function takeLock(lockPath: string): void {
+function lockHolder(lockPath: string): number {
   try {
-    writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+    return Number(readFileSync(lockPath, "utf8"));
   } catch {
-    const holder = Number(readFileSync(lockPath, "utf8"));
+    return 0;
+  }
+}
+
+/** Atomic: the pid is written to a private file, then hard-linked into place (fails if taken). */
+function takeLock(lockPath: string): void {
+  const mine = `${lockPath}.${String(process.pid)}`;
+  writeFileSync(mine, String(process.pid));
+  try {
+    linkSync(mine, lockPath);
+  } catch {
+    const holder = lockHolder(lockPath);
     if (holder > 0 && processAlive(holder))
       fail(`another landing is running (pid ${String(holder)})`);
     rmSync(lockPath, { force: true });
-    takeLock(lockPath);
+    linkSync(mine, lockPath);
+  } finally {
+    rmSync(mine, { force: true });
   }
 }
 
@@ -59,7 +79,10 @@ function rebase(scratch: string, branch: string): void {
 }
 
 async function verify(scratch: string): Promise<number> {
-  const install = await runLive(["bun", "install", "--frozen-lockfile"], { cwd: scratch });
+  const install = await runLive(["bun", "install", "--frozen-lockfile"], {
+    cwd: scratch,
+    env: NO_HOOKS,
+  });
   if (install !== 0) fail("bun install --frozen-lockfile failed (is bun.lock out of date?)");
   return runLive(["bun", "run", "check"], { cwd: scratch });
 }
@@ -68,9 +91,10 @@ function recordLanding(scratch: string, branch: string, seconds: number): void {
   const sha = git(["rev-parse", "--short", "HEAD"], { cwd: scratch }).out;
   const line = `${new Date().toISOString()} ${sha} ${branch} ${seconds.toFixed(0)}s\n`;
   appendFileSync(join(scratch, "docs/landings.log"), line);
-  git(["add", "docs/landings.log"], { cwd: scratch });
+  const added = git(["add", "docs/landings.log"], { cwd: scratch });
   const message = `Landing log: ${branch} at ${sha}`;
-  git(["commit", "-m", message], { cwd: scratch, env: NO_HOOKS });
+  const commit = git(["commit", "-m", message], { cwd: scratch, env: NO_HOOKS });
+  if (!added.ok || !commit.ok) fail(`cannot record the landing: ${commit.out}`);
 }
 
 function land(scratch: string, dryRun: boolean): void {

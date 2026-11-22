@@ -35,7 +35,7 @@ function readLines(path: string): string[] {
 /** Counts added lines matching `pattern`, over tracked changes and untracked files. */
 export function countAddedLines(base: string, pattern: RegExp): number {
   const diff = git(["diff", "-U0", base]).out.split("\n");
-  const inDiff = diff.filter((line) => line.startsWith("+") && !line.startsWith("+++"));
+  const inDiff = diff.filter((line) => line.startsWith("+") && !line.startsWith("+++ "));
   const inNew = untracked().flatMap(readLines);
   return [...inDiff, ...inNew].filter((line) => pattern.test(line)).length;
 }

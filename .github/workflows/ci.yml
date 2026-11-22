@@ -1,6 +1,7 @@
 name: ci
-# The merge queue (scripts/integrate.ts) lands work on main; queue/** branches let CI run on a
-# candidate before it lands. There are no pull requests, so there is no pull_request trigger.
+# scripts/integrate.ts runs the full check before it lands anything on main, so CI on main is the
+# second opinion on a clean machine. queue/** branches can be pushed by hand to try a candidate.
+# There are no pull requests, so there is no pull_request trigger.
 on:
   push:
     branches: [main, "queue/**"]

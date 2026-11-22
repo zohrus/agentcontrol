@@ -2,7 +2,7 @@
 // check, then prints a DONE-REPORT block that the orchestrator parses instead of prose. Exits
 // non-zero when a rule is broken: files outside the owned paths, dependency changes, any change
 // to eslint.config.js (the limits), or a new eslint-disable.
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import {
   addedFiles,
   changedFiles,
@@ -11,7 +11,7 @@ import {
   mergeBase,
 } from "./lib/changes.ts";
 import { dependenciesChanged, isPackageJson } from "./lib/deps.ts";
-import { git, runLive } from "./lib/proc.ts";
+import { enterRepoRoot, git, runLive } from "./lib/proc.ts";
 
 const DISABLE_DIRECTIVE = /(\/\/|\/\*)\s*eslint-disable/;
 
@@ -93,13 +93,20 @@ function render(report: Record<string, unknown>): string {
   return `\`\`\`DONE-REPORT\n${lines.join("\n")}\ncode-review: <must be filled by the agent>\n\`\`\``;
 }
 
+/** Runs the full check from the repo root, with no gate skipped and no stale timing file. */
+async function runCheck(): Promise<number> {
+  enterRepoRoot();
+  rmSync(".check-timing.json", { force: true });
+  return runLive(["bun", "run", "check"], { env: { CHECK_SKIP: "" } });
+}
+
 async function main(): Promise<number> {
   const owned = process.argv.slice(2);
   if (owned.length === 0) {
     console.error("usage: bun run done <owned-path>...   (the paths your brief says you own)");
     return 1;
   }
-  const code = await runLive(["bun", "run", "check"], { env: { CHECK_SKIP: "" } });
+  const code = await runCheck();
   const report = buildReport(owned, mergeBase());
   if (code !== 0) report.check = "fail";
   console.log(render(report));
