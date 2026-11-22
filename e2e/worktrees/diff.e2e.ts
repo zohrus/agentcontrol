@@ -27,10 +27,9 @@ test("the session diff lists a file the agent edited but did not commit", async 
 
 test("the session diff includes a new untracked file and a committed change together", async () => {
   // ********************************************************************
-  // ** GIVEN an agent that will create src/server.ts without committing it
+  // ** GIVEN a session whose agent created src/server.ts without committing it
   // ********************************************************************
   const { relay, session } = await startRelayWithSessionWhereAgentEdited("src/server.ts");
-  // AND the agent has finished its turn in a new session
 
   // ********************************************************************
   // ** WHEN a change to README.md is committed on the session's branch
