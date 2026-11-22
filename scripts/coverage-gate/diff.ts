@@ -14,6 +14,11 @@ function gitOrFail(args: string[]): { text: string } {
   return run;
 }
 
+/** On main itself: the uncommitted edits if there are any, else the last commit. */
+function lastChangeBase(): string {
+  return git(["status", "--porcelain", "--", "packages"]).text === "" ? "HEAD~1" : "HEAD";
+}
+
 /** The tip before a push, when CI names one (an all-zero SHA means a new branch: no tip). */
 function givenBase(): string | undefined {
   const given = process.env["COVERAGE_BASE"] ?? "";
@@ -31,7 +36,7 @@ export function baseCommit(): string | undefined {
   const base = git(["merge-base", "origin/main", "HEAD"]);
   if (!base.ok) return undefined;
   const head = git(["rev-parse", "HEAD"]).text;
-  return base.text === head ? "HEAD~1" : base.text;
+  return base.text === head ? lastChangeBase() : base.text;
 }
 
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
