@@ -1,4 +1,3 @@
-export type { ArchiveOutcome } from "./commands.ts";
 export { worktreePathOf } from "./derive.ts";
 export { describeError } from "./errors.ts";
 export {

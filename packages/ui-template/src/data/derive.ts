@@ -22,7 +22,7 @@ function findPending(events: readonly SessionEvent[]): PendingPermission | undef
 }
 
 /** The permission request a session waits on, only when exactly one is pending. */
-export function pendingPermissionOf(
+function pendingPermissionOf(
   events: readonly SessionEvent[] | undefined,
 ): PendingPermission | undefined {
   if (events === undefined) return undefined;

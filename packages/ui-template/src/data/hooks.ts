@@ -31,7 +31,7 @@ export function useOpenFile(path: string | undefined): void {
   }, [openFile, path]);
 }
 
-export const useSessions = (): readonly SessionRow[] => useData((s) => s.sessions);
+const useSessions = (): readonly SessionRow[] => useData((s) => s.sessions);
 export const useSession = (id: SessionId | undefined): SessionRow | undefined =>
   useData((s) => s.sessions.find((row) => row.id === id));
 export const useSessionEvents = (id: SessionId | undefined): readonly SessionEvent[] =>

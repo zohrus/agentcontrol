@@ -43,7 +43,7 @@ export async function loadEvents(ctx: Context, id: SessionId): Promise<void> {
 }
 
 /** One session's token usage and cost, per finished turn. */
-export async function loadUsage(ctx: Context, id: SessionId): Promise<void> {
+async function loadUsage(ctx: Context, id: SessionId): Promise<void> {
   const rows = await ctx.client.sessions.usage(id);
   ctx.store.update((s) => ({ ...s, usage: { ...s.usage, [id]: rows } }));
 }
@@ -55,7 +55,7 @@ function needsEvents(state: DataState, row: SessionRow): boolean {
 }
 
 /** Fetches the history of every session that has fallen behind its summary. */
-export function catchUp(ctx: Context): void {
+function catchUp(ctx: Context): void {
   const state = ctx.store.get();
   for (const row of state.sessions) {
     if (needsEvents(state, row)) inBackground(ctx, loadEvents(ctx, row.id));

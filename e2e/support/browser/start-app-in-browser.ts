@@ -5,6 +5,9 @@ import { launchChromium, type Page } from "./playwright.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
 
+/** A browser test alone takes 5 to 10 s; this leaves room for a busy machine (Vite and Chromium start per test). */
+export const BROWSER_TEST_TIMEOUT_MS = 60_000;
+
 /** The running app together with a browser tab showing its UI. */
 export type AppInBrowser = RunningApp & { readonly page: AppPage };
 

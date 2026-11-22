@@ -3,7 +3,10 @@ import {
   expectArchiveWarningToList,
   expectSessionUnderArchived,
 } from "../support/browser/browser-expectations.ts";
-import { startAppInBrowser } from "../support/browser/start-app-in-browser.ts";
+import {
+  BROWSER_TEST_TIMEOUT_MS,
+  startAppInBrowser,
+} from "../support/browser/start-app-in-browser.ts";
 import {
   expectSessionArchived,
   expectSessionWaitingForReply,
@@ -12,47 +15,55 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
 
-test("archiving a session with uncommitted changes warns and lists the changed file", async () => {
-  // ********************************************************************
-  // ** GIVEN a session whose agent edited README.md without committing, open in the browser
-  // ********************************************************************
-  const app = await startAppInBrowser();
-  app.mockAgent.willEditFile("README.md");
-  const session = await app.user.startsSession({ prompt: "Reword the readme" });
-  await expectSessionWaitingForReply(app, session);
-  await app.page.opensSession(session.title);
+test(
+  "archiving a session with uncommitted changes warns and lists the changed file",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session whose agent edited README.md without committing, open in the browser
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    app.mockAgent.willEditFile("README.md");
+    const session = await app.user.startsSession({ prompt: "Reword the readme" });
+    await expectSessionWaitingForReply(app, session);
+    await app.page.opensSession(session.title);
 
-  // ********************************************************************
-  // ** WHEN the user archives the session
-  // ********************************************************************
-  await app.page.archives();
+    // ********************************************************************
+    // ** WHEN the user archives the session
+    // ********************************************************************
+    await app.page.archives();
 
-  // ********************************************************************
-  // ** THEN the warning lists README.md as a change that would be lost
-  // ********************************************************************
-  await expectArchiveWarningToList(app, ["README.md"]);
-});
+    // ********************************************************************
+    // ** THEN the warning lists README.md as a change that would be lost
+    // ********************************************************************
+    await expectArchiveWarningToList(app, ["README.md"]);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
 
-test("Archive anyway moves the session to the Archived list", async () => {
-  // ********************************************************************
-  // ** GIVEN the archive warning is showing for a session with an uncommitted edit
-  // ********************************************************************
-  const app = await startAppInBrowser();
-  app.mockAgent.willEditFile("README.md");
-  const session = await app.user.startsSession({ prompt: "Reword the readme" });
-  await expectSessionWaitingForReply(app, session);
-  await app.page.opensSession(session.title);
-  await app.page.archives();
-  await expectArchiveWarningToList(app, ["README.md"]);
+test(
+  "Archive anyway moves the session to the Archived list",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN the archive warning is showing for a session with an uncommitted edit
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    app.mockAgent.willEditFile("README.md");
+    const session = await app.user.startsSession({ prompt: "Reword the readme" });
+    await expectSessionWaitingForReply(app, session);
+    await app.page.opensSession(session.title);
+    await app.page.archives();
+    await expectArchiveWarningToList(app, ["README.md"]);
 
-  // ********************************************************************
-  // ** WHEN the user chooses Archive anyway
-  // ********************************************************************
-  await app.page.archivesAnyway();
+    // ********************************************************************
+    // ** WHEN the user chooses Archive anyway
+    // ********************************************************************
+    await app.page.archivesAnyway();
 
-  // ********************************************************************
-  // ** THEN the session is archived and listed under Archived
-  // ********************************************************************
-  await expectSessionArchived(app, session);
-  await expectSessionUnderArchived(app, session.title);
-});
+    // ********************************************************************
+    // ** THEN the session is archived and listed under Archived
+    // ********************************************************************
+    await expectSessionArchived(app, session);
+    await expectSessionUnderArchived(app, session.title);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
