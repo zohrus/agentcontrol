@@ -23,6 +23,6 @@
     "db:generate": "drizzle-kit generate --config src/drizzle.config.ts"
   },
   "bin": {
-    "agentcontrol": "./src/main.ts"
+    "agentcontrol": "./bin/agentcontrol.ts"
   }
 }

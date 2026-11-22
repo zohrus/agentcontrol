@@ -35,7 +35,7 @@ async function run(cwd: string, command: string[], env: Record<string, string> =
   return { exitCode, output: out + err };
 }
 
-export async function gitIn(project: Project, ...args: string[]): Promise<Ran> {
+async function gitIn(project: Project, ...args: string[]): Promise<Ran> {
   return run(project.work, ["git", ...args]);
 }
 
