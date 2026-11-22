@@ -5,6 +5,7 @@
     "includes": [
       "packages/**/*.ts",
       "packages/**/*.tsx",
+      "packages/**/*.css",
       "e2e/**/*.ts",
       "spike/**/*.ts",
       "scripts/**/*.ts",
@@ -16,5 +17,6 @@
   "linter": { "enabled": false },
   "assist": { "enabled": false },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "css": { "parser": { "tailwindDirectives": true } },
   "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } }
 }

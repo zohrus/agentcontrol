@@ -1,0 +1,87 @@
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
+import { createServer, type Server, type Socket } from "node:net";
+import { join } from "node:path";
+import { createInterface } from "node:readline";
+import { createEventLog } from "../event-log/index.ts";
+import { createRepoStore, type RepoStore } from "../repos/index.ts";
+import { createRpcConnection, type Handlers } from "../rpc/index.ts";
+import { createSessions, type Sessions } from "../sessions/index.ts";
+import { fileHandlers } from "./handlers-files.ts";
+import { sessionHandlers } from "./handlers-sessions.ts";
+import { workspaceHandlers } from "./handlers-workspace.ts";
+import { socketPathIn, tryConnect } from "./socket.ts";
+
+export const pidFileIn = (dataDir: string): string => join(dataDir, "relay.pid");
+
+function serve(socket: Socket, handlers: Handlers): void {
+  const connection = createRpcConnection({
+    handlers,
+    send: (line) => {
+      if (socket.writable) socket.write(`${line}\n`);
+    },
+  });
+  createInterface({ input: socket }).on("line", (line) => {
+    connection.receive(line);
+  });
+  socket.on("close", () => {
+    connection.close();
+  });
+  socket.on("error", () => undefined);
+}
+
+async function claimSocket(socketPath: string): Promise<void> {
+  const running = await tryConnect(socketPath);
+  if (running) {
+    running.destroy();
+    throw new Error(`A relay is already running at ${socketPath}.`);
+  }
+  await rm(socketPath, { force: true });
+}
+
+async function listenPrivately(server: Server, socketPath: string): Promise<void> {
+  const previousMask = process.umask(0o177);
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(socketPath, resolve);
+  });
+  process.umask(previousMask);
+  await chmod(socketPath, 0o600);
+}
+
+async function buildSessions(dataDir: string, repos: RepoStore): Promise<Sessions> {
+  const log = createEventLog({ dir: join(dataDir, "sessions"), now: () => new Date() });
+  return createSessions({ log, repos, worktreesDir: join(dataDir, "worktrees") });
+}
+
+export interface Daemon {
+  /** Stops the agents, closes the socket and removes the files that say the relay is running. */
+  stop(): Promise<void>;
+}
+
+/** Listens on `<dataDir>/relay.sock` and serves every client until stopped. */
+export async function startDaemon(options: { dataDir: string }): Promise<Daemon> {
+  const { dataDir } = options;
+  await mkdir(dataDir, { recursive: true });
+  const socketPath = socketPathIn(dataDir);
+  await claimSocket(socketPath);
+  const repos = createRepoStore({ dataDir });
+  const sessions = await buildSessions(dataDir, repos);
+  const handlers: Handlers = {
+    ...sessionHandlers(sessions),
+    ...fileHandlers(sessions),
+    ...workspaceHandlers(repos),
+  };
+  const server = createServer((socket) => {
+    serve(socket, handlers);
+  });
+  await listenPrivately(server, socketPath);
+  await writeFile(pidFileIn(dataDir), String(process.pid));
+  return {
+    stop: async () => {
+      server.close();
+      await sessions.shutdown();
+      await rm(socketPath, { force: true });
+      await rm(pidFileIn(dataDir), { force: true });
+    },
+  };
+}

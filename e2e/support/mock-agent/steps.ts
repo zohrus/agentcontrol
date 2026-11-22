@@ -1,9 +1,12 @@
+import { join } from "node:path";
 import { type AgentContext, methods, type SessionUpdate } from "@agentclientprotocol/sdk";
 import type { Step, StopReason } from "./script.ts";
 
 export interface TurnContext {
   readonly client: AgentContext;
   readonly sessionId: string;
+  /** The agent's working directory, from session/new; edits are written below it. */
+  readonly cwd: string;
 }
 
 /** A handler returns a stop reason to end the turn early, or nothing to carry on. */
@@ -67,6 +70,7 @@ const editFile: Handler<"editFile"> = async (step, turn) => {
   };
   const locations = [{ path: step.path }];
   const title = `Edit ${step.path}`;
+  await Bun.write(join(turn.cwd, step.path), step.newText);
   await send(turn, {
     sessionUpdate: "tool_call",
     toolCallId,

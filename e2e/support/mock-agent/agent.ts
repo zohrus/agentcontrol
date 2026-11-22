@@ -12,16 +12,20 @@ async function runSteps(steps: readonly Step[], turn: TurnContext): Promise<Stop
 
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
+  let cwd = process.cwd();
   return agent({ name: "mock-agent" })
     .onRequest(methods.agent.initialize, () => ({
       protocolVersion: PROTOCOL_VERSION,
       agentCapabilities: {},
       agentInfo: { name: "mock-agent", version: "0.0.0" },
     }))
-    .onRequest(methods.agent.session.new, () => ({ sessionId: "mock-session-1" }))
+    .onRequest(methods.agent.session.new, ({ params }) => {
+      cwd = params.cwd;
+      return { sessionId: "mock-session-1" };
+    })
     .onRequest(methods.agent.session.prompt, async ({ params, client }) => {
       const steps = script.turns[turnsStarted++] ?? [];
-      const stopReason = await runSteps(steps, { client, sessionId: params.sessionId });
+      const stopReason = await runSteps(steps, { client, sessionId: params.sessionId, cwd });
       return { stopReason };
     });
 }
