@@ -9,9 +9,19 @@ async function isFile(path: string): Promise<boolean> {
   );
 }
 
+function decodePath(pathname: string): string | undefined {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return undefined;
+  }
+}
+
 /** The file a URL path names inside `root`, or the page itself for app routes; never outside `root`. */
 async function fileFor(root: string, pathname: string): Promise<string | undefined> {
-  const target = resolve(root, `.${decodeURIComponent(pathname)}`);
+  const decoded = decodePath(pathname);
+  if (decoded === undefined) return undefined;
+  const target = resolve(root, `.${decoded}`);
   if (target.startsWith(root + sep) && (await isFile(target))) return target;
   const looksLikeFile = /\.[a-z0-9]+$/i.test(pathname);
   return looksLikeFile ? undefined : join(root, "index.html");

@@ -9,11 +9,16 @@ export type ArchiveOutcome =
   | { status: "blocked"; files: readonly string[] }
   | { status: "failed" };
 
+/** Reloads the list after an action; a failure here must not turn a done action into a failed one. */
+async function refreshList(ctx: Context): Promise<void> {
+  await loadSessions(ctx).catch(() => undefined);
+}
+
 /** Starts a session and resolves with its id, so the UI can open it. */
 export function startSession(ctx: Context, request: StartSession): Promise<SessionId | undefined> {
   return attempt(ctx, async () => {
     const id = await ctx.client.sessions.start(request);
-    await loadSessions(ctx);
+    await refreshList(ctx);
     return id;
   });
 }
@@ -41,7 +46,7 @@ export async function archiveSession(
 ): Promise<ArchiveOutcome> {
   try {
     await ctx.client.sessions.archive(call.id, call.force ? { force: true } : {});
-    await loadSessions(ctx);
+    await refreshList(ctx);
     return { status: "archived" };
   } catch (error) {
     const files = uncommittedFilesOf(error);

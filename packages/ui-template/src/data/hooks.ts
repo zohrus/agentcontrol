@@ -24,11 +24,11 @@ export function useOpenSession(id: SessionId | undefined): void {
 }
 
 /** Tells the data layer which file of the open session is shown. */
-export function useOpenFile(path: string | undefined): void {
+export function useOpenFile(id: SessionId | undefined, path: string | undefined): void {
   const { openFile } = useController();
   useEffect(() => {
-    openFile(path);
-  }, [openFile, path]);
+    if (id !== undefined) openFile({ id, path });
+  }, [openFile, id, path]);
 }
 
 const useSessions = (): readonly SessionRow[] => useData((s) => s.sessions);

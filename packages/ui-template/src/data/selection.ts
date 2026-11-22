@@ -29,14 +29,14 @@ export function createSelection(ctx: Context) {
   const open: Open = { id: undefined, path: undefined };
   return {
     select: (id: SessionId | undefined): void => {
-      Object.assign(open, { id, path: undefined });
+      // A file the pane already opened for this session (its effect runs first) stays open.
+      Object.assign(open, { id, path: id === open.id ? open.path : undefined });
       inBackground(ctx, reloadAll(ctx, open));
     },
-    openFile: (path: string | undefined): void => {
-      open.path = path;
-      if (open.id !== undefined && path !== undefined) {
-        inBackground(ctx, loadFile(ctx, { id: open.id, path }));
-      }
+    openFile: (call: { id: SessionId; path: string | undefined }): void => {
+      Object.assign(open, call);
+      if (call.path !== undefined)
+        inBackground(ctx, loadFile(ctx, { id: call.id, path: call.path }));
     },
     reloadAll: (): void => {
       inBackground(ctx, reloadAll(ctx, open));

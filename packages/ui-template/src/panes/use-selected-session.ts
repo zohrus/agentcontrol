@@ -12,9 +12,18 @@ function subscribe(listener: () => void): () => void {
 
 const currentHash = (): string => window.location.hash;
 
+/** A mistyped address must not break the page: undecodable text means "no session". */
+function decodeOrNothing(text: string): string | undefined {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return undefined;
+  }
+}
+
 function idFromHash(hash: string): SessionId | undefined {
   if (!hash.startsWith(PREFIX)) return undefined;
-  const parsed = SessionId.safeParse(decodeURIComponent(hash.slice(PREFIX.length)));
+  const parsed = SessionId.safeParse(decodeOrNothing(hash.slice(PREFIX.length)));
   return parsed.success ? parsed.data : undefined;
 }
 

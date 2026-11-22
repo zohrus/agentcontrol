@@ -44,9 +44,16 @@ function followLiveStream(
 export interface StartOptions {
   /** Also serve the default UI, so a browser can use the app. */
   withUi?: boolean;
+  /** Serve this folder of built UI files instead (what a release does). */
+  uiDist?: string;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
+
+function uiArgs(options: StartOptions): string[] {
+  if (options.uiDist !== undefined) return ["--ui-dist", options.uiDist];
+  return options.withUi ? ["--ui-root", uiRoot] : [];
+}
 
 /** A fresh data folder, a local git repo and a mock agent, all removed when the test ends. */
 async function prepareWorkspace() {
@@ -66,7 +73,7 @@ async function prepareWorkspace() {
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
   const { dataDir, repoPath, mockAgent, env } = await prepareWorkspace();
   const streamed = new Timeline<SessionEvent>(STREAM_WAIT_MS);
-  const extraArgs = options.withUi ? ["--ui-root", uiRoot] : [];
+  const extraArgs = uiArgs(options);
   let current = await openApp({ dataDir, env, streamed, extraArgs });
   onTestEnd(() => current.close());
   const access: AppAccess = {

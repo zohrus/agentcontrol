@@ -6,7 +6,7 @@ import type {
   SessionSummary,
 } from "@agentcontrol/sdk";
 import { type Context, inBackground } from "./context.ts";
-import { appendEvents, upsertSessions } from "./merge.ts";
+import { appendEvents, mergeFetched, upsertSessions } from "./merge.ts";
 import type { DataState } from "./model.ts";
 
 const PAGE = 1000;
@@ -62,11 +62,13 @@ function catchUp(ctx: Context): void {
   }
 }
 
-/** Replaces the session list with the app's, and catches up what it shows. */
+/** Takes in the app's session list (never dropping a newer row), and catches up what it shows. */
 export async function loadSessions(ctx: Context): Promise<void> {
-  const sessions = await ctx.client.sessions.list();
-  ctx.store.update((s) => ({ ...s, sessions, loaded: true }));
-  for (const row of sessions) inBackground(ctx, loadUsage(ctx, row.id));
+  const fetched = await ctx.client.sessions.list();
+  ctx.store.update((s) => ({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }));
+  for (const row of fetched) {
+    if (row.status !== "archived") inBackground(ctx, loadUsage(ctx, row.id));
+  }
   catchUp(ctx);
 }
 

@@ -25,7 +25,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
   const events = useSessionEvents(id);
   const [picked, setPicked] = useState<string>();
   const path = picked ?? diff.files[0]?.path;
-  useOpenFile(path);
+  useOpenFile(id, path);
   const file = useFile(id, path) ?? NO_FILE;
   const tree = useTree(id);
   const save = (content: string) => {

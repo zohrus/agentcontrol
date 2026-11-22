@@ -16,7 +16,9 @@ export function changesPage(page: Page) {
     opensEditorTab: () => page.getByRole("tab", { name: "Editor" }).click(),
     opensChangedFile: (path: string) =>
       page
-        .getByRole("button", { name: new RegExp(`^${path}`) })
+        .getByRole("button", {
+          name: new RegExp(`^${path.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+        })
         .first()
         .click(),
     opensFileInEditor: (path: string) =>
