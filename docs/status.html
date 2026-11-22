@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 20:05 UTC";
+const UPDATED = "22 Nov 2026, 20:30 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -243,6 +243,7 @@ const C = [
   { id:"packaging", phase:"rel", name:"Signed .dmg and Homebrew", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
   // Phase 5
   { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"planned", desc:"SSH connection manager, relay deployment and version handshake, Linux builds, sessions that survive SSH drops and sleep.", path:"" },
+  { id:"console", phase:"p5", name:"Console in the app", status:"planned", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
   { id:"gateway", phase:"p5", name:"AI gateway", status:"planned", desc:"Optional LiteLLM proxy per workspace for uniform cost logs.", path:"" },
   { id:"ide", phase:"p5", name:"Browser VS Code", status:"planned", desc:"code-server on the workspace, tunnelled over SSH.", path:"" },
   // Phase 6
@@ -278,6 +279,7 @@ const LOG = [
   ["22 Nov 2026 18:25", "Default UI scaffold done and matching the plan's mockup. Seven subagents now running, the newest four each in an isolated copy of the repo so unfinished work no longer blocks the others."],
   ["22 Nov 2026 19:20", "main is up to date and every gate is green: 16 test files pass. Landed: app server with sync and live stream, SDK, 13 more relay tests, UI wave 2, UI workspace, packaging and Swift menu bar app (not yet built on a Mac). New rules in AGENTS.md: /code-review before any push and 95% end-to-end coverage. Five subagents started on the next wave."],
   ["22 Nov 2026 20:05", "Development loop landed: parallel timed check (about 33 s), quick check, integrate script, done-report, guardrails, decision log; CI workflow green on main. Abstractions review done and its five changes started. New tasks added: HTML preview inside the app and Markdown preview."],
+  ["22 Nov 2026 20:30", "Plan brought fully up to date and republished. New task: console access from inside the app for SSH workspaces (phase 5), using xterm.js. All subagents resumed after a usage-limit pause; no work lost."],
 ];
 /* ===== END DATA ===== */
 
