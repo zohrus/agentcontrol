@@ -14,3 +14,7 @@ export const EventsSubscribeResult = z.object({});
 
 /** Params of the relay/event notification: one event. */
 export const EventNotificationParams = z.object({ event: SessionEvent });
+
+export type EventsSubscribeParams = z.infer<typeof EventsSubscribeParams>;
+export type EventsSubscribeResult = z.infer<typeof EventsSubscribeResult>;
+export type EventNotificationParams = z.infer<typeof EventNotificationParams>;

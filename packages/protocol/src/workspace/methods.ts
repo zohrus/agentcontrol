@@ -48,3 +48,11 @@ export const ReposListResult = z.object({
 export const ReposSetSetupParams = z.object({ repoId: RepoId, setup: RepoSetup });
 /** Result of relay/repos.setSetup. */
 export const ReposSetSetupResult = Empty;
+
+export type HelloParams = z.infer<typeof HelloParams>;
+export type HelloResult = z.infer<typeof HelloResult>;
+export type CheckStep = z.infer<typeof CheckStep>;
+export type WorkspaceCheckResult = z.infer<typeof WorkspaceCheckResult>;
+export type ReposAddParams = z.infer<typeof ReposAddParams>;
+export type ReposListResult = z.infer<typeof ReposListResult>;
+export type ReposSetSetupParams = z.infer<typeof ReposSetSetupParams>;

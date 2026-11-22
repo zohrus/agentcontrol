@@ -18,3 +18,6 @@ export const DiffResult = z.object({
   files: z.array(DiffFile),
   patch: z.string(),
 });
+
+export type DiffParams = z.infer<typeof DiffParams>;
+export type DiffResult = z.infer<typeof DiffResult>;

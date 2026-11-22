@@ -46,3 +46,12 @@ export const SessionsArchiveResult = z.discriminatedUnion("archived", [
   z.object({ archived: z.literal(true) }),
   z.object({ archived: z.literal(false), uncommittedFiles: z.array(z.string()) }),
 ]);
+
+export type SessionsListResult = z.infer<typeof SessionsListResult>;
+export type SessionsCreateParams = z.infer<typeof SessionsCreateParams>;
+export type SessionsCreateResult = z.infer<typeof SessionsCreateResult>;
+export type PromptParams = z.infer<typeof PromptParams>;
+export type PermissionRespondParams = z.infer<typeof PermissionRespondParams>;
+export type CancelParams = z.infer<typeof CancelParams>;
+export type SessionsArchiveParams = z.infer<typeof SessionsArchiveParams>;
+export type SessionsArchiveResult = z.infer<typeof SessionsArchiveResult>;

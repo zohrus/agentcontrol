@@ -33,3 +33,13 @@ export const FsWriteResult = z.object({ hash: z.string() });
 export const FsWatchResult = z.object({});
 /** Params of the relay/fs.changed notification. */
 export const FsChangedParams = z.object({ sessionId: SessionId, paths: z.array(z.string()) });
+
+export type FsSessionParams = z.infer<typeof FsSessionParams>;
+export type FsEntry = z.infer<typeof FsEntry>;
+export type FsTreeResult = z.infer<typeof FsTreeResult>;
+export type FsReadParams = z.infer<typeof FsReadParams>;
+export type FsReadResult = z.infer<typeof FsReadResult>;
+export type FsWriteParams = z.infer<typeof FsWriteParams>;
+export type FsWriteResult = z.infer<typeof FsWriteResult>;
+export type FsWatchResult = z.infer<typeof FsWatchResult>;
+export type FsChangedParams = z.infer<typeof FsChangedParams>;
