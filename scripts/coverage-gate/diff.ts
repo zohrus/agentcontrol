@@ -8,11 +8,26 @@ function git(args: string[]): { ok: boolean; text: string } {
   return { ok: run.exitCode === 0, text: run.stdout.toString().trim() };
 }
 
+function gitOrFail(args: string[]): { text: string } {
+  const run = git(args);
+  if (!run.ok) throw new Error(`git ${args.join(" ")} failed: the history needed is missing.`);
+  return run;
+}
+
+/** The tip before a push, when CI names one (an all-zero SHA means a new branch: no tip). */
+function givenBase(): string | undefined {
+  const given = process.env["COVERAGE_BASE"] ?? "";
+  return /^[0-9a-f]{7,40}$/.test(given) && !/^0+$/.test(given) ? given : undefined;
+}
+
 /**
  * The commit the work started from: where this branch left `origin/main`. When HEAD is already on
- * origin/main (a push to main), the last commit is the change. Undefined when origin/main is unknown.
+ * origin/main (a push to main), the last commit is the change, unless COVERAGE_BASE names the tip
+ * before the push (CI sets it). Undefined when origin/main is unknown.
  */
 export function baseCommit(): string | undefined {
+  const given = givenBase();
+  if (given !== undefined) return given;
   const base = git(["merge-base", "origin/main", "HEAD"]);
   if (!base.ok) return undefined;
   const head = git(["rev-parse", "HEAD"]).text;
@@ -57,7 +72,7 @@ async function wholeFiles(paths: string[]): Promise<AddedLines> {
 
 /** Lines added or changed since `base`, including files git does not know yet. */
 export async function linesChangedSince(base: string): Promise<AddedLines> {
-  const diff = git([
+  const diff = gitOrFail([
     "-c",
     "core.quotePath=false",
     "diff",

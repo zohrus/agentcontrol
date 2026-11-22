@@ -24,6 +24,8 @@ jobs:
     env:
       # The audit needs the network and the advisory feed, so it runs in audit.yml instead.
       CHECK_SKIP: audit
+      # The coverage gate holds the lines added since the tip before this push to 95%.
+      COVERAGE_BASE: ${{ github.event.before }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
