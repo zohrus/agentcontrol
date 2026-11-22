@@ -117,6 +117,16 @@ svg text{font-family:var(--f-body)}
 @media (max-width:600px){.log div{grid-template-columns:1fr;gap:2px}}
 footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+/* in-progress motion: spinner on pills, pulsing outline on diagram boxes, blinking dot on the 'in progress' stat */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{stroke-opacity:1;stroke-width:2.5}50%{stroke-opacity:.25;stroke-width:1}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.pill.progress::before{width:9px;height:9px;background:none;border:2px solid currentColor;border-right-color:transparent;animation:spin .8s linear infinite}
+.node.progress rect.box{animation:pulse 1.4s ease-in-out infinite}
+.node.progress rect.st{animation:blink 1.4s ease-in-out infinite}
+.stat.prog b::after{content:"";display:inline-block;width:10px;height:10px;margin-left:10px;border-radius:50%;background:var(--prog);vertical-align:middle;animation:blink 1s ease-in-out infinite}
+#now-list li::marker{color:var(--prog)}
+#now-list li{animation:blink 2.4s ease-in-out infinite}
 </style>
 
 <div class="wrap">
