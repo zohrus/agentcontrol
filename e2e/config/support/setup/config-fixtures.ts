@@ -74,3 +74,12 @@ export async function startAppWithEveryKindOfItemApplied(): Promise<ConfigApp> {
   await app.user.reviewsAndAppliesThePlan();
   return app;
 }
+
+/** A home folder where the user hand-wrote a Claude Code hook and notes. */
+export async function startAppWithHandWrittenHookAndNotes(): Promise<ConfigApp> {
+  const app = await startAppWithEmptyHome();
+  const hook = { hooks: { Stop: [{ hooks: [{ type: "command", command: "echo done" }] }] } };
+  await app.home.has(".claude/settings.json", JSON.stringify(hook, null, 2));
+  await app.home.has(".claude/CLAUDE.md", "Be kind to reviewers.\n");
+  return app;
+}

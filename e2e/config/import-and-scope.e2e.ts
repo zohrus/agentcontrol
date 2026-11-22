@@ -2,11 +2,11 @@ import { afterEach, test } from "bun:test";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
   expectFileToContain,
-  expectImportedItem,
   expectJsonValue,
   expectNoFile,
   expectPlanToChangeFiles,
 } from "./support/expect/config-expectations.ts";
+import { expectImportedItem } from "./support/expect/import-expectations.ts";
 import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
 import { startAppWithHandWrittenSetupToImport } from "./support/setup/config-fixtures.ts";
 import { mcpServer, onlyInRepo, switchedOff } from "./support/setup/items.ts";

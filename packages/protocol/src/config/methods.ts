@@ -19,7 +19,7 @@ export const ConfigPlanParams = z.object({
 export const ConfigApplyParams = z.object({ planId: z.string() });
 
 /** Params of relay/config.rollback: the backup an earlier apply returned. */
-export const ConfigRollbackParams = z.object({ backupId: z.string() });
+export const ConfigRollbackParams = z.object({ backupId: z.string().regex(/^[\w-]+$/) });
 /** Result of relay/config.rollback: every file that was put back or removed. */
 export const ConfigRollbackResult = z.object({ restored: z.array(z.string()) });
 

@@ -131,23 +131,11 @@ export function expectSameFiles(call: {
   }
 }
 
-/** The items found include one of this kind and name, found for this agent. */
-export function expectImportedItem(
-  items: { item: { id: string; kind: string; name?: string } }[],
-  call: { id: string; kind: string },
-): void {
-  const found = items.some(({ item }) => item.id === call.id && item.kind === call.kind);
-  if (!found) {
-    const ids = items.map(({ item }) => item.id).join(", ");
-    throw new Error(`expected the import to find ${call.kind} "${call.id}", but it found: ${ids}`);
-  }
-}
-
-/** The app refused to apply the plan for this reason. */
-export function expectApplyToBeRefusedAs(reason: string | undefined, expected: string): void {
+/** The app refused the request for this reason. */
+export function expectRequestToBeRefusedAs(reason: string | undefined, expected: string): void {
   if (reason !== expected) {
     throw new Error(
-      `expected the app to refuse the plan as "${expected}", but ${reason === undefined ? "it applied" : `it said "${reason}"`}`,
+      `expected the app to refuse the request as "${expected}", but ${reason === undefined ? "it applied" : `it said "${reason}"`}`,
     );
   }
 }
@@ -178,10 +166,16 @@ export function expectPlanToNeedSecret(
   }
 }
 
-/** The items found include every one of these. */
-export function expectImportedItems(
-  items: { item: { id: string; kind: string } }[],
-  wanted: { id: string; kind: string }[],
-): void {
-  for (const call of wanted) expectImportedItem(items, call);
+/** The file's text includes this exactly once. */
+export async function expectFileToContainOnce(
+  folder: Folder,
+  call: { file: string; text: string },
+): Promise<void> {
+  const content = await folder.read(call.file);
+  const times = content === undefined ? 0 : content.split(call.text).length - 1;
+  if (times !== 1) {
+    throw new Error(
+      `expected ${call.file} to contain ${JSON.stringify(call.text)} once, but it does ${String(times)} times`,
+    );
+  }
 }

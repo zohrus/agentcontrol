@@ -12,6 +12,16 @@ interface Applied {
   result: ApplyResult;
 }
 
+async function refusalOf(request: Promise<unknown>): Promise<string | undefined> {
+  try {
+    await request;
+    return undefined;
+  } catch (error) {
+    if (error instanceof ApiError) return error.code;
+    throw error;
+  }
+}
+
 type Target = { includingTheRepo?: boolean };
 
 /** Setting up items and looking at what the agents have today. */
@@ -36,15 +46,14 @@ function changingFiles({ sdk, repoPath }: { sdk: Client; repoPath: string }) {
     /** Applies a plan the user has just reviewed. */
     appliesThePlan: (plan: ConfigPlan): Promise<ApplyResult> => sdk.config.apply(plan.planId),
     /** Tries to apply a plan; says why the app refused, or nothing if it applied. */
-    triesToApplyThePlan: async (plan: ConfigPlan): Promise<string | undefined> => {
-      try {
-        await sdk.config.apply(plan.planId);
-        return undefined;
-      } catch (error) {
-        if (error instanceof ApiError) return error.code;
-        throw error;
-      }
-    },
+    triesToApplyThePlan: (plan: ConfigPlan): Promise<string | undefined> =>
+      refusalOf(sdk.config.apply(plan.planId)),
+    /** Tries to roll back to a backup that may not exist; says why the app refused. */
+    triesToRollBackTo: (backupId: string): Promise<string | undefined> =>
+      refusalOf(sdk.config.rollback(backupId)),
+    /** Tries to set up these items; says why the app refused, or nothing if it saved them. */
+    triesToSetUp: (items: ScopedItem[]): Promise<string | undefined> =>
+      refusalOf(sdk.config.save(items)),
     /** Reviews the plan and applies it. */
     reviewsAndAppliesThePlan: async (options: Target = {}): Promise<Applied> => {
       const plan = await sdk.config.plan(options.includingTheRepo ? { repoPath } : {});

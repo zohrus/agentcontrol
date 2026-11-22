@@ -10,7 +10,21 @@ import { z } from "zod";
 import type { ApiDeps } from "./deps.ts";
 import { validate } from "./validate.ts";
 
-const ItemsBody = z.object({ items: z.array(ScopedItem) });
+const placeOf = ({ item, scope }: ScopedItem): string =>
+  `${item.id}|${scope.scope}|${scope.repoPath ?? ""}`;
+
+function isConsistent(entries: ScopedItem[]): boolean {
+  const onePerPlace = new Set(entries.map(placeOf)).size === entries.length;
+  const bodies = new Set(entries.map(({ item }) => `${item.id}|${JSON.stringify(item)}`));
+  const ids = new Set(entries.map(({ item }) => item.id));
+  return onePerPlace && bodies.size === ids.size;
+}
+
+const ItemsBody = z.object({
+  items: z
+    .array(ScopedItem)
+    .refine(isConsistent, "an item id may appear once per scope and must be the same item in each"),
+});
 /** Which agents to look at or write for (all of them when left out), and the repo to include. */
 const TargetBody = z.object({
   agents: z.array(ConfigAgent).optional(),

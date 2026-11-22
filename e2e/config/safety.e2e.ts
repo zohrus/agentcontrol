@@ -1,6 +1,6 @@
 import { afterEach, test } from "bun:test";
 import {
-  expectApplyToBeRefusedAs,
+  expectRequestToBeRefusedAs,
   expectDriftIn,
   expectNoDrift,
   expectNoFile,
@@ -8,7 +8,7 @@ import {
   expectSameFiles,
 } from "./support/expect/config-expectations.ts";
 import { startAppWithEmptyHome } from "./support/setup/config-app.ts";
-import { instructions, mcpServer } from "./support/setup/items.ts";
+import { instructions, mcpServer, onlyInRepo } from "./support/setup/items.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
@@ -105,5 +105,40 @@ test("a plan is refused when a file it covers changed after the plan was made", 
   // ********************************************************************
   // ** THEN the app refuses it as stale, so nothing is overwritten
   // ********************************************************************
-  expectApplyToBeRefusedAs(refusal, "config-plan-stale");
+  expectRequestToBeRefusedAs(refusal, "config-plan-stale");
+});
+
+test("an id that is not a backup is refused instead of being followed out of the backups folder", async () => {
+  // ********************************************************************
+  // ** GIVEN the app with an empty home folder
+  // ********************************************************************
+  const app = await startAppWithEmptyHome();
+
+  // ********************************************************************
+  // ** WHEN the user asks to roll back to "../../elsewhere"
+  // ********************************************************************
+  const refusal = await app.user.triesToRollBackTo("../../elsewhere");
+
+  // ********************************************************************
+  // ** THEN the app refuses the request as invalid
+  // ********************************************************************
+  expectRequestToBeRefusedAs(refusal, "invalid-request");
+});
+
+test("two different items with the same id are refused instead of one silently winning", async () => {
+  // ********************************************************************
+  // ** GIVEN the app with an empty home folder
+  // ********************************************************************
+  const app = await startAppWithEmptyHome();
+
+  // ********************************************************************
+  // ** WHEN the user sets up two different MCP servers that share one id
+  // ********************************************************************
+  const other = onlyInRepo(mcpServer({ name: "docs", command: "node" }), "/repo");
+  const refusal = await app.user.triesToSetUp([mcpServer({ name: "docs", command: "npx" }), other]);
+
+  // ********************************************************************
+  // ** THEN the app refuses the request as invalid
+  // ********************************************************************
+  expectRequestToBeRefusedAs(refusal, "invalid-request");
 });

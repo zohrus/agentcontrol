@@ -2,10 +2,10 @@ import type { Folder } from "../setup/config-app.ts";
 import {
   expectFileNotToContain,
   expectFileToContain,
-  expectImportedItems,
   expectJsonValue,
   expectNoFile,
 } from "./config-expectations.ts";
+import { expectImportedItems } from "./import-expectations.ts";
 
 const CODEX = ".codex/config.toml";
 const HAND_WRITTEN_CODEX =

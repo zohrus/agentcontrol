@@ -28,6 +28,7 @@ export const markdownEditor: Editor = {
   set(content, id, value) {
     const at = span(content, id);
     if (at) return content.slice(0, at.start) + block(id, value) + content.slice(at.stop);
+    if (content.trim() === value.trim()) return `${block(id, value)}\n`;
     return `${content}${separator(content)}${block(id, value)}\n`;
   },
   remove(content, id) {

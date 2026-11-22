@@ -11,12 +11,22 @@ const EVENTS: Record<string, HookItem["event"]> = {
   Stop: "session-stop",
 };
 
+/** The matchers this app adds itself for after-edit hooks are not the user's own. */
+const INJECTED = new Set(["Edit|Write|MultiEdit", "apply_patch"]);
+const userMatcher = (matcher: string | undefined): string | undefined =>
+  matcher !== undefined && INJECTED.has(matcher) ? undefined : matcher;
+
+const matcherOf = (group: unknown): string => asText(asRecord(group).matcher) ?? "";
+
 function commandsOf(group: unknown): { command: string; id: string | undefined }[] {
   const raw = asRecord(group).hooks;
-  return (Array.isArray(raw) ? raw : []).map((entry) => {
-    const [command = "", id] = (asText(asRecord(entry).command) ?? "").split(HOOK_MARK);
-    return { command, id };
-  });
+  const texts = (Array.isArray(raw) ? raw : []).map((entry) => asText(asRecord(entry).command));
+  return texts
+    .filter((text): text is string => text !== undefined && text !== "")
+    .map((text) => {
+      const [command = "", id] = text.split(HOOK_MARK);
+      return { command, id };
+    });
 }
 
 function hooksOfGroup(input: {
@@ -27,17 +37,19 @@ function hooksOfGroup(input: {
 }): HookItem[] {
   const { agent, event, kind, group } = input;
   return commandsOf(group).map(({ command, id }) => {
-    const hookId = id ?? `${agent}:hook:${event}:${sha256(command).slice(0, 8)}`;
-    const matcher = asText(asRecord(group).matcher);
+    const hookId =
+      id ?? `${agent}:hook:${event}:${sha256(`${matcherOf(group)}|${command}`).slice(0, 8)}`;
+    const matcher = userMatcher(asText(asRecord(group).matcher));
     return { id: hookId, kind: "hook", name: hookId, event: kind, matcher, command };
   });
 }
 
 /** Hook items found under the "hooks" key of a settings.json or hooks.json object. */
 export function hookItems(agent: ConfigAgent, file: Obj): HookItem[] {
-  return Object.entries(asRecord(file.hooks)).flatMap(([event, groups]) => {
+  const found = Object.entries(asRecord(file.hooks)).flatMap(([event, groups]) => {
     const kind = EVENTS[event];
     const list: unknown[] = Array.isArray(groups) ? groups : [];
     return kind ? list.flatMap((group) => hooksOfGroup({ agent, event, kind, group })) : [];
   });
+  return [...new Map(found.map((hook) => [hook.id, hook])).values()];
 }

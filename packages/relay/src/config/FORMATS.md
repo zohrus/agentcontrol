@@ -87,3 +87,14 @@ Limits:
 
 Markdown: removing a block leaves a final newline that a file without one did not have. A file the
 app created and then emptied stays as an empty file.
+
+## Known limits of import then apply
+
+- A hand-written hook is adopted (not duplicated) only when its group holds one command and has the
+  same matcher; a hand-written group with several commands is imported as one item per command and
+  applied as separate marked groups, next to the original.
+- A hand-written instructions file is adopted into a marked block only when the whole file is the
+  imported text; otherwise the marked block is appended next to the original text.
+- Config files that are symlinks are written through to their target. Deleting a managed whole-file
+  entry (a skill or command) removes the link, not the target. Symlinked skill folders are not
+  listed on import.

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, realpath, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ConfigCtx } from "./types.ts";
 
@@ -17,7 +17,7 @@ export async function readText(path: string): Promise<string | undefined> {
 async function listFiles(dir: string): Promise<string[]> {
   try {
     const names = await readdir(dir, { recursive: true });
-    const kinds = await Promise.all(names.map((n) => stat(join(dir, n))));
+    const kinds = await Promise.all(names.map((n) => stat(join(dir, n)).catch(() => undefined)));
     return names.filter((_, i) => kinds[i]?.isFile() === true).sort();
   } catch {
     return [];
@@ -29,7 +29,8 @@ export function makeCtx(input: { homeDir: string; repoPath?: string | undefined 
 }
 
 /** Write through a temp file and a rename; keeps the permissions of an existing file. */
-export async function writeAtomic(path: string, data: string | Uint8Array): Promise<void> {
+export async function writeAtomic(link: string, data: string | Uint8Array): Promise<void> {
+  const path = await realpath(link).catch(() => link);
   await mkdir(dirname(path), { recursive: true });
   const mode = await stat(path).then(
     (s) => s.mode & 0o777,

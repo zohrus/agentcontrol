@@ -18,11 +18,11 @@ async function readBytes(path: string): Promise<Buffer | undefined> {
 export async function createBackup(input: { homeDir: string; paths: string[] }): Promise<string> {
   const backupId = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 6)}`;
   const dir = backupDir(input.homeDir, backupId);
-  await mkdir(dir, { recursive: true });
+  await mkdir(dir, { recursive: true, mode: 0o700 });
   const meta: BackupMeta = { files: [] };
   for (const [i, path] of input.paths.entries()) {
     const bytes = await readBytes(path);
-    if (bytes) await writeFile(join(dir, `${String(i)}.bak`), bytes);
+    if (bytes) await writeFile(join(dir, `${String(i)}.bak`), bytes, { mode: 0o600 });
     meta.files.push({ path, blob: bytes ? `${String(i)}.bak` : null });
   }
   await writeFile(join(dir, "meta.json"), JSON.stringify(meta, null, 2));

@@ -55,13 +55,32 @@ function readLeaf(parent: Node, seg: string): unknown {
   return parent[indexIn(parent, seg)];
 }
 
+/** The commands of a hook group without the marker, to recognise a hand-written copy of it. */
+function plainCommands(group: unknown): string {
+  const hooks = isObj(group) && Array.isArray(group.hooks) ? (group.hooks as unknown[]) : [];
+  const commands = hooks.map((h) => (isObj(h) && typeof h.command === "string" ? h.command : ""));
+  const matcher = isObj(group) ? group.matcher : undefined;
+  return JSON.stringify([matcher, commands.map((c) => c.split(HOOK_MARK)[0])]);
+}
+
+/** Where a new array member goes: over an identical hand-written hook, so importing it twice never duplicates. */
+function slotFor(arr: unknown[], seg: string, value: unknown): number {
+  const same = seg.startsWith("#")
+    ? arr.findIndex(
+        (el) =>
+          !JSON.stringify(el).includes(HOOK_MARK) && plainCommands(el) === plainCommands(value),
+      )
+    : -1;
+  return same < 0 ? arr.length : same;
+}
+
 function writeLeaf(parent: Node, seg: string, value: unknown): void {
   if (!Array.isArray(parent)) {
     parent[seg] = value;
     return;
   }
   const at = indexIn(parent, seg);
-  parent[at < 0 ? parent.length : at] = value;
+  parent[at < 0 ? slotFor(parent, seg, value) : at] = value;
 }
 
 function deleteLeaf(parent: Node, seg: string): void {
