@@ -8,10 +8,15 @@ function git(args: string[]): { ok: boolean; text: string } {
   return { ok: run.exitCode === 0, text: run.stdout.toString().trim() };
 }
 
-/** The commit the work started from: where this branch left `origin/main`. */
+/**
+ * The commit the work started from: where this branch left `origin/main`. When HEAD is already on
+ * origin/main (a push to main), the last commit is the change. Undefined when origin/main is unknown.
+ */
 export function baseCommit(): string | undefined {
   const base = git(["merge-base", "origin/main", "HEAD"]);
-  return base.ok ? base.text : undefined;
+  if (!base.ok) return undefined;
+  const head = git(["rev-parse", "HEAD"]).text;
+  return base.text === head ? "HEAD~1" : base.text;
 }
 
 const HUNK = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
@@ -31,7 +36,7 @@ function parseAddedLines(diff: string): AddedLines {
   for (const row of diff.split("\n")) {
     if (row.startsWith("+++ ")) {
       lines = new Set();
-      added.set(row.slice(6), lines);
+      added.set(row.slice(4).replace(/^b\//, ""), lines);
     } else {
       hunkLines(row).forEach((line) => lines.add(line));
     }
@@ -52,7 +57,17 @@ async function wholeFiles(paths: string[]): Promise<AddedLines> {
 
 /** Lines added or changed since `base`, including files git does not know yet. */
 export async function linesChangedSince(base: string): Promise<AddedLines> {
-  const diff = git(["diff", "-U0", "--no-color", "--no-ext-diff", base, "--", "packages"]);
+  const diff = git([
+    "-c",
+    "core.quotePath=false",
+    "diff",
+    "-U0",
+    "--no-color",
+    "--no-ext-diff",
+    base,
+    "--",
+    "packages",
+  ]);
   const untracked = git(["ls-files", "--others", "--exclude-standard", "--", "packages"]);
   const fresh = await wholeFiles(untracked.text === "" ? [] : untracked.text.split("\n"));
   return new Map([...parseAddedLines(diff.text), ...fresh]);

@@ -33,7 +33,13 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     connect: options.connectRelay,
   });
   await sync.ready;
-  const server = startServer({ port: options.port, deps: { store, hub, workspace, relay: sync } });
+  const server = await Promise.try(() =>
+    startServer({ port: options.port, deps: { store, hub, workspace, relay: sync } }),
+  ).catch(async (error: unknown) => {
+    await sync.stop();
+    store.close();
+    throw error;
+  });
   return {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {

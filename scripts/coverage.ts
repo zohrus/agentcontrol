@@ -43,12 +43,23 @@ async function measureAndWrite(config: CoverageConfig, sources: Sources) {
   return { files, fresh, base };
 }
 
+/** Why the gate cannot run at all, if it cannot. */
+function problemWith(sources: Sources): string | undefined {
+  if (sources.stale.length > 0) {
+    return `coverage.config.json lists files that do not exist: ${sources.stale.join(", ")}`;
+  }
+  return baseCommit() === undefined
+    ? "origin/main is unknown, so new lines cannot be told apart: run `git fetch origin main`."
+    : undefined;
+}
+
 async function main(): Promise<boolean> {
   if (!process.argv.includes("--report-only")) await runSuite();
   const config = await readCoverageConfig();
   const sources = classifySources(config);
-  if (sources.stale.length > 0) {
-    console.log(`coverage.config.json lists files that do not exist: ${sources.stale.join(", ")}`);
+  const problem = problemWith(sources);
+  if (problem !== undefined) {
+    console.log(problem);
     return false;
   }
   const { files, fresh, base } = await measureAndWrite(config, sources);

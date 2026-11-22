@@ -2,15 +2,16 @@
 // runs. A line that flips is a timing-dependent code path: fix it with an injected clock, a test
 // that always runs it, or a restructure, never by lowering a threshold or excluding the file.
 // Usage: bun scripts/coverage-stable.ts [runs]   (default 5; meant for CI's nightly job)
-import { mkdirSync } from "node:fs";
+import { mkdirSync, rmSync } from "node:fs";
 
 const DEFAULT_RUNS = 5;
-const EXIT_TESTS_FAILED = 2;
+const GATE_PASSED_OR_FAILED = [0, 1];
 const KEPT_DIR = ".e2e-tmp/coverage-stable";
 
 type CoveredLines = Record<string, number[]>;
 
 async function runOnce(): Promise<{ exitCode: number; covered: CoveredLines }> {
+  rmSync("coverage/covered-lines.json", { force: true });
   const run = Bun.spawn(["bun", "scripts/coverage.ts"], { stdout: "inherit", stderr: "inherit" });
   const exitCode = await run.exited;
   const covered = (await Bun.file("coverage/covered-lines.json").json()) as CoveredLines;
@@ -37,7 +38,7 @@ async function collect(count: number): Promise<CoveredLines[] | undefined> {
   for (let run = 1; run <= count; run++) {
     console.log(`\n===== coverage run ${String(run)} of ${String(count)} =====`);
     const finished = await runOnce();
-    if (finished.exitCode === EXIT_TESTS_FAILED) return undefined;
+    if (!GATE_PASSED_OR_FAILED.includes(finished.exitCode)) return undefined;
     await Bun.write(`${KEPT_DIR}/run-${String(run)}.json`, JSON.stringify(finished.covered));
     results.push(finished.covered);
   }
