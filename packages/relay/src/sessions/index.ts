@@ -7,6 +7,7 @@ import {
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
+import type { HostEnv } from "../agents/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
@@ -83,6 +84,7 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
 async function shutdown(ctx: SessionContext): Promise<void> {
   const ids = [...ctx.live.keys()];
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
+  ctx.stopRecording();
   await Promise.all(ids.map((id) => ctx.log.lastSeq(id)));
 }
 
@@ -101,19 +103,22 @@ function contextOf(options: {
   log: EventLog;
   repos: RepoStore;
   worktreesDir: string;
+  hostEnv: HostEnv;
   sessionCount: number;
   summaries: LiveSummaries;
 }): SessionContext {
   let portIndex = options.sessionCount;
-  const { log } = options;
+  let recording = true;
+  const { log, repos, worktreesDir, hostEnv, summaries } = options;
   return {
-    log,
-    repos: options.repos,
-    worktreesDir: options.worktreesDir,
+    ...{ log, repos, worktreesDir, hostEnv, summaries },
     permissions: createPendingPermissions(),
-    summaries: options.summaries,
     live: new Map(),
+    stopRecording: () => {
+      recording = false;
+    },
     record: (sessionId, input) => {
+      if (!recording) return;
       log.append(sessionId, input).catch((error: unknown) => {
         console.error(`Could not record an event for session ${sessionId}: ${String(error)}`);
       });
@@ -127,6 +132,7 @@ export async function createSessions(options: {
   log: EventLog;
   repos: RepoStore;
   worktreesDir: string;
+  hostEnv: HostEnv;
 }): Promise<Sessions> {
   const ids = await recoverSessions(options.log);
   const summaries = await createLiveSummaries({ log: options.log, sessionIds: ids });

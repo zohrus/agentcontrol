@@ -1,5 +1,8 @@
 import type { AgentKind } from "@agentcontrol/protocol";
 
+/** The environment the relay reads its agent settings from (the process env, unless injected). */
+export type HostEnv = Record<string, string | undefined>;
+
 const DEFAULT_COMMANDS: Record<AgentKind, string[] | undefined> = {
   "claude-code": ["bunx", "--bun", "@agentclientprotocol/claude-agent-acp@0.109.1"],
   codex: ["bunx", "--bun", "@agentclientprotocol/codex-acp@2.9.0"],
@@ -27,13 +30,13 @@ function parseArgv(variable: string, text: string): string[] {
 }
 
 /** The command line that launches this agent kind, or undefined when it is not configured. */
-export function commandFor(kind: AgentKind): string[] | undefined {
+export function commandFor(kind: AgentKind, env: HostEnv): string[] | undefined {
   const variable = OVERRIDE_VARIABLES[kind];
-  const override = process.env[variable];
+  const override = env[variable];
   return override ? parseArgv(variable, override) : DEFAULT_COMMANDS[kind];
 }
 
 /** Agent kinds that can be launched on this machine. */
-export function availableAgents(): AgentKind[] {
-  return KINDS.filter((kind) => commandFor(kind) !== undefined);
+export function availableAgents(env: HostEnv): AgentKind[] {
+  return KINDS.filter((kind) => commandFor(kind, env) !== undefined);
 }

@@ -1,4 +1,4 @@
-import type { SessionEvent, SessionRow, SessionSummary } from "@agentcontrol/sdk";
+import type { SessionEvent, SessionRow } from "@agentcontrol/sdk";
 
 /** The only workspace there is until remote workspaces exist. */
 export const LOCAL_WORKSPACE = "local";
@@ -31,12 +31,9 @@ export function mergeFetched(
 /** Adds or replaces sessions from the live stream, newest first. */
 export function upsertSessions(
   have: readonly SessionRow[],
-  summaries: readonly SessionSummary[],
+  pushed: readonly SessionRow[],
 ): readonly SessionRow[] {
   const byId = new Map(have.map((row) => [row.id, row]));
-  for (const summary of summaries) {
-    const workspaceId = byId.get(summary.id)?.workspaceId ?? LOCAL_WORKSPACE;
-    byId.set(summary.id, { ...summary, workspaceId });
-  }
+  for (const row of pushed) byId.set(row.id, row);
   return [...byId.values()].toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

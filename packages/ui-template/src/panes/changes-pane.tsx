@@ -10,9 +10,9 @@ import {
   useSession,
   useSessionEvents,
   useTree,
+  useTurnRunning,
   worktreePathOf,
 } from "../data/index.ts";
-import { isTurnRunning } from "../session-view/index.ts";
 
 const NO_FILE = { base: "", working: "", notice: undefined };
 
@@ -28,6 +28,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
   useOpenFile(id, path);
   const file = useFile(id, path) ?? NO_FILE;
   const tree = useTree(id);
+  const running = useTurnRunning(id);
   const save = (content: string) => {
     if (path !== undefined) void controller.saveFile(id, path, content);
   };
@@ -41,7 +42,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
       workingContent={file.working}
       notice={file.notice}
       worktreePath={worktreePathOf(events) ?? ""}
-      readOnly={isTurnRunning(events)}
+      readOnly={running}
       onSave={save}
     />
   );
@@ -57,7 +58,8 @@ function unavailableReason(summary: { status: string } | undefined, error: strin
 
 /** The open session's changes: the diff, and an editor for its files. Remount it per session. */
 export function ChangesPane({ id }: { id: SessionId | undefined }) {
-  const reason = unavailableReason(useSession(id), useChangesError(id));
+  const summary = useSession(id);
+  const reason = unavailableReason(summary, useChangesError(id));
   const diff = useDiff(id);
   if (reason !== undefined) return <Message text={reason} />;
   if (id === undefined || !diff) return <Message text="Loading changes…" />;

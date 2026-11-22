@@ -1,17 +1,17 @@
 import { RelayName } from "@agentcontrol/protocol";
 import { onTestEnd } from "./cleanup.ts";
-import { connectToRelay, type RelayClient, stopRelayDaemon } from "./relay-client.ts";
+import { connectToRelay, type RelayClient } from "./relay-client.ts";
+import type { RelayHost } from "./relay-host.ts";
 import type { Session } from "./relay.ts";
 
 /** Where the relay lives and how the app reaches it. */
 export interface RelayHome {
-  dataDir: string;
+  host: RelayHost;
   repoPath: string;
-  env: Record<string, string>;
 }
 
 function connectApp(home: RelayHome): RelayClient {
-  const client = connectToRelay({ dataDir: home.dataDir, env: home.env });
+  const client = connectToRelay(home.host.wire());
   onTestEnd(() => client.disconnect());
   return client;
 }
@@ -36,9 +36,12 @@ export function actionsOf(home: RelayHome) {
     follow: (): Promise<unknown> => current().call(RelayName.eventsSubscribe, { afterSeq: {} }),
     closesTheApp: () => current().disconnect(),
     opensTheApp: connection.reconnect,
-    restartsTheRelay: async (): Promise<void> => {
+    /** Stops the relay and starts it again; `whileDown` may change what it left on disk. */
+    restartsTheRelay: async (options: { whileDown?: () => Promise<void> } = {}): Promise<void> => {
       await current().disconnect();
-      await stopRelayDaemon(home.dataDir);
+      await home.host.stop();
+      await options.whileDown?.();
+      await home.host.start();
       connection.reconnect();
     },
     followsSessionAfter: async (session: Session, afterSeq: number) => {

@@ -1,4 +1,6 @@
-import { git } from "../git/index.ts";
+import { ErrorCode } from "@agentcontrol/protocol";
+import { git, runGit } from "../git/index.ts";
+import { RelayError } from "../rpc/index.ts";
 import { hashContent } from "./hash.ts";
 import { resolveInside } from "./safe-path.ts";
 
@@ -7,18 +9,24 @@ async function readCommitted(options: {
   path: string;
   commit: string;
 }): Promise<string> {
-  const cwd = options.worktreePath;
-  try {
-    return await git(["show", `${options.commit}:${options.path}`], { cwd });
-  } catch {
-    throw new Error(`"${options.path}" does not exist at that version.`);
+  const args = ["show", `${options.commit}:${options.path}`];
+  const result = await runGit(args, { cwd: options.worktreePath });
+  if (result.exitCode === 0) return result.stdout;
+  if (/does not exist in|exists on disk, but not in/.test(result.stderr)) {
+    throw new RelayError(
+      ErrorCode.fileNotFound,
+      `"${options.path}" does not exist at that version.`,
+    );
   }
+  throw new Error(`git show failed: ${result.stderr.trim()}`);
 }
 
-/** Reads the current content of a file in the worktree; a missing file is an Error. */
+/** Reads the current content of a file in the worktree; a missing file is a `fileNotFound` error. */
 async function readWorking(worktreePath: string, path: string): Promise<string> {
   const file = Bun.file(await resolveInside(worktreePath, path));
-  if (!(await file.exists())) throw new Error(`"${path}" does not exist.`);
+  if (!(await file.exists())) {
+    throw new RelayError(ErrorCode.fileNotFound, `"${path}" does not exist.`);
+  }
   return file.text();
 }
 

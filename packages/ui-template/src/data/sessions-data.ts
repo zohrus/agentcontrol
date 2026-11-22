@@ -1,10 +1,4 @@
-import type {
-  Client,
-  SessionEvent,
-  SessionId,
-  SessionRow,
-  SessionSummary,
-} from "@agentcontrol/sdk";
+import type { Client, SessionEvent, SessionId, SessionRow } from "@agentcontrol/sdk";
 import { type Context, inBackground } from "./context.ts";
 import { appendEvents, mergeFetched, upsertSessions } from "./merge.ts";
 import type { DataState } from "./model.ts";
@@ -48,10 +42,9 @@ async function loadUsage(ctx: Context, id: SessionId): Promise<void> {
   ctx.store.update((s) => ({ ...s, usage: { ...s.usage, [id]: rows } }));
 }
 
-/** Sessions that must be kept current: those already opened, and those a permission request blocks. */
+/** Sessions already opened must be kept current; the row itself carries what the list needs. */
 function needsEvents(state: DataState, row: SessionRow): boolean {
-  const known = state.events[row.id] !== undefined;
-  return (known || row.waitingReason === "permission") && lastSeqOf(state, row.id) < row.lastSeq;
+  return state.events[row.id] !== undefined && lastSeqOf(state, row.id) < row.lastSeq;
 }
 
 /** Fetches the history of every session that has fallen behind its summary. */
@@ -71,7 +64,7 @@ export async function loadSessions(ctx: Context): Promise<void> {
 }
 
 /** Live session summaries: merged into the list; usage reloads when a status changed. */
-export function applySummaries(ctx: Context, summaries: readonly SessionSummary[]): void {
+export function applySummaries(ctx: Context, summaries: readonly SessionRow[]): void {
   const before = ctx.store.get().sessions;
   ctx.store.update((s) => ({ ...s, sessions: upsertSessions(s.sessions, summaries) }));
   for (const { id, status } of summaries) {

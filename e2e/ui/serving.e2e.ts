@@ -26,6 +26,8 @@ test("the app serves a built UI, with its page for any app address but not for t
   // ********************************************************************
   await expectAddressToServeTheUi(app.baseUrl, "/");
   await expectAddressToServeTheUi(app.baseUrl, "/sessions/abc");
+  // AND so does one whose last part has a dot and digits
+  await expectAddressToServeTheUi(app.baseUrl, "/sessions/ses_1.2");
   // AND a script of the build is served as it is
   await expectAddressToServeFile({
     baseUrl: app.baseUrl,

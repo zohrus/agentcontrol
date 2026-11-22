@@ -2,6 +2,7 @@ import { afterEach, test } from "bun:test";
 import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
 import { expectAppToReportTokensOfOneTurn } from "../support/expect/app-usage-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
+import { agentWillReplyReporting1200And340Tokens } from "../support/setup/reported-usage.ts";
 import { startAppWithLocalWorkspace } from "../support/setup/start-app.ts";
 
 afterEach(cleanUpAfterTest);
@@ -11,15 +12,7 @@ test("the app reports the tokens and cost of a finished turn through the SDK", a
   // ** GIVEN an agent that will reply and report 1200 input and 340 output tokens costing $0.02
   // ********************************************************************
   const app = await startAppWithLocalWorkspace();
-  app.mockAgent.willReportUsage({
-    model: "claude-sonnet-4-5",
-    inputTokens: 1200,
-    outputTokens: 340,
-    cachedReadTokens: 800,
-    cachedWriteTokens: 50,
-    costUsd: 0.02,
-  });
-  app.mockAgent.willReply("Done");
+  agentWillReplyReporting1200And340Tokens(app.mockAgent);
 
   // ********************************************************************
   // ** WHEN the user starts a session and its turn finishes

@@ -1,20 +1,9 @@
 import type { SessionEvent, SessionSummary } from "@agentcontrol/protocol";
-import type { events, sessions, workspaces } from "./schema.ts";
-import type { StoredSession, Workspace } from "./types.ts";
+import type { events, sessions } from "./schema.ts";
+import type { StoredSession } from "./types.ts";
 
-type WorkspaceRow = typeof workspaces.$inferSelect;
 type SessionRow = typeof sessions.$inferSelect;
 type EventRow = typeof events.$inferSelect;
-
-export function toWorkspace(row: WorkspaceRow): Workspace {
-  return {
-    id: row.id,
-    label: row.label,
-    kind: row.kind,
-    ...(row.sshHost === null ? {} : { sshHost: row.sshHost }),
-    ...(row.lastSeenAt === null ? {} : { lastSeenAt: row.lastSeenAt }),
-  };
-}
 
 export function toStoredSession(row: SessionRow): StoredSession {
   const { waitingReason, archivedAt, pendingPermissionsJson, ...rest } = row;

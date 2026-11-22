@@ -1,5 +1,5 @@
 import type { DiffResult, FsEntry, SessionEvent, SessionId, SessionRow } from "@agentcontrol/sdk";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SessionListEntry } from "../session-list/index.ts";
 import { costToday, toEntries, totalUsage, workspaceLabel } from "./derive.ts";
 import { LOCAL_WORKSPACE } from "./merge.ts";
@@ -46,14 +46,29 @@ export const useFile = (id: SessionId | undefined, path: string | undefined) =>
   useData((s): FileVersions | undefined =>
     id === undefined || path === undefined ? undefined : s.files[fileKey(id, path)],
   );
+export const useTurnRunning = (id: SessionId | undefined): boolean =>
+  useData((s) => s.sessions.find((row) => row.id === id)?.turnRunning ?? false);
 export const useUsage = (id: SessionId | undefined) =>
   totalUsage(useData((s) => (id === undefined ? undefined : s.usage[id])));
 
 /** The session list rows, each with its workspace and its single pending permission. */
 export function useSessionEntries(): SessionListEntry[] {
   const sessions = useData((s) => s.sessions);
-  const events = useData((s) => s.events);
-  return useMemo(() => toEntries({ sessions, events }), [sessions, events]);
+  return useMemo(() => toEntries(sessions), [sessions]);
+}
+
+/** Today's date as text, refreshed every minute, so "today" is right after midnight too. */
+function useDay(): string {
+  const [day, setDay] = useState(() => new Date().toDateString());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDay(new Date().toDateString());
+    }, 60_000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+  return day;
 }
 
 /** What the status bar counts: waiting and running sessions, today's cost and the connection. */
@@ -61,6 +76,7 @@ export function useStatusStats() {
   const sessions = useSessions();
   const usage = useData((s) => s.usage);
   const connection = useData((s) => s.connection);
+  const day = useDay();
   return useMemo(
     () => ({
       waiting: sessions.filter((row) => row.status === "waiting").length,
@@ -70,6 +86,7 @@ export function useStatusStats() {
       connection,
       connected: connection === "connected" ? [workspaceLabel(LOCAL_WORKSPACE)] : [],
     }),
-    [sessions, usage, connection],
+    // `day` is a dependency so the sum starts again at midnight.
+    [sessions, usage, connection, day],
   );
 }

@@ -2,6 +2,7 @@ import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import type { HostEnv } from "../agents/index.ts";
 import { createEventLog } from "../event-log/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
@@ -49,38 +50,74 @@ async function listenPrivately(server: Server, socketPath: string): Promise<void
   await chmod(socketPath, 0o600);
 }
 
-async function buildSessions(dataDir: string, repos: RepoStore): Promise<Sessions> {
+async function buildSessions(options: {
+  dataDir: string;
+  repos: RepoStore;
+  hostEnv: HostEnv;
+}): Promise<Sessions> {
+  const { dataDir, repos, hostEnv } = options;
   const log = createEventLog({ dir: join(dataDir, "sessions"), now: () => new Date() });
-  return createSessions({ log, repos, worktreesDir: join(dataDir, "worktrees") });
+  return createSessions({ log, repos, worktreesDir: join(dataDir, "worktrees"), hostEnv });
 }
 
 export interface Daemon {
+  /** The unix socket clients connect to. */
+  readonly socketPath: string;
   /** Stops the agents, closes the socket and removes the files that say the relay is running. */
   stop(): Promise<void>;
 }
 
-/** Listens on `<dataDir>/relay.sock` and serves every client until stopped. */
-export async function startDaemon(options: { dataDir: string }): Promise<Daemon> {
-  const { dataDir } = options;
-  await mkdir(dataDir, { recursive: true });
-  const socketPath = socketPathIn(dataDir);
-  await claimSocket(socketPath);
+export interface DaemonOptions {
+  dataDir: string;
+  /** Added to the process environment for agent commands and what agents inherit. */
+  env?: Record<string, string>;
+}
+
+/** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
+function createClientServer(handlers: Handlers): { server: Server; sockets: Set<Socket> } {
+  const sockets = new Set<Socket>();
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.once("close", () => {
+      sockets.delete(socket);
+    });
+    serve(socket, handlers);
+  });
+  return { server, sockets };
+}
+
+async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Promise<{
+  handlers: Handlers;
+  sessions: Sessions;
+}> {
+  const { dataDir, hostEnv } = options;
   const repos = createRepoStore({ dataDir });
-  const sessions = await buildSessions(dataDir, repos);
+  const sessions = await buildSessions({ dataDir, repos, hostEnv });
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
-    ...workspaceHandlers(repos),
+    ...workspaceHandlers(repos, hostEnv),
   };
-  const server = createServer((socket) => {
-    serve(socket, handlers);
-  });
+  return { handlers, sessions };
+}
+
+/** Listens on `<dataDir>/relay.sock` and serves every client until stopped. */
+export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
+  const { dataDir } = options;
+  await mkdir(dataDir, { recursive: true });
+  const socketPath = socketPathIn(dataDir);
+  await claimSocket(socketPath);
+  const hostEnv = { ...process.env, ...options.env };
+  const { handlers, sessions } = await buildHandlers({ dataDir, hostEnv });
+  const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);
   await writeFile(pidFileIn(dataDir), String(process.pid));
   return {
+    socketPath,
     stop: async () => {
       server.close();
+      sockets.forEach((socket) => socket.destroy());
       await sessions.shutdown();
       await rm(socketPath, { force: true });
       await rm(pidFileIn(dataDir), { force: true });

@@ -13,6 +13,8 @@ export type SessionViewProps = {
   events: readonly SessionEvent[];
   /** Tokens and cost so far, shown as a chip in the header. */
   usage?: SessionUsage | undefined;
+  /** True while the agent works on a turn (the session row's `turnRunning`); worked out from `events` when left out. */
+  turnRunning?: boolean | undefined;
   onSendPrompt: (text: string) => void;
   onCancel: () => void;
   /** Asks to archive; the caller shows the confirmation (see ArchiveDialog). */
@@ -26,7 +28,7 @@ function Footer(props: SessionViewProps) {
   }
   return (
     <Composer
-      running={isTurnRunning(props.events)}
+      running={props.turnRunning ?? isTurnRunning(props.events)}
       placeholder={`Reply to ${agentLabel(props.summary.agent)}…`}
       onSendPrompt={props.onSendPrompt}
       onCancel={props.onCancel}

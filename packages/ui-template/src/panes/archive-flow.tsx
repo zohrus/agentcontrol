@@ -3,34 +3,36 @@ import { useState } from "react";
 import { ArchiveDialog } from "../archive/index.ts";
 import { useController, useSession } from "../data/index.ts";
 
-type Blocked = { id: SessionId; files: readonly string[] };
+/** The session being archived, and the unsaved files the app named (none until it refused). */
+type Target = { id: SessionId; files: readonly string[] };
 
 /**
- * Archiving: the first try is plain; when the worktree has unsaved changes the app refuses, and
- * the dialog lists the files and offers "Archive anyway".
+ * Archiving: the user confirms first. When the worktree has unsaved changes the app refuses, and
+ * the dialog opens again listing the files and offering "Archive anyway".
  */
 export function useArchiveFlow() {
   const controller = useController();
-  const [blocked, setBlocked] = useState<Blocked>();
+  const [target, setTarget] = useState<Target>();
   return {
-    blocked,
+    target,
+    request: (id: SessionId): void => {
+      setTarget({ id, files: [] });
+    },
     close: () => {
-      setBlocked(undefined);
+      setTarget(undefined);
     },
-    request: async (id: SessionId): Promise<void> => {
-      const outcome = await controller.archive(id, false);
-      if (outcome.status === "blocked") setBlocked({ id, files: outcome.files });
-    },
-    force: (id: SessionId): void => {
-      void controller.archive(id, true);
+    confirm: async (chosen: Target): Promise<void> => {
+      const force = chosen.files.length > 0;
+      const outcome = await controller.archive(chosen.id, force);
+      if (outcome.status === "blocked") setTarget({ id: chosen.id, files: outcome.files });
     },
   };
 }
 
 type Flow = ReturnType<typeof useArchiveFlow>;
 
-function BlockedDialog({ blocked, flow }: { blocked: Blocked; flow: Flow }) {
-  const title = useSession(blocked.id)?.title ?? "this session";
+function TargetDialog({ target, flow }: { target: Target; flow: Flow }) {
+  const title = useSession(target.id)?.title ?? "this session";
   return (
     <ArchiveDialog
       open
@@ -38,15 +40,13 @@ function BlockedDialog({ blocked, flow }: { blocked: Blocked; flow: Flow }) {
         if (!open) flow.close();
       }}
       sessionTitle={title}
-      uncommittedFiles={blocked.files}
-      onArchive={() => {
-        flow.force(blocked.id);
-      }}
+      uncommittedFiles={target.files}
+      onArchive={() => void flow.confirm(target)}
     />
   );
 }
 
-/** The confirmation shown when archiving would lose uncommitted changes. */
+/** The archive confirmation, and the warning listing files that would be lost. */
 export function ArchiveFlowDialog({ flow }: { flow: Flow }) {
-  return flow.blocked ? <BlockedDialog blocked={flow.blocked} flow={flow} /> : null;
+  return flow.target ? <TargetDialog target={flow.target} flow={flow} /> : null;
 }

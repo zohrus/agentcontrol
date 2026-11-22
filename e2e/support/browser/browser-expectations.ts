@@ -117,3 +117,11 @@ export function expectFileToBeSaved(
     return saved.content === content ? undefined : `it holds ${quote(saved.content)}`;
   });
 }
+
+/** The open session's header shows this usage chip text. */
+export function expectUsageChipToShow(app: AppInBrowser, text: string): Promise<void> {
+  return pageEventually(`expected the usage chip to show ${quote(text)}`, async () => {
+    const chip = await app.page.usageChipText();
+    return chip === text ? undefined : `it shows ${quote(chip)}`;
+  });
+}

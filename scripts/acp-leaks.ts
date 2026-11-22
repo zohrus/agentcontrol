@@ -23,24 +23,10 @@ const ACP_VOCABULARY = new RegExp(
   ].join("|"),
 );
 
-/**
- * Files allowed to name ACP, each with the reason.
- * TODO(2026-11-22): remove the ui-template entries once the UI reads `updates` (see the "UI
- * migration" note in docs/decisions/2026-11-22-normalised-agent-updates.md); the follow-up that
- * switches the UI must delete them in the same change.
- */
+/** Files allowed to name ACP, each with the reason. */
 const ALLOWED: Record<string, string> = {
   "e2e/support/expect/raw-message-expectations.ts": "proves the raw message is kept unchanged",
   "e2e/support/expect/agent-expectations.ts": "tests the mock agent itself, which speaks real ACP",
-  "packages/ui-template/src/dev-fixtures/event-helpers.ts":
-    "TODO 2026-11-22: UI fixtures build raw ACP",
-  "packages/ui-template/src/dev-fixtures/example-events.ts": "TODO 2026-11-22: UI fixtures",
-  "packages/ui-template/src/dev-fixtures/example-modify.ts": "TODO 2026-11-22: UI fixtures",
-  "packages/ui-template/src/session-view/acp-updates.ts": "TODO 2026-11-22: the UI's ACP module",
-  "packages/ui-template/src/session-view/reduce-acp.ts": "TODO 2026-11-22: the UI's ACP module",
-  "packages/ui-template/src/session-view/reduce-notices.ts": "TODO 2026-11-22: the UI's ACP module",
-  "packages/ui-template/src/session-view/reduce-permission.ts":
-    "TODO 2026-11-22: the UI's ACP module",
 };
 
 const SKIPPED = /(^|\/)(node_modules|dist|coverage)\//;

@@ -44,11 +44,7 @@ function paneSlots({ selectedId, select, archive, open }: PaneOptions) {
   return {
     sessions: <SessionsPane selectedId={selectedId} onSelect={select} />,
     session: (
-      <SessionPane
-        id={selectedId}
-        onNewSession={open("new-session")}
-        onArchive={(id) => void archive.request(id)}
-      />
+      <SessionPane id={selectedId} onNewSession={open("new-session")} onArchive={archive.request} />
     ),
     changes: <ChangesPane key={selectedId} id={selectedId} />,
   };

@@ -3,6 +3,8 @@ import { runBridge } from "./bridge.ts";
 import { pidFileIn, startDaemon } from "./server.ts";
 
 export { runBridge };
+export type { Daemon, DaemonOptions } from "./server.ts";
+export { startDaemon } from "./server.ts";
 
 /** Runs the daemon in this process until it is told to stop (SIGTERM or SIGINT). */
 export async function runDaemon(dataDir: string): Promise<void> {

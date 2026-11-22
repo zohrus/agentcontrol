@@ -2,13 +2,13 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
-import type { AppAccess } from "./app.ts";
+import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
-import { createMockAgent } from "./mock-agent-script.ts";
-import { stopRelayDaemon } from "./relay-client.ts";
+import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
+import { type RelayHost, startRelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
 
 const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
@@ -22,23 +22,50 @@ export interface RunningApp extends AppAccess {
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(): Promise<void>;
+  /** Stops the relay daemon while the app keeps running. */
+  theRelayStops(): Promise<void>;
+  /** Starts the relay daemon again; the app is expected to find it on its own. */
+  theRelayStartsAgain(): Promise<void>;
+}
+
+/** What the live stream has delivered so far. */
+interface Heard {
+  streamed: Timeline<SessionEvent>;
+  fileChanges: Timeline<FileChange>;
+  /** One entry per relay connection the app has seen end, numbered from 1. */
+  relayConnectionsEnded: Timeline<number>;
 }
 
 /** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
-function followLiveStream(
-  sdk: AppAccess["sdk"],
-  streamed: Timeline<SessionEvent>,
-): Promise<() => void> {
+function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => void> {
   return new Promise((resolve) => {
     const stop = sdk.subscribe({
       onEvent: (event) => {
-        streamed.record(event);
+        heard.streamed.record(event);
+      },
+      onFilesChanged: (change) => {
+        heard.fileChanges.record(change);
       },
       onOpen: () => {
         resolve(stop);
       },
     });
   });
+}
+
+function mockAgentEnvironment(mockAgent: MockAgent): Record<string, string> {
+  return {
+    AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify(["bun", mockAgentMain]),
+    MOCK_AGENT_SCRIPT: mockAgent.scriptPath,
+  };
+}
+
+function newHeard(): Heard {
+  return {
+    streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
+    fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
+    relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
+  };
 }
 
 export interface StartOptions {
@@ -50,52 +77,51 @@ export interface StartOptions {
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
 
-function uiArgs(options: StartOptions): string[] {
-  if (options.uiDist !== undefined) return ["--ui-dist", options.uiDist];
-  return options.withUi ? ["--ui-root", uiRoot] : [];
+function uiOf(options: StartOptions): { root?: string; dist?: string } {
+  if (options.uiDist !== undefined) return { dist: options.uiDist };
+  return options.withUi ? { root: uiRoot } : {};
 }
 
-/** A fresh data folder, a local git repo and a mock agent, all removed when the test ends. */
+/** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
 async function prepareWorkspace() {
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
   onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
   const repoPath = await createLocalRepo();
   const mockAgent = await createMockAgent();
-  const env = {
-    AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify(["bun", mockAgentMain]),
-    MOCK_AGENT_SCRIPT: mockAgent.scriptPath,
-  };
-  onTestEnd(() => stopRelayDaemon(join(dataDir, "relay")));
-  return { dataDir, repoPath, mockAgent, env };
+  const env = mockAgentEnvironment(mockAgent);
+  const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
+  onTestEnd(() => host.stop());
+  return { dataDir, repoPath, mockAgent, env, host };
 }
 
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
-  const { dataDir, repoPath, mockAgent, env } = await prepareWorkspace();
-  const streamed = new Timeline<SessionEvent>(STREAM_WAIT_MS);
-  const extraArgs = uiArgs(options);
-  let current = await openApp({ dataDir, env, streamed, extraArgs });
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace();
+  const heard = newHeard();
+  const ui = uiOf(options);
+  let current = await openApp({ dataDir, env, host, heard, ui });
   onTestEnd(() => current.close());
   const access: AppAccess = {
     mockAgent,
     repoPath,
-    streamed,
+    ...heard,
     get sdk() {
       return current.sdk;
     },
   };
-  const baseUrlOf = () => current.baseUrl;
   return Object.assign(access, {
     dataDir,
     get baseUrl() {
-      return baseUrlOf();
+      return current.baseUrl;
     },
     user: appUserOf(access),
     restartsTheApp: async () => {
       const port = Number(new URL(current.baseUrl).port);
       await current.close();
-      current = await openApp({ dataDir, env, streamed, port, extraArgs });
+      current = await openApp({ dataDir, env, host, heard, ui, port });
     },
+    theRelayStops: () => host.stop(),
+    theRelayStartsAgain: () => host.start(),
   });
 }
 
@@ -108,13 +134,20 @@ interface Opened {
 async function openApp(options: {
   dataDir: string;
   env: Record<string, string>;
-  streamed: Timeline<SessionEvent>;
+  host: RelayHost;
+  heard: Heard;
+  ui: { root?: string; dist?: string };
   port?: number;
-  extraArgs: string[];
 }): Promise<Opened> {
-  const app: AppProcess = await launchApp(options);
+  const { heard } = options;
+  const app: AppProcess = await launchApp({
+    ...options,
+    onRelayConnectionEnded: () => {
+      heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
+    },
+  });
   const sdk = createClient({ baseUrl: app.baseUrl });
-  const stopStream = await followLiveStream(sdk, options.streamed);
+  const stopStream = await followLiveStream(sdk, heard);
   return {
     baseUrl: app.baseUrl,
     sdk,

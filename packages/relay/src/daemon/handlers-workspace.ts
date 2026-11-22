@@ -1,5 +1,5 @@
 import { RelayName as N } from "@agentcontrol/protocol";
-import { availableAgents } from "../agents/index.ts";
+import { availableAgents, type HostEnv } from "../agents/index.ts";
 import { checkWorkspace, type RepoStore } from "../repos/index.ts";
 import type { Handlers } from "../rpc/index.ts";
 
@@ -13,10 +13,13 @@ type WorkspaceMethods =
   | typeof N.reposSetSetup;
 
 /** The methods about the machine itself: hello, setup checklist, registered repos. */
-export function workspaceHandlers(repos: RepoStore): Pick<Handlers, WorkspaceMethods> {
+export function workspaceHandlers(
+  repos: RepoStore,
+  env: HostEnv,
+): Pick<Handlers, WorkspaceMethods> {
   return {
-    [N.hello]: () => Promise.resolve({ relayVersion: RELAY_VERSION, agents: availableAgents() }),
-    [N.workspaceCheck]: () => checkWorkspace(),
+    [N.hello]: () => Promise.resolve({ relayVersion: RELAY_VERSION, agents: availableAgents(env) }),
+    [N.workspaceCheck]: () => checkWorkspace(env),
     [N.reposAdd]: async ({ path }) => {
       const { repoId, defaultBranch, path: root } = await repos.add(path);
       return { repoId, defaultBranch, path: root };

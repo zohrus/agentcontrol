@@ -2,7 +2,7 @@ import { ErrorCode } from "@agentcontrol/protocol";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { RelayCallError } from "../relays/index.ts";
+import { RelayCallError, RelayConnectionClosedError } from "../relays/index.ts";
 import { RelayUnavailableError } from "../sync/index.ts";
 
 /** A failure the API reports as `{error: {code, message, data?}}` with an HTTP status. */
@@ -20,6 +20,7 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
   [ErrorCode.uncommittedChanges]: { status: 409, code: "uncommitted-changes" },
   [ErrorCode.staleFile]: { status: 409, code: "stale-file" },
   [ErrorCode.setupFailed]: { status: 422, code: "setup-failed" },
+  [ErrorCode.fileNotFound]: { status: 404, code: "file-not-found" },
   [ErrorCode.invalidParams]: { status: 400, code: "invalid-request" },
 };
 const unknownFailure = { status: 500, code: "internal-error" } as const;
@@ -40,7 +41,9 @@ function otherFailure(error: Error): ApiFailure {
 function failureOf(error: Error): ApiFailure {
   if (error instanceof ApiFailure) return error;
   if (error instanceof RelayCallError) return fromRelay(error);
-  if (!(error instanceof RelayUnavailableError)) return otherFailure(error);
+  const gone =
+    error instanceof RelayUnavailableError || error instanceof RelayConnectionClosedError;
+  if (!gone) return otherFailure(error);
   return new ApiFailure(503, { code: "relay-unavailable", message: error.message });
 }
 

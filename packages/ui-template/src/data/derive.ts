@@ -1,6 +1,5 @@
 import type { SessionEvent, SessionRow, UsageRow } from "@agentcontrol/sdk";
 import type { PendingPermission, SessionListEntry } from "../session-list/index.ts";
-import { buildViewItems } from "../session-view/index.ts";
 import { formatCost, type SessionUsage } from "../status/index.ts";
 import { LOCAL_WORKSPACE } from "./merge.ts";
 import type { DataState } from "./model.ts";
@@ -10,32 +9,18 @@ export function workspaceLabel(id: string): string {
   return id === LOCAL_WORKSPACE ? "This Mac" : id;
 }
 
-const pendingCache = new WeakMap<readonly SessionEvent[], PendingPermission | undefined>();
-
-function findPending(events: readonly SessionEvent[]): PendingPermission | undefined {
-  const open = buildViewItems(events).flatMap((item) =>
-    item.type === "permission" && item.answer === undefined ? [item] : [],
-  );
-  const [only, ...others] = open;
+/** The permission request a row offers Approve and Deny for: only when exactly one is pending. */
+function pendingPermissionOf(row: SessionRow): PendingPermission | undefined {
+  const [only, ...others] = row.pendingPermissions;
   if (only === undefined || others.length > 0) return undefined;
-  return { requestId: only.requestId, title: only.title, options: only.options };
-}
-
-/** The permission request a session waits on, only when exactly one is pending. */
-function pendingPermissionOf(
-  events: readonly SessionEvent[] | undefined,
-): PendingPermission | undefined {
-  if (events === undefined) return undefined;
-  if (!pendingCache.has(events)) pendingCache.set(events, findPending(events));
-  return pendingCache.get(events);
+  return { requestId: only.requestId, title: only.toolCall.title, options: only.options };
 }
 
 /** One list entry per session, with its workspace label and its single pending permission. */
-export function toEntries(state: Pick<DataState, "sessions" | "events">): SessionListEntry[] {
-  return state.sessions.map((row: SessionRow) => {
+export function toEntries(sessions: readonly SessionRow[]): SessionListEntry[] {
+  return sessions.map((row) => {
     const entry: SessionListEntry = { summary: row, workspace: workspaceLabel(row.workspaceId) };
-    if (row.waitingReason !== "permission") return entry;
-    const pendingPermission = pendingPermissionOf(state.events[row.id]);
+    const pendingPermission = pendingPermissionOf(row);
     return pendingPermission ? { ...entry, pendingPermission } : entry;
   });
 }

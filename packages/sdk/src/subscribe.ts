@@ -53,28 +53,41 @@ async function readStream(options: {
   }
 }
 
-function pause(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    signal.addEventListener("abort", () => {
-      clearTimeout(timer);
-      resolve();
+/** A reconnect pause that can be cut short: `wake` ends it now and clears its timer. */
+function reconnectPause() {
+  let wake = (): void => undefined;
+  const pause = (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      const timer = setTimeout(resolve, ms);
+      wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
     });
-  });
+  return {
+    pause,
+    wake: () => {
+      wake();
+    },
+  };
 }
+
+/** No wait at all once unsubscribed, so no timer is left behind. */
+const reconnectDelay = (signal: AbortSignal): number => (signal.aborted ? 0 : RECONNECT_MS);
 
 async function keepReading(options: {
   url: string;
   listeners: Listeners;
   signal: AbortSignal;
   send: typeof fetch;
+  pause: (ms: number) => Promise<void>;
 }): Promise<void> {
-  const { url, listeners, signal, send } = options;
+  const { url, listeners, signal, send, pause } = options;
   const stopped = (): boolean => signal.aborted;
   while (!stopped()) {
     await readStream({ url, handlers: handlersOf(listeners), signal, send }).catch(() => undefined);
     if (!stopped()) listeners.onClose?.();
-    await pause(RECONNECT_MS, signal);
+    await pause(reconnectDelay(signal));
   }
 }
 
@@ -86,8 +99,10 @@ export function subscribeTo(options: {
 }): () => void {
   const abort = new AbortController();
   const { streamUrl: url, listeners, send } = options;
-  void keepReading({ url, listeners, signal: abort.signal, send });
+  const { pause, wake } = reconnectPause();
+  void keepReading({ url, listeners, signal: abort.signal, send, pause });
   return () => {
     abort.abort();
+    wake();
   };
 }

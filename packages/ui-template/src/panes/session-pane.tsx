@@ -26,6 +26,7 @@ export function SessionPane({ id, onNewSession, onArchive }: Props) {
     <SessionView
       summary={summary}
       events={events}
+      turnRunning={summary.turnRunning}
       usage={usage}
       onSendPrompt={(text) => void controller.sendPrompt(id, text)}
       onCancel={() => void controller.cancel(id)}

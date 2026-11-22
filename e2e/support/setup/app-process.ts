@@ -1,4 +1,6 @@
 import { join } from "node:path";
+import { relayClientOver, startApp } from "@agentcontrol/app";
+import { inSubprocesses, type RelayHost } from "./relay-host.ts";
 
 const appMain = join(import.meta.dir, "../../../packages/app/src/main.ts");
 const START_TIMEOUT_MS = 30_000;
@@ -31,19 +33,15 @@ function afterTimeout(): Promise<never> {
   });
 }
 
-/**
- * Starts `main.ts` with its own data folder and waits for its "listening" line. It takes a free
- * port unless `port` is given (to come back where a browser is still pointing); `extraArgs` can
- * ask it to serve the UI.
- */
-export async function launchApp(options: {
-  dataDir: string;
-  env: Record<string, string>;
-  port?: number;
-  extraArgs?: string[];
-}): Promise<AppProcess> {
+function uiFlags(ui: LaunchOptions["ui"]): string[] {
+  const { root, dist } = ui ?? {};
+  return [...(root ? ["--ui-root", root] : []), ...(dist ? ["--ui-dist", dist] : [])];
+}
+
+/** Starts `main.ts` on a free port with its own data folder and waits for its "listening" line. */
+async function launchAppProcess(options: LaunchOptions): Promise<AppProcess> {
   const port = String(options.port ?? 0);
-  const args = ["--port", port, "--data-dir", options.dataDir, ...(options.extraArgs ?? [])];
+  const args = ["--port", port, "--data-dir", options.dataDir, ...uiFlags(options.ui)];
   const child = Bun.spawn(["bun", appMain, ...args], {
     stdout: "pipe",
     stderr: "inherit",
@@ -57,4 +55,36 @@ export async function launchApp(options: {
       await child.exited;
     },
   };
+}
+
+interface LaunchOptions {
+  dataDir: string;
+  env: Record<string, string>;
+  host: RelayHost;
+  /** The port to come back on after a restart (so a browser can find the app); free port if left out. */
+  port?: number;
+  /** Serve the UI: a project folder with Vite, or a folder of built files. */
+  ui?: { root?: string; dist?: string };
+  /** Called each time a connection the app opened to the relay ends (in-process only). */
+  onRelayConnectionEnded: () => void;
+}
+
+/** Starts the app inside this test process, talking to the relay over its socket. */
+async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
+  const app = await startApp({
+    dataDir: options.dataDir,
+    port: options.port ?? 0,
+    ...(options.ui && { ui: options.ui }),
+    connectRelay: () => {
+      const wire = options.host.wire();
+      void wire.closed.then(options.onRelayConnectionEnded);
+      return relayClientOver(wire);
+    },
+  });
+  return { baseUrl: app.url, stop: () => app.stop() };
+}
+
+/** Starts the app on a free port, as a subprocess when asked for, otherwise in this process. */
+export function launchApp(options: LaunchOptions): Promise<AppProcess> {
+  return inSubprocesses ? launchAppProcess(options) : launchAppInProcess(options);
 }

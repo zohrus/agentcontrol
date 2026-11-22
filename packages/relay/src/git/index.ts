@@ -1,6 +1,6 @@
 export interface GitOptions {
   cwd: string;
-  env?: Record<string, string>;
+  env?: Record<string, string | undefined>;
 }
 
 export interface GitResult {

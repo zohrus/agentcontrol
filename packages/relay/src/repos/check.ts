@@ -2,6 +2,7 @@ import { statfs } from "node:fs/promises";
 import { homedir } from "node:os";
 import type { CheckStep as CheckStepSchema } from "@agentcontrol/protocol";
 import type { z } from "zod";
+import type { HostEnv } from "../agents/index.ts";
 import { runGit } from "../git/index.ts";
 
 type CheckStep = z.infer<typeof CheckStepSchema>;
@@ -39,9 +40,9 @@ function versionAtLeast(output: string): boolean {
   return major > MIN_GIT[0] || (major === MIN_GIT[0] && minor >= MIN_GIT[1]);
 }
 
-async function gitStep(): Promise<CheckStep> {
+async function gitStep(env: HostEnv): Promise<CheckStep> {
   const label = "Git";
-  const result = await runGit(["--version"], { cwd: homedir() }).catch(() => undefined);
+  const result = await runGit(["--version"], { cwd: homedir(), env }).catch(() => undefined);
   if (result?.exitCode !== 0) {
     return { id: "git", label, status: "failed", detail: "Git is not installed." };
   }
@@ -55,13 +56,13 @@ async function gitStep(): Promise<CheckStep> {
   };
 }
 
-async function identityStep(gitStatus: CheckStep["status"]): Promise<CheckStep> {
+async function identityStep(gitStatus: CheckStep["status"], env: HostEnv): Promise<CheckStep> {
   const label = "Git identity";
   if (gitStatus !== "ok")
     return { id: "gitIdentity", label, status: "skipped", detail: "Git is not available." };
-  const cwd = homedir();
-  const name = await runGit(["config", "user.name"], { cwd });
-  const email = await runGit(["config", "user.email"], { cwd });
+  const options = { cwd: homedir(), env };
+  const name = await runGit(["config", "user.name"], options);
+  const email = await runGit(["config", "user.email"], options);
   if (name.stdout.trim() !== "" && email.stdout.trim() !== "") {
     return {
       id: "gitIdentity",
@@ -75,7 +76,7 @@ async function identityStep(gitStatus: CheckStep["status"]): Promise<CheckStep> 
 }
 
 /** Local checks for the "Add workspace" checklist. */
-export async function checkWorkspace(): Promise<{ steps: CheckStep[] }> {
-  const git = await gitStep();
-  return { steps: [osStep(), await diskStep(), git, await identityStep(git.status)] };
+export async function checkWorkspace(env: HostEnv): Promise<{ steps: CheckStep[] }> {
+  const git = await gitStep(env);
+  return { steps: [osStep(), await diskStep(), git, await identityStep(git.status, env)] };
 }

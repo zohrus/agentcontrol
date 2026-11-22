@@ -17,7 +17,7 @@ async function readVersion(ctx: Context, call: { id: SessionId; path: string; re
   try {
     return await ctx.client.files.read(call);
   } catch (error) {
-    if (error instanceof ApiError && error.code === "internal-error") return MISSING;
+    if (error instanceof ApiError && error.code === "file-not-found") return MISSING;
     throw error;
   }
 }

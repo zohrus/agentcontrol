@@ -1,3 +1,4 @@
+export type { HostEnv } from "./commands.ts";
 export { availableAgents } from "./commands.ts";
 export { startAgent } from "./start-agent.ts";
 export type {

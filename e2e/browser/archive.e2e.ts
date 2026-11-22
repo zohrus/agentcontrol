@@ -59,3 +59,28 @@ test(
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
+
+test(
+  "archiving a session without unsaved changes, once confirmed, moves it to the Archived list",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session whose agent only replied, open in the browser
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    app.mockAgent.willReply("Nothing to change");
+    const session = await app.user.startsSession({ prompt: "Check the readme" });
+    await app.page.opensSession(session.title);
+
+    // ********************************************************************
+    // ** WHEN the user archives the session and confirms
+    // ********************************************************************
+    await app.page.archives();
+
+    // ********************************************************************
+    // ** THEN the session is archived and listed under Archived
+    // ********************************************************************
+    await expectSessionArchived(app, session);
+    await expectSessionUnderArchived(app, session.title);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);

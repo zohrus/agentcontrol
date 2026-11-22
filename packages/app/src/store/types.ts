@@ -21,7 +21,6 @@ export interface SessionFilter {
 
 export interface Store {
   upsertWorkspace(workspace: Workspace): void;
-  listWorkspaces(): Workspace[];
   /** Idempotent: an event already stored (same workspace, session, seq) is ignored. */
   saveEvents(workspaceId: string, events: SessionEvent[]): void;
   /** Highest stored seq per session of a workspace, to resume a relay subscription. */

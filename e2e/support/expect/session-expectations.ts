@@ -125,3 +125,26 @@ export async function expectSessionHistoryToBeReplayed(
   await relay.events.waitFor(forSession(session, "session-created"), `${reason}: its creation`);
   await relay.events.waitFor(forSession(session, "prompt-sent"), `${reason}: its first prompt`);
 }
+
+/** The session list shows the session's agent at work on a turn. */
+export async function expectSessionRunning(relay: RelayAccess, session: Session): Promise<void> {
+  await relay.events.waitFor(
+    forSession(session, "prompt-sent"),
+    `expected session "${session.title}" to be running, but the agent was never given its prompt`,
+  );
+  await expectListedAs(relay, { session, status: "running", wanted: "running" });
+}
+
+/** The permission request the agent was waiting on was withdrawn, not answered by the user. */
+export async function expectPendingRequestWithdrawn(
+  relay: RelayAccess,
+  session: Session,
+): Promise<void> {
+  await relay.events.waitFor(
+    (event) =>
+      event.sessionId === session.id &&
+      event.kind === "permission-answered" &&
+      "cancelled" in event.payload,
+    `expected the request of session "${session.title}" to be withdrawn when the turn was cancelled`,
+  );
+}

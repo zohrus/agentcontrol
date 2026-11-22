@@ -1,7 +1,6 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
-import { parseAcpUpdate } from "./acp-updates.ts";
 import { groupTools } from "./group-tools.ts";
-import { applyAcpUpdate } from "./reduce-acp.ts";
+import { applyUpdate } from "./reduce-updates.ts";
 import { reducePermissionAnswered, reducePermissionRequested } from "./reduce-permission.ts";
 import { reduceSetupFinished, reduceSetupOutput } from "./reduce-setup.ts";
 import type { ViewItem } from "./view-items.ts";
@@ -15,8 +14,7 @@ function ignore(): void {}
 /** One small reducer per relay event kind. */
 const reducers: Reducers = {
   acp: (state, { seq, payload }) => {
-    const update = payload.direction === "from-agent" ? parseAcpUpdate(payload.message) : undefined;
-    if (update) applyAcpUpdate(state, update, seq);
+    for (const update of payload.updates ?? []) applyUpdate(state, update, seq);
   },
   "session-created": ignore,
   "agent-started": ignore,

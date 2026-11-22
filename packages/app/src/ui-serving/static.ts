@@ -9,6 +9,9 @@ async function isFile(path: string): Promise<boolean> {
   );
 }
 
+/** A path that names a build asset: a missing one is a 404, while `/repo/v1.0` is an app route. */
+const ASSET = /\.(?:m?js|css|map|json|html|txt|svg|png|jpe?g|gif|webp|ico|woff2?|ttf|wasm)$/i;
+
 function decodePath(pathname: string): string | undefined {
   try {
     return decodeURIComponent(pathname);
@@ -23,8 +26,7 @@ async function fileFor(root: string, pathname: string): Promise<string | undefin
   if (decoded === undefined) return undefined;
   const target = resolve(root, `.${decoded}`);
   if (target.startsWith(root + sep) && (await isFile(target))) return target;
-  const looksLikeFile = /\.[a-z0-9]+$/i.test(pathname);
-  return looksLikeFile ? undefined : join(root, "index.html");
+  return ASSET.test(pathname) ? undefined : join(root, "index.html");
 }
 
 /** Serves a built UI folder; any path that is not a file gets index.html so the UI can route. */
