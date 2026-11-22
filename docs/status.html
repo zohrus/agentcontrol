@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 17:40 UTC";
+const UPDATED = "22 Nov 2026, 18:05 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -208,22 +208,22 @@ const C = [
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
   // Phase 1
-  { id:"relay-core", phase:"p1", name:"Relay daemon", status:"progress", desc:"JSON-RPC over stdio, keeps sessions alive when the app closes, version handshake.", path:"packages/relay" },
-  { id:"acp-client", phase:"p1", name:"ACP client", status:"progress", desc:"Spawns claude-agent-acp and codex-acp per session and answers them as the client.", path:"packages/relay/src/acp" },
-  { id:"event-log", phase:"p1", name:"Event log", status:"progress", desc:"Appends every ACP message to a JSONL file per session with a sequence number.", path:"packages/relay/src/log" },
-  { id:"permissions", phase:"p1", name:"Permission holding", status:"progress", desc:"Keeps pending permission requests until you answer, even hours later.", path:"packages/relay/src/permissions" },
+  { id:"relay-core", phase:"p1", name:"Relay daemon", status:"done", desc:"JSON-RPC over stdio, keeps sessions alive when the app closes, version handshake.", path:"packages/relay" },
+  { id:"acp-client", phase:"p1", name:"ACP client", status:"done", desc:"Spawns claude-agent-acp and codex-acp per session and answers them as the client.", path:"packages/relay/src/acp" },
+  { id:"event-log", phase:"p1", name:"Event log", status:"done", desc:"Appends every ACP message to a JSONL file per session with a sequence number.", path:"packages/relay/src/log" },
+  { id:"permissions", phase:"p1", name:"Permission holding", status:"done", desc:"Keeps pending permission requests until you answer, even hours later.", path:"packages/relay/src/permissions" },
   { id:"worktrees", phase:"p1", name:"Worktrees and diff", status:"progress", desc:"Git worktree per session, copies .env files, runs the setup script, assigns a port block, serves the full diff since base.", path:"packages/relay/src/worktrees" },
   { id:"relay-fs", phase:"p1", name:"Worktree files", status:"progress", desc:"fs.tree, fs.read, fs.write with hash check, fs.watch for the editor.", path:"packages/relay/src/fs" },
   // Phase 2
-  { id:"relay-conn", phase:"p2", name:"Relay connections", status:"planned", desc:"Starts and talks to relays: the local one over stdio now, SSH in phase 5.", path:"packages/app/src/relays" },
+  { id:"relay-conn", phase:"p2", name:"Relay connections", status:"progress", desc:"Starts and talks to relays: the local one over stdio now, SSH in phase 5.", path:"packages/app/src/relays" },
   { id:"store", phase:"p2", name:"Store", status:"done", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
-  { id:"sync", phase:"p2", name:"Sync", status:"planned", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
-  { id:"session-status", phase:"p2", name:"Session status", status:"progress", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
-  { id:"api", phase:"p2", name:"API", status:"planned", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
+  { id:"sync", phase:"p2", name:"Sync", status:"progress", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
+  { id:"session-status", phase:"p2", name:"Session status", status:"done", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
+  { id:"api", phase:"p2", name:"API", status:"progress", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
   { id:"workspace-setup", phase:"p1", name:"Workspace setup", status:"planned", desc:"Guided checklist with Check and repair: machine, relay, agents, repos, imported config.", path:"packages/app/src/setup" },
   { id:"archive", phase:"p1", name:"Archive", status:"progress", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
   // Phase 3
-  { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"planned", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
+  { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"progress", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
   { id:"ui-shell", phase:"p3", name:"Default UI", status:"progress", desc:"Vite, React, Tailwind, shadcn/ui template copied to the data folder.", path:"packages/ui-template" },
   { id:"ui-server", phase:"p3", name:"UI server", status:"planned", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
   { id:"session-list", phase:"p3", name:"Session list", status:"progress", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
@@ -231,7 +231,7 @@ const C = [
   { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"progress", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
   // Phase 4
   { id:"modify", phase:"p4", name:"Modify agent", status:"planned", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
-  { id:"ui-versions", phase:"p4", name:"UI versions", status:"progress", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
+  { id:"ui-versions", phase:"p4", name:"UI versions", status:"done", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
   { id:"ui-updates", phase:"p4", name:"Default UI updates", status:"progress", desc:"Merge each new default UI into yours; the Modify agent resolves conflicts, then checks, Keep or Undo.", path:"packages/app/src/ui-versions" },
   { id:"safe", phase:"p4", name:"/_safe recovery page", status:"planned", desc:"Served by the app itself so a broken UI can always be rolled back.", path:"" },
   // Release
@@ -252,11 +252,10 @@ const C = [
 ];
 
 const NOW = [
-  "Wiring the relay: daemon that outlives the app, session lifecycle, archive, first relay end-to-end tests",
-  "Default UI scaffold: Vite, React, Tailwind, the session list, session view and Monaco diff components (Phase 3)",
-  "UI versions: hidden git repo with Keep, Undo, history and default-UI merges (Phase 4)",
-  "Usage reader: tokens and cost per session from the event log and agent logs (Phase 7 groundwork)",
-  "Written, waiting for end-to-end tests: event log, ACP client, permissions, worktrees, diff, files",
+  "App server: relay connection, sync with resume after sequence N, API, live stream, and the SDK (Phases 2 and 3)",
+  "Relay end-to-end tests: diff, archive, worktree setup, ports, files, cancel, restart, usage",
+  "Default UI scaffold: session list, session view and Monaco diff components (Phase 3)",
+  "Development-loop review: what to add so we iterate fast without regressions",
 ];
 const BLOCKED = [
   "Codex in the spike: needs an OpenAI API key and api.openai.com allowed in this environment, or your Mac attached",
@@ -269,6 +268,7 @@ const LOG = [
   ["22 Nov 2026 16:55", "Shared protocol package done: JSON-RPC envelope, events and 17 relay methods. Phase 1 relay started with three parallel subagents."],
   ["22 Nov 2026 17:15", "Relay parts written and pushed: event log, ACP client with message tap, permission holding, worktrees, session diff, worktree files, repo store. Spike ran real Claude Code turns. Now wiring the relay together and starting the app store."],
   ["22 Nov 2026 17:30", "App store done: SQLite with Drizzle, 5,000 events saved in about 75 ms, safe to re-save. Default UI scaffold started."],
+  ["22 Nov 2026 18:05", "Relay wired and running: daemon that outlives the app, session lifecycle, status from events; 8 end-to-end tests pass through the real relay. UI versions done (hidden git: Keep, Undo, history, merges). Usage reader written."],
 ];
 /* ===== END DATA ===== */
 
