@@ -12,14 +12,7 @@
 // REVERT FIRST: if main is ever red, whoever sees it reverts the offending commit
 // (`git revert <sha>`, then `bun run integrate` that revert) before doing anything else.
 // Nobody builds on a red main; the fix goes through this script like any other change.
-import {
-  appendFileSync,
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { git, gitLines, runLive } from "./lib/proc.ts";
@@ -41,12 +34,15 @@ function processAlive(pid: number): boolean {
 }
 
 function takeLock(lockPath: string): void {
-  if (existsSync(lockPath)) {
+  try {
+    writeFileSync(lockPath, String(process.pid), { flag: "wx" });
+  } catch {
     const holder = Number(readFileSync(lockPath, "utf8"));
     if (holder > 0 && processAlive(holder))
       fail(`another landing is running (pid ${String(holder)})`);
+    rmSync(lockPath, { force: true });
+    takeLock(lockPath);
   }
-  writeFileSync(lockPath, String(process.pid));
 }
 
 function conflictMessage(scratch: string, branch: string): string {
@@ -97,14 +93,20 @@ async function integrate(branch: string, dryRun: boolean, scratch: string): Prom
 
 function lockFile(): string {
   const repo = git(["rev-parse", "--show-toplevel"]).out;
-  return resolve(repo, git(["rev-parse", "--git-common-dir"]).out, "integrate.lock");
+  return resolve(
+    repo,
+    git(["rev-parse", "--path-format=absolute", "--git-common-dir"]).out,
+    "integrate.lock",
+  );
 }
 
 async function inScratchWorktree(branch: string, dryRun: boolean): Promise<void> {
   const scratch = mkdtempSync(join(tmpdir(), "ac-integrate-"));
   try {
-    git(["fetch", "origin", "main"]);
-    git(["worktree", "add", "--detach", scratch, "origin/main"]);
+    const fetch = git(["fetch", "origin", "main"]);
+    if (!fetch.ok) fail(`cannot fetch origin main: ${fetch.out}`);
+    const added = git(["worktree", "add", "--detach", scratch, "origin/main"]);
+    if (!added.ok) fail(`cannot create the scratch worktree: ${added.out}`);
     await integrate(branch, dryRun, scratch);
   } finally {
     git(["worktree", "remove", "--force", scratch]);

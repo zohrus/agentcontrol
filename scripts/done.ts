@@ -99,7 +99,7 @@ async function main(): Promise<number> {
     console.error("usage: bun run done <owned-path>...   (the paths your brief says you own)");
     return 1;
   }
-  const code = await runLive(["bun", "run", "check"]);
+  const code = await runLive(["bun", "run", "check"], { env: { CHECK_SKIP: "" } });
   const report = buildReport(owned, mergeBase());
   if (code !== 0) report.check = "fail";
   console.log(render(report));
