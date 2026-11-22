@@ -162,12 +162,32 @@ Prettier, crossby (use its mappings as reference only), the `radix-ui` bundle.
 - `bun test`: the end-to-end suite against the mock agent.
 - `bun run check`: every quality gate plus the tests.
 
-## Definition of done
+## Before you push or hand back work
 
-`bun run check` passes, new behaviour has an end-to-end test that reads as a specification, and
-`docs/status.html` shows the component's new status.
+Every agent does these, in this order, on its own changes. No exceptions.
+
+1. **Tests.** New or changed behaviour has an end-to-end test that reads as a specification.
+   Line coverage from the end-to-end suite must stay at 95% or more: at most 5% of lines may be
+   uncovered. Code that no end-to-end test runs does not get pushed.
+2. **Gates.** `bun run check` passes. Fix findings by changing the code.
+3. **Code review.** Run the `/code-review` skill on your own diff. Fix every bug it finds, then run
+   it again until it reports none. Say in your report that you ran it and what it found.
+4. **Status.** `docs/status.html` shows the component's new status (the orchestrator updates it).
+
+## Working in parallel
+
+- Each coding agent works in its own git worktree and branch, started from the latest `main`, and
+  only edits the paths its brief names.
+- Never `git add -A`, `git add .` or `git commit -a`: add the files you own by path.
+- Never run a formatter or linter with `--write` or `--fix` on the whole repo: only on your paths.
+- Never add or upgrade a dependency yourself: ask the orchestrator, who does it in one place.
+- Interfaces between parallel pieces are committed as code (zod schemas and types in
+  `packages/protocol`, typed signatures) before the work starts. If a contract is wrong, stop and
+  report; do not change it on your own.
+- Record a design decision that others will live with as a short file in `docs/decisions/`.
+- If `main` goes red, revert the commit first, then fix on a branch.
 
 ## Working style
 
 - Plain language, concise. Commit messages say what changed and why.
-- Work is pushed straight to `main` (no pull requests), with small, frequent commits.
+- No pull requests: checked work is pushed straight to `main`, in small, frequent commits.
