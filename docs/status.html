@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 17:30 UTC";
+const UPDATED = "22 Nov 2026, 17:40 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -231,8 +231,8 @@ const C = [
   { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"progress", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
   // Phase 4
   { id:"modify", phase:"p4", name:"Modify agent", status:"planned", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
-  { id:"ui-versions", phase:"p4", name:"UI versions", status:"planned", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
-  { id:"ui-updates", phase:"p4", name:"Default UI updates", status:"planned", desc:"Merge each new default UI into yours; the Modify agent resolves conflicts, then checks, Keep or Undo.", path:"packages/app/src/ui-versions" },
+  { id:"ui-versions", phase:"p4", name:"UI versions", status:"progress", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
+  { id:"ui-updates", phase:"p4", name:"Default UI updates", status:"progress", desc:"Merge each new default UI into yours; the Modify agent resolves conflicts, then checks, Keep or Undo.", path:"packages/app/src/ui-versions" },
   { id:"safe", phase:"p4", name:"/_safe recovery page", status:"planned", desc:"Served by the app itself so a broken UI can always be rolled back.", path:"" },
   // Release
   { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"planned", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
@@ -244,7 +244,7 @@ const C = [
   // Phase 6
   { id:"config-deploy", phase:"p6", name:"Harness config", status:"planned", desc:"One config for MCP, skills, hooks and instructions; inspect, plan, apply, rollback, drift.", path:"" },
   // Phase 7
-  { id:"usage", phase:"p7", name:"Usage and analytics", status:"planned", desc:"Reads agent logs for tokens and cost per session, model and workspace.", path:"" },
+  { id:"usage", phase:"p7", name:"Usage and analytics", status:"progress", desc:"Reads agent logs for tokens and cost per session, model and workspace.", path:"" },
   // External (diagram only)
   { id:"claude", phase:null, name:"Claude Code", status:"external", desc:"via claude-agent-acp" },
   { id:"codex", phase:null, name:"Codex", status:"external", desc:"via codex-acp" },
@@ -254,6 +254,8 @@ const C = [
 const NOW = [
   "Wiring the relay: daemon that outlives the app, session lifecycle, archive, first relay end-to-end tests",
   "Default UI scaffold: Vite, React, Tailwind, the session list, session view and Monaco diff components (Phase 3)",
+  "UI versions: hidden git repo with Keep, Undo, history and default-UI merges (Phase 4)",
+  "Usage reader: tokens and cost per session from the event log and agent logs (Phase 7 groundwork)",
   "Written, waiting for end-to-end tests: event log, ACP client, permissions, worktrees, diff, files",
 ];
 const BLOCKED = [
