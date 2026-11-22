@@ -1,13 +1,14 @@
 pre-commit:
   parallel: false
   jobs:
+    - name: dependency changes (orchestrator only)
+      run: bun scripts/guard-deps.ts
     - name: biome format
       glob: "*.{ts,tsx,js,json}"
-      run: bunx biome format --write --no-errors-on-unmatched {staged_files}
-      stage_fixed: true
+      run: bunx biome format --error-on-warnings --no-errors-on-unmatched {staged_files}
     - name: eslint
       glob: "{packages,e2e,spike,scripts}/**/*.{ts,tsx}"
-      run: bunx eslint --max-warnings 0 {staged_files}
+      run: bunx eslint --cache --cache-location node_modules/.cache/eslint/ --max-warnings 0 {staged_files}
 pre-push:
   jobs:
     - name: typecheck

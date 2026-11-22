@@ -9,3 +9,9 @@ coverage/
 !.env.example
 
 .claude/worktrees/
+
+.check-timing.json
+.claude/*
+!.claude/settings.json
+.cache/
+__gate_sample*/
