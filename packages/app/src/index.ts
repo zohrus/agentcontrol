@@ -3,3 +3,5 @@ export { createStore } from "./store/index.ts";
 export type { MergeOutcome, UiVersion, UiVersions } from "./ui-versions/index.ts";
 export { createUiVersions } from "./ui-versions/index.ts";
 export type { AppType } from "./api/index.ts";
+export type { CheckResult, RunCommand, UiWorkspace } from "./ui-workspace/index.ts";
+export { createUiWorkspace } from "./ui-workspace/index.ts";
