@@ -1,0 +1,1015 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>AgentControl Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: single reading column (~760px), summary first, technical depth folded into <details> */
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --fg:#161a22; --muted:#5a6272; --line:#dde1e8;
+  --accent:#2f5bd3; --accent-soft:#e7edfb; --local:#e9e6fb; --local-ink:#40359a;
+  --remote:#e2f4ee; --remote-ink:#0f5c48; --warn:#9a5b06; --warn-soft:#fbf1df;
+  --code:#eef0f4;
+  --run:#2f5bd3; --wait:#b26a00; --wait-soft:#fdf0d9; --done:#1f7a55;
+  --add-bg:#e5f5ea; --add-fg:#17633c; --del-bg:#fbe8e8; --del-fg:#9b2b2b;
+  --f-display:"Space Grotesk","IBM Plex Sans",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11141a; --surface:#181c24; --fg:#e6e9ef; --muted:#9aa3b4; --line:#2a303c;
+  --accent:#86a5ff; --accent-soft:#1d2640; --local:#25213f; --local-ink:#c9c2ff;
+  --remote:#15302a; --remote-ink:#9fe1cb; --warn:#f0b75a; --warn-soft:#2e2414; --code:#20252f;
+  --run:#86a5ff; --wait:#f0b75a; --wait-soft:#33270f; --done:#6fd3a5;
+  --add-bg:#16301f; --add-fg:#8fe0ad; --del-bg:#3a1a1c; --del-fg:#f2a3a3;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11141a; --surface:#181c24; --fg:#e6e9ef; --muted:#9aa3b4; --line:#2a303c;
+  --accent:#86a5ff; --accent-soft:#1d2640; --local:#25213f; --local-ink:#c9c2ff;
+  --remote:#15302a; --remote-ink:#9fe1cb; --warn:#f0b75a; --warn-soft:#2e2414; --code:#20252f;
+  --run:#86a5ff; --wait:#f0b75a; --wait-soft:#33270f; --done:#6fd3a5;
+  --add-bg:#16301f; --add-fg:#8fe0ad; --del-bg:#3a1a1c; --del-fg:#f2a3a3;
+  color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:780px;margin:0 auto;padding-block:48px 80px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:2.3rem;font-weight:600;letter-spacing:-.01em}
+h2{font-size:1.5rem;font-weight:600}
+h3{font-size:1.08rem;font-weight:600}
+p{margin:0}
+section{display:flex;flex-direction:column;gap:18px;min-width:0}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lede{font-size:1.15rem;color:var(--fg);max-width:65ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:.85rem;color:var(--muted);font-family:var(--f-mono)}
+.muted{color:var(--muted)}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--code);padding:1px 5px;border-radius:4px}
+a{color:var(--accent)}
+ul,ol{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:6px}
+.goals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.goal b{font-family:var(--f-display);font-weight:600}
+.goal span{font-size:.92rem;color:var(--muted)}
+@media (max-width:640px){.goals{grid-template-columns:1fr}}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;min-width:560px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:500;white-space:nowrap}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.pill.build{background:var(--warn-soft);color:var(--warn)}
+.pill.opt{background:var(--code);color:var(--muted)}
+table.deps td:first-child{white-space:normal;width:36%;overflow-wrap:anywhere}
+table.deps td:last-child{white-space:nowrap}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+details+details{margin-top:-6px}
+summary{cursor:pointer;padding:12px 16px;display:flex;gap:10px;align-items:baseline;list-style:none;font-weight:500}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"+";font-family:var(--f-mono);color:var(--accent);width:1ch;flex:none}
+details[open] summary::before{content:"−"}
+summary small{font-weight:400;color:var(--muted);font-size:.85rem}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+.det{padding:0 16px 16px 36px;display:flex;flex-direction:column;gap:12px;font-size:.95rem;min-width:0}
+pre{margin:0;background:var(--code);border-radius:8px;padding:12px 14px;overflow-x:auto;font-family:var(--f-mono);font-size:.8rem;line-height:1.55}
+.diagram{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.diagram svg{display:block;min-width:620px;width:100%;height:auto}
+svg text{font-family:var(--f-body)}
+.phases{display:flex;flex-direction:column;gap:0;border-left:2px solid var(--line);margin-left:6px}
+.phase{position:relative;padding:0 0 22px 22px;display:flex;flex-direction:column;gap:6px}
+.phase::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.phase .tag{font-family:var(--f-mono);font-size:.75rem;color:var(--accent)}
+.phase p{color:var(--muted);font-size:.95rem}
+.callout{background:var(--warn-soft);border-radius:10px;padding:14px 16px;font-size:.95rem}
+.callout b{color:var(--warn)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:640px){.two{grid-template-columns:1fr}}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.box h3{font-size:1rem}
+.box ul{font-size:.93rem}
+footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+.mock-out{position:relative;left:50%;transform:translateX(-50%);width:min(1160px,calc(100vw - 32px));display:flex;flex-direction:column;gap:10px}
+.mock-scroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.mock{min-width:1040px;font-size:13px;line-height:1.45;color:var(--fg);display:flex;flex-direction:column}
+.m-chrome{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--code);border-bottom:1px solid var(--line)}
+.m-dots{display:flex;gap:6px}.m-dots i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
+.m-url{flex:1;max-width:420px;margin:0 auto;background:var(--surface);border-radius:6px;padding:3px 10px;font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:center}
+.m-top{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.m-brand{font-family:var(--f-display);font-weight:600;font-size:14px}
+.m-search{flex:1;max-width:360px;border:1px solid var(--line);border-radius:6px;padding:5px 10px;color:var(--muted);font-size:12px}
+.m-btn{border:1px solid var(--line);border-radius:6px;padding:5px 10px;font-size:12px;background:var(--surface);white-space:nowrap}
+.m-btn.pri{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.m-btn.mod{border-color:var(--local-ink);color:var(--local-ink);background:var(--local)}
+.m-kbd{font-family:var(--f-mono);font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px}
+.m-body{display:grid;grid-template-columns:250px minmax(0,1fr) 390px;min-height:560px}
+.m-side{border-right:1px solid var(--line);padding:10px 8px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.m-ws{display:flex;flex-direction:column;gap:2px}
+.m-wsh{font-family:var(--f-mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding:2px 6px;display:flex;justify-content:space-between}
+.m-s{padding:7px 8px;border-radius:6px;display:flex;flex-direction:column;gap:2px}
+.m-s.sel{background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.m-s b{font-weight:500;display:flex;align-items:center;gap:6px}
+.m-s>span{font-size:11px;color:var(--muted);padding-left:14px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.dot.run{background:var(--run)}.dot.wait{background:var(--wait)}.dot.done{background:var(--done)}
+.m-tag{font-family:var(--f-mono);font-size:10px;font-style:normal;padding:1px 6px;border-radius:99px;background:var(--wait-soft);color:var(--wait);margin-left:auto}
+.m-main{display:flex;flex-direction:column;min-width:0}
+.m-head{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+.m-head h4{margin:0;font-family:var(--f-display);font-size:15px;font-weight:600}
+.m-head span{font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.m-feed{flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.m-user{align-self:flex-end;max-width:78%;background:var(--accent-soft);border-radius:10px;padding:8px 12px}
+.m-think{font-size:12px;color:var(--muted);border-left:2px solid var(--line);padding-left:10px}
+.m-tool{border:1px solid var(--line);border-radius:8px;padding:6px 10px;display:flex;gap:10px;align-items:center;font-size:12px}
+.m-tool code{background:none;padding:0}
+.m-tool .k{font-family:var(--f-mono);font-size:10px;color:var(--muted);width:40px}
+.m-tool .r{margin-left:auto;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.m-plus{color:var(--add-fg)}.m-minus{color:var(--del-fg)}
+.m-perm{border:1px solid var(--wait);background:var(--wait-soft);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.m-perm b{font-weight:500}
+.m-perm .row{display:flex;gap:8px;flex-wrap:wrap}
+.m-plan{display:flex;flex-direction:column;gap:3px;font-size:12px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;color:var(--muted)}
+.m-plan .x{color:var(--done)}
+.m-comp{border-top:1px solid var(--line);padding:10px 16px;display:flex;flex-direction:column;gap:8px}
+.m-input{border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--muted)}
+.m-chips{display:flex;gap:6px;flex-wrap:wrap}
+.m-chip{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--muted)}
+.m-right{border-left:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.m-tabs{display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--line);align-items:flex-end}
+.m-tabs>span{padding:5px 10px;font-size:12px;color:var(--muted);border-bottom:2px solid transparent}
+.m-tabs>span.on{color:var(--fg);border-color:var(--accent)}
+.m-tabs .m-btn{margin:0 0 6px auto;font-size:11px;padding:3px 8px;border-bottom:1px solid var(--line)}
+.m-files{padding:8px 10px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid var(--line)}
+.m-file{display:flex;gap:8px;font-family:var(--f-mono);font-size:11px;padding:3px 6px;border-radius:4px}
+.m-file.on{background:var(--accent-soft)}
+.m-file em{margin-left:auto;font-style:normal}
+.m-code{font-family:var(--f-mono);font-size:11px;line-height:1.6;padding:6px 0;flex:1;overflow-x:auto}
+.m-code div{display:flex;gap:10px;padding:0 10px;white-space:pre}
+.m-code i{font-style:normal;color:var(--muted);width:22px;text-align:right;flex:none}
+.m-code .a{background:var(--add-bg);color:var(--add-fg)}
+.m-status{display:flex;gap:16px;padding:6px 14px;border-top:1px solid var(--line);font-family:var(--f-mono);font-size:11px;color:var(--muted);background:var(--bg)}
+.m-status b{font-weight:500;color:var(--fg)}
+.m-cap{font-size:.85rem;color:var(--muted)}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:14px">
+  <span class="eyebrow">Project plan · working draft</span>
+  <h1>AgentControl</h1>
+  <p class="lede">A local-first web app that runs Claude Code, Codex and other coding agents on your own machine or on SSH workspaces, shows which sessions are waiting on you, and lets each user rewrite the interface itself by asking a built-in agent.</p>
+  <div class="meta"><span>Updated 22 Nov 2026</span><span>Status: design</span><span>Agents: Claude Code, Codex, Gemini CLI, OpenCode</span></div>
+</header>
+
+<section>
+  <span class="eyebrow">Why</span>
+  <h2>What it must do</h2>
+  <div class="goals">
+    <div class="goal"><b>Run and watch agents</b><span>Launch sessions locally or over SSH, see live output, thinking and diffs, and know at a glance which session needs an answer.</span></div>
+    <div class="goal"><b>Own the interface</b><span>The whole web UI is user code. A built-in agent edits it on request, with keep, undo and full version history.</span></div>
+    <div class="goal"><b>Learn from sessions</b><span>Cost and behaviour analytics per session, model and workspace, so you can see what works and what wastes tokens.</span></div>
+  </div>
+  <p class="muted">Also in scope: configuring MCP servers, skills, hooks, instructions and every other harness setting from the UI, once, for every agent and workspace.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Decisions so far</span>
+  <h2>Key decisions</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Topic</th><th>Decision</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Deployment</td><td>Self-contained app on the user's laptop. No central server, no accounts.</td><td>Privacy, zero ops, each user owns their data.</td></tr>
+      <tr><td>Interface</td><td>Web UI on <code>localhost</code>, fully customizable.</td><td>Any browser, and web code is what agents edit best.</td></tr>
+      <tr><td>Agent protocol</td><td>ACP (Agent Client Protocol) for every agent.</td><td>One protocol for streaming, thinking, tool calls, diffs and permissions.</td></tr>
+      <tr><td>Remote execution</td><td>A small relay on each SSH workspace keeps sessions alive.</td><td>Sessions survive laptop sleep and SSH drops.</td></tr>
+      <tr><td>Storage</td><td>Embedded SQLite file in the app folder.</td><td>Embedded, no server, one file to back up.</td></tr>
+      <tr><td>UI versions</td><td>A hidden git repository in the data folder, run by a bundled git library. Keep = commit; a default UI update = merge into the user's branch, conflicts resolved by the Modify agent. Users never see git.</td><td>Updates without losing the user's changes, using proven merge logic; no git install needed.</td></tr>
+      <tr><td>Diff of a session</td><td>Git worktree per session. The diff shows every change since the base branch, committed or not, including new files.</td><td>Same result for every agent, including shell edits; agents often leave work uncommitted.</td></tr>
+      <tr><td>Session lifetime</td><td>A session stays in the UI until the user archives it with a button.</td><td>Nothing disappears on its own; worktrees are cleaned up at a moment the user chose.</td></tr>
+      <tr><td>First version (MVP)</td><td>Agents running on the local machine, the full default UI, and the Modify agent. Remote workspaces come right after.</td><td>The core experience ships before the hardest infrastructure.</td></tr>
+      <tr><td>Model routing</td><td>Model picked via ACP; optional AI gateway on each workspace.</td><td>Uniform cost logs regardless of agent.</td></tr>
+      <tr><td>Code editor</td><td>Monaco in the app to view and edit a session's worktree; one click opens it in VS Code, in the browser or on the desktop.</td><td>Reuse VS Code's editor instead of building one.</td></tr>
+      <tr><td>Harness config</td><td>One canonical config in the app, edited in the UI, translated and deployed to each agent by the relay.</td><td>Configure once instead of per tool and per machine.</td></tr>
+      <tr><td>Language</td><td>TypeScript end to end on Bun: app, relay, SDK and UI.</td><td>One toolchain to install, and shared types from the relay protocol to the UI.</td></tr>
+      <tr><td>Distribution</td><td>Run from source with <code>bun install &amp;&amp; bun dev</code>. Signed Mac <code>.dmg</code> and Homebrew cask for users.</td><td>Contributors start in one command; users install like any Mac app.</td></tr>
+      <tr><td>Code quality</td><td>SOLID (single responsibility first) and KISS, written in <code>AGENTS.md</code>; aggressive complexity and size limits that break the build.</td><td>Code stays easy to change, whoever or whatever wrote it.</td></tr>
+      <tr><td>Testing</td><td>End-to-end tests only, in given / when / then form with readable setup and assertion helpers. No unit tests.</td><td>Tests check what users see and survive refactoring.</td></tr>
+      <tr><td>Platform</td><td>The app runs on macOS only (Apple Silicon and Intel). Remote workspaces are Linux.</td><td>One desktop platform to build, sign and test.</td></tr>
+      <tr><td>License</td><td>Open source under MIT.</td><td>Short, standard, and provides the software "as is", without warranty or liability for the authors.</td></tr>
+      <tr><td>Out of scope</td><td>Linux and Windows as the laptop, Pi, terminal UIs, hosted multi-tenant service.</td><td>Not needed for the first version.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">Architecture</span>
+  <h2>How the pieces fit</h2>
+  <p>Everything the user sees runs on their laptop. Workspaces run the agents and keep the authoritative event log, so the laptop is a viewer that catches up whenever it reconnects.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 760 470" role="img" aria-labelledby="dt dd">
+    <title id="dt">AgentControl architecture</title>
+    <desc id="dd">The laptop runs a browser and the local app, which contains the API, UI server, Modify agent and SQLite store. Over SSH it reaches relays on each workspace, which run Claude Code and Codex through ACP, plus an optional AI gateway.</desc>
+    <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="var(--muted)" stroke-width="1.5"/></marker></defs>
+    <rect x="10" y="10" width="740" height="230" rx="16" fill="var(--bg)" stroke="var(--line)"/>
+    <text x="30" y="36" font-size="14" font-weight="600" fill="var(--fg)">Your laptop</text>
+    <rect x="40" y="50" width="680" height="44" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+    <text x="380" y="70" text-anchor="middle" font-size="14" font-weight="600" fill="var(--fg)">Browser · localhost</text>
+    <text x="380" y="86" text-anchor="middle" font-size="12" fill="var(--muted)">Your customizable UI, plus /_safe recovery</text>
+    <line x1="380" y1="96" x2="380" y2="116" stroke="var(--muted)" marker-end="url(#ah)"/>
+    <rect x="40" y="118" width="680" height="108" rx="12" fill="var(--local)" stroke="var(--line)"/>
+    <text x="58" y="138" font-size="13" font-weight="600" fill="var(--local-ink)">Local app · single binary</text>
+    <g font-size="13">
+      <rect x="58" y="152" width="150" height="58" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="133" y="176" text-anchor="middle" font-weight="600" fill="var(--fg)">API + SDK</text>
+      <text x="133" y="194" text-anchor="middle" font-size="12" fill="var(--muted)">Commands, live events</text>
+      <rect x="222" y="152" width="150" height="58" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="297" y="176" text-anchor="middle" font-weight="600" fill="var(--fg)">UI server</text>
+      <text x="297" y="194" text-anchor="middle" font-size="12" fill="var(--muted)">Vite, hot reload</text>
+      <rect x="386" y="152" width="150" height="58" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="461" y="176" text-anchor="middle" font-weight="600" fill="var(--fg)">Modify agent</text>
+      <text x="461" y="194" text-anchor="middle" font-size="12" fill="var(--muted)">Rewrites the UI</text>
+      <rect x="550" y="152" width="152" height="58" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="626" y="176" text-anchor="middle" font-weight="600" fill="var(--fg)">Local store</text>
+      <text x="626" y="194" text-anchor="middle" font-size="12" fill="var(--muted)">SQLite file</text>
+    </g>
+    <line x1="195" y1="228" x2="195" y2="282" stroke="var(--muted)" marker-end="url(#ah)"/>
+    <line x1="565" y1="228" x2="565" y2="282" stroke="var(--muted)" marker-end="url(#ah)"/>
+    <text x="380" y="262" text-anchor="middle" font-size="12" fill="var(--muted)">SSH · JSON-RPC over stdio · resume from sequence N</text>
+    <g>
+      <rect x="10" y="284" width="360" height="176" rx="16" fill="var(--remote)" stroke="var(--line)"/>
+      <text x="30" y="308" font-size="14" font-weight="600" fill="var(--remote-ink)">Workspace A</text>
+      <rect x="30" y="320" width="320" height="50" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="190" y="341" text-anchor="middle" font-size="13" font-weight="600" fill="var(--fg)">Relay</text>
+      <text x="190" y="358" text-anchor="middle" font-size="12" fill="var(--muted)">Event log, worktrees, diffs, costs</text>
+      <line x1="95" y1="372" x2="95" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <line x1="190" y1="372" x2="190" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <line x1="290" y1="372" x2="290" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <rect x="30" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="78" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Claude Code</text>
+      <rect x="142" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="190" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Codex</text>
+      <rect x="254" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="4 3"/>
+      <text x="302" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">AI gateway</text>
+    </g>
+    <g>
+      <rect x="390" y="284" width="360" height="176" rx="16" fill="var(--remote)" stroke="var(--line)"/>
+      <text x="410" y="308" font-size="14" font-weight="600" fill="var(--remote-ink)">Workspace B</text>
+      <rect x="410" y="320" width="320" height="50" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="570" y="341" text-anchor="middle" font-size="13" font-weight="600" fill="var(--fg)">Relay</text>
+      <text x="570" y="358" text-anchor="middle" font-size="12" fill="var(--muted)">Event log, worktrees, diffs, costs</text>
+      <line x1="475" y1="372" x2="475" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <line x1="570" y1="372" x2="570" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <line x1="670" y1="372" x2="670" y2="394" stroke="var(--muted)" marker-end="url(#ah)"/>
+      <rect x="410" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="458" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Claude Code</text>
+      <rect x="522" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="570" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">Codex</text>
+      <rect x="634" y="396" width="96" height="44" rx="8" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="4 3"/>
+      <text x="682" y="422" text-anchor="middle" font-size="12" font-weight="600" fill="var(--fg)">AI gateway</text>
+    </g>
+  </svg>
+  </div>
+
+  <details>
+    <summary>Local app <small>API, live stream, sync, packaging</small></summary>
+    <div class="det">
+      <p>One binary per OS, started by the user. It serves the UI on <code>localhost</code>, holds the SQLite store, and keeps one SSH connection per workspace.</p>
+      <ul>
+        <li>Opens each workspace with the system <code>ssh</code> so <code>~/.ssh/config</code>, keys and jump hosts just work.</li>
+        <li>Copies relay events into SQLite, keyed by workspace, session and sequence number. On reconnect it asks for "everything after N".</li>
+        <li>Exposes commands and queries over HTTP, and one live stream (SSE or WebSocket). History and live events use the same shape, so the UI renders both with one code path.</li>
+        <li>Mounts Vite in middleware mode under <code>/</code> and serves the built-in <code>/_safe</code> page itself.</li>
+      </ul>
+    </div>
+  </details>
+  <details>
+    <summary>Relay <small>the daemon on each workspace</small></summary>
+    <div class="det">
+      <p>Deployed automatically on first connect (copied over SSH, started as a user service). It must keep working with no laptop attached.</p>
+      <ul>
+        <li>Spawns ACP adapters per session and answers them as the ACP client. Advertises no <code>fs</code> or <code>terminal</code> capability, so agents use their own tools on the workspace.</li>
+        <li>Appends every ACP message to a JSONL file per session with a sequence number.</li>
+        <li>Holds pending permission requests until the user answers, even hours later.</li>
+        <li>Creates a git worktree per session, prepared by the repo's setup (below), and serves its diff on request.</li>
+        <li><b>Session diff</b> = every change since the branch left its base, committed or not, new files included: the relay takes <code>git merge-base &lt;base&gt; HEAD</code> and diffs the working tree against it, staging untracked files into a throwaway index (<code>GIT_INDEX_FILE</code>) so the real index is never touched.</li>
+        <li><b>Archive</b>: stops the agent if it is running, then removes the worktree but keeps its branch, so commits survive. If there are uncommitted changes, the user is warned first. The event log is kept, so archived sessions stay readable under an Archived filter.</li>
+        <li>Reads agent logs (<code>~/.claude/projects</code>, <code>~/.codex/sessions</code>) or gateway logs for token and cost data.</li>
+        <li>Writes skills, hooks and MCP config into each agent's native locations.</li>
+      </ul>
+      <p class="muted">Evaluate Rivet's sandbox-agent before writing our own: it already runs Claude Code and Codex behind a daemon with a normalized event stream and remote approvals. It is young (v0.5, first release Jan 2026, one npm maintainer), so lean towards our own thin relay unless it saves a lot. Check its telemetry and whether its event model keeps enough ACP detail.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Adding a workspace <small>one guided setup, re-runnable</small></summary>
+    <div class="det">
+      <p>Claude Code and Codex are assumed to be installed and signed in. Everything else is set up by the app, as a checklist that shows each step's status and can be run again at any time with <b>Check and repair</b>. The local machine goes through the same flow on first run, so the MVP uses it too.</p>
+      <ol>
+        <li><b>Connect.</b> Pick a host from <code>~/.ssh/config</code> or type one; test the connection and confirm the host key. (Skipped for the local machine.)</li>
+        <li><b>Inspect.</b> OS, CPU architecture, free disk space, <code>git</code> version and identity.</li>
+        <li><b>Install the relay</b> of the app's exact version, and start it so it keeps running after logout.</li>
+        <li><b>Agents.</b> Find Claude Code and Codex, install the pinned ACP adapters next to the relay, and run an ACP handshake with each one (no prompt, no tokens) to confirm it starts and is signed in.</li>
+        <li><b>Repositories.</b> Add folders that already exist on the workspace, or clone from a git URL. For each, set the repo's worktree setup (below).</li>
+        <li><b>Configuration.</b> Read what each agent already has (MCP servers, skills, hooks, instructions), offer to import it, then apply the user's global config (phase 6).</li>
+        <li><b>Optional gateway</b> for model routing and cost logs.</li>
+      </ol>
+      <p>A step that fails says why and what to do; the workspace becomes usable once the required steps pass.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Worktree setup <small>a ready-to-work copy for every session</small></summary>
+    <div class="det">
+      <p>A fresh worktree has no <code>node_modules</code>, no <code>.env</code> files and no build cache, and two agents running dev servers would fight over ports. Each repository therefore has setup settings, stored in the app's config at repo scope:</p>
+      <ul>
+        <li><b>Files to copy</b> from the main checkout into each new worktree. Default: <code>.env*</code>.</li>
+        <li><b>Setup script</b> run once in the new worktree, for example <code>bun install</code>. Its output appears at the top of the session; if it fails, the session waits on the user before the agent starts.</li>
+        <li><b>Ports.</b> Each session gets its own block of ports through environment variables (<code>PORT</code> and <code>AGENTCONTROL_PORT_BASE</code>), so parallel dev servers never collide.</li>
+      </ul>
+      <p>Order on session create: add the worktree from the base branch, copy files, assign ports, run the setup script, then start the agent.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Data layer <small>what lives in SQLite</small></summary>
+    <div class="det">
+      <p>Append-only events are the source of truth; everything else is derived and can be rebuilt.</p>
+<pre>workspaces   (id, ssh_host, label, last_seen)
+sessions     (id, workspace_id, agent, model, cwd, worktree,
+              status: running|waiting|idle|done, waiting_reason,
+              started_at, last_event_seq, archived_at)
+events       (session_id, seq, ts, kind, payload_json)   -- raw ACP
+tool_calls   (session_id, tool_call_id, kind, title, status, ...)
+usage        (session_id, ts, model, input_tok, output_tok,
+              cache_read_tok, cost_usd, source)
+ui_versions  (commit_hash, kind: change|update|undo, prompt,
+              template_version, status, created_at)
+             -- files live in the hidden git repo, not in SQLite
+config_items (id, kind: mcp|skill|hook|instructions|agent|command|
+              permission|env, name, body_json, version)
+config_scope (item_id, scope: global|workspace|repo, target, enabled)
+secrets      (name, keychain_ref)        -- values stay in OS keychain
+config_state (workspace_id, agent, item_id, deployed_hash,
+              observed_hash, status: in_sync|drift|failed)</pre>
+      <p><b>Waiting on you</b> is derived: a session is waiting when it has an unanswered <code>session/request_permission</code>, or its last prompt returned <code>end_turn</code> with nothing sent since.</p>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">Don't reinvent the wheel</span>
+  <h2>Protocols and tools</h2>
+  <p>Each boundary in the system uses an existing standard or library. Only the relay protocol and the SDK are ours, and both stay thin.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Boundary</th><th>Use</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Relay ↔ agent</td><td>ACP (JSON-RPC 2.0 over stdio) with official adapters: <code>@agentclientprotocol/claude-agent-acp</code>, <code>@agentclientprotocol/codex-acp</code>; Gemini CLI and OpenCode are native. Client library: <code>@agentclientprotocol/sdk</code>.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Laptop ↔ relay</td><td>JSON-RPC 2.0 over an SSH channel (<code>ssh host relay --stdio</code>). Same framing as ACP, plus our methods for resume, diff, usage and config deploy. Or adopt sandbox-agent's HTTP + SSE API through an SSH tunnel.</td><td><span class="pill build">thin, ours</span></td></tr>
+      <tr><td>Browser ↔ local app</td><td>HTTP + SSE via Hono, whose typed client becomes the SDK. Hono has no dependencies and runs on Bun's own server.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>UI SDK</td><td><code>@agentcontrol/sdk</code>: typed functions over the API, with doc comments the Modify agent reads.</td><td><span class="pill build">ours</span></td></tr>
+      <tr><td>Storage</td><td>SQLite (<code>bun:sqlite</code>) with Drizzle for queries and migrations.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>UI runtime</td><td>Vite + React, Tailwind, shadcn/ui components (copied into the repo, pulling in only the Radix primitives we use). A chart library is chosen in phase 7.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Layout as data</td><td>A plain <code>layout.json</code> validated by a <code>zod</code> schema, read by a small renderer of our own.</td><td><span class="pill build">thin, ours</span></td></tr>
+      <tr><td>Validation</td><td><code>zod</code> for relay messages, API input and <code>layout.json</code>: one schema gives both the type and the runtime check.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Code editor and diffs</td><td><code>monaco-editor</code> (Microsoft, MIT, the editor inside VS Code) used directly through a small React component, including its diff editor. Full IDE on demand: code-server on the workspace, or a <code>vscode://vscode-remote/ssh-remote+…</code> link to desktop VS Code.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>UI versions</td><td><code>isomorphic-git</code>: git in pure JavaScript, bundled, for commits, history, diffs and three-way merges.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Cost data</td><td>Our own parser for agent logs, using ccusage as the reference for the formats; Claude Code and Codex OpenTelemetry export; or LiteLLM gateway logs.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Model gateway</td><td>LiteLLM proxy on each workspace; agents pointed at it with <code>ANTHROPIC_BASE_URL</code> and a Codex custom provider.</td><td><span class="pill">reuse, optional</span></td></tr>
+      <tr><td>Skills, hooks, MCP</td><td>One small TypeScript translator per agent, using crossby's mappings as the reference; MCP servers also passed in <code>session/new</code>.</td><td><span class="pill build">thin, ours</span></td></tr>
+      <tr><td>Packaging</td><td><code>bun build --compile</code> for the app and the relay (cross-compiled for Linux); <code>codesign</code>, <code>notarytool</code> and <code>create-dmg</code> for the Mac installer; GitHub Actions and Releases to publish.</td><td><span class="pill">reuse</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <details open>
+    <summary>Dependencies <small>the rule for adding one, and the audit (Nov 2026)</small></summary>
+    <div class="det">
+      <p><b>Bun first.</b> Bun already gives us SQLite, the HTTP server, the test runner, process spawning, hashing, globbing, <code>bun audit</code> and single-binary builds. Git and SSH are the system tools on the workspace, and JSON-RPC framing is a few lines of our own. A library is added only when it does something we'd otherwise write hundreds of lines for.</p>
+      <p><b>The bar for a new dependency</b>, checked in the pull request that adds it:</p>
+      <ul>
+        <li>Owned by a known organisation or a long-standing maintainer, with a release in the last 12 months.</li>
+        <li>Permissive license: MIT, Apache-2.0, BSD or ISC. Copyleft only for dev tools that never ship.</li>
+        <li>Few dependencies of its own. Prefer zero.</li>
+        <li>Exact versions pinned, <code>bun.lock</code> committed, new releases installed only after a few days (Bun's <code>minimumReleaseAge</code>), updates via Dependabot. <code>knip</code> fails the build on any unused dependency.</li>
+      </ul>
+      <div class="tablewrap"><table class="deps">
+        <thead><tr><th>Library</th><th>Why it's trusted</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td><code>@agentclientprotocol/sdk</code> + <code>claude-agent-acp</code>, <code>codex-acp</code></td><td>Official ACP organisation, Apache-2.0, released weekly. They replace the older <code>@zed-industries</code> adapters. They move fast, so pin versions.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>hono</code></td><td>Since 2021, MIT, zero dependencies, released this week.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>drizzle-orm</code> + <code>drizzle-kit</code></td><td>Since 2021, very widely used, zero runtime dependencies. Still 0.x, so pin.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>zod</code></td><td>Since 2020, MIT, zero dependencies, the de facto TypeScript schema library.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>isomorphic-git</code></td><td>Since 2017, MIT, active (released yesterday), 10 dependencies. Replaces <code>jsdiff</code> and <code>node-diff3</code>.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>react</code>, <code>vite</code>, <code>@vitejs/plugin-react</code>, <code>tailwindcss</code></td><td>Industry standards, MIT, few dependencies.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>monaco-editor</code></td><td>Microsoft, MIT, the editor inside VS Code.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td>shadcn/ui (Radix primitives, <code>lucide-react</code>, <code>clsx</code>, <code>tailwind-merge</code>, <code>class-variance-authority</code>)</td><td>Code is copied into the repo, not installed. Install individual <code>@radix-ui/react-*</code> primitives as needed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
+          <tr><td><code>@playwright/test</code></td><td>Microsoft, one dependency, already in our tooling.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>typescript</code>, <code>eslint</code>, <code>typescript-eslint</code></td><td>Industry standards. TypeScript is now 7.x (native compiler): check in Step 1 that typescript-eslint supports it, or pin the version it supports.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>eslint-plugin-sonarjs</code></td><td>SonarSource, since 2018, for cognitive complexity. LGPL-3.0, which is fine for a dev tool that never ships.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>@eslint-community/eslint-plugin-eslint-comments</code></td><td>ESLint community organisation, two dependencies.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>dependency-cruiser</code>, <code>knip</code>, <code>jscpd</code></td><td>Each the reference tool for its job (layering, dead code, duplication), active for years, released this month.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>@biomejs/biome</code> (formatting), <code>lefthook</code></td><td>Zero dependencies each, native binaries, active.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td>code-server, LiteLLM</td><td>Optional tools started on the workspace, not dependencies of our code. Both active and widely used; pin versions.</td><td><span class="pill opt">optional</span></td></tr>
+          <tr><td>Chart library, <code>size-limit</code></td><td>Not needed yet; chosen in phases 7 and 3 with the same bar.</td><td><span class="pill build">later</span></td></tr>
+          <tr><td><code>json-render</code></td><td>Vercel Labs experiment, 0.x, first release Jan 2026. A <code>zod</code>-checked <code>layout.json</code> is enough.</td><td><span class="pill opt">dropped</span></td></tr>
+          <tr><td><code>@monaco-editor/react</code></td><td>One maintainer, no release since Feb 2025, CDN loading by default.</td><td><span class="pill opt">dropped</span></td></tr>
+          <tr><td>tRPC, <code>jsdiff</code>, <code>node-diff3</code>, CodeMirror, openvscode-server, Prettier</td><td>Duplicates of a choice we already made: Hono, isomorphic-git, Monaco, code-server, Biome.</td><td><span class="pill opt">dropped</span></td></tr>
+          <tr><td>crossby, ccusage, <code>agents</code> CLI, <code>vercel-labs/skills</code></td><td>Used as references for file formats, not installed. crossby would also need Python on every workspace.</td><td><span class="pill opt">reference only</span></td></tr>
+          <tr><td>type-coverage, commitlint, StrykerJS, SonarQube, Renovate</td><td>Covered by other gates, too heavy for the benefit, or replaced by Dependabot.</td><td><span class="pill opt">dropped</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </details>
+  <details>
+    <summary>ACP message catalog <small>everything the relay handles</small></summary>
+    <div class="det">
+      <div class="two">
+        <div class="box"><h3>Client → agent</h3><ul>
+          <li><code>initialize</code>, <code>authenticate</code></li>
+          <li><code>session/new</code> (cwd, MCP servers)</li>
+          <li><code>session/load</code> (optional resume)</li>
+          <li><code>session/prompt</code> (open for the whole turn)</li>
+          <li><code>session/set_config_option</code> or <code>session/set_model</code></li>
+          <li><code>session/set_mode</code>, <code>session/cancel</code></li>
+        </ul></div>
+        <div class="box"><h3>Agent → client</h3><ul>
+          <li><code>session/request_permission</code> (waiting on you)</li>
+          <li><code>session/update</code> notifications</li>
+          <li><code>fs/*</code> and <code>terminal/*</code>: not advertised remotely</li>
+        </ul></div>
+      </div>
+      <p><b>Update kinds:</b> <code>agent_message_chunk</code>, <code>agent_thought_chunk</code>, <code>user_message_chunk</code>, <code>tool_call</code>, <code>tool_call_update</code> (status, output, diff), <code>plan</code>, <code>available_commands_update</code>, <code>current_mode_update</code>, <code>config_option_update</code>, <code>session_info_update</code>.</p>
+      <p><b>Stop reasons:</b> <code>end_turn</code>, <code>max_tokens</code>, <code>max_turn_requests</code>, <code>refusal</code>, <code>cancelled</code>. Extensions use <code>_meta</code> fields and underscore-prefixed methods.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Relay protocol sketch <small>our methods on top of ACP framing</small></summary>
+    <div class="det">
+<pre>→ relay/hello            { client_version }          ← { relay_version, agents[] }
+→ relay/sessions.list    {}                          ← [{ id, agent, status, last_seq }]
+→ relay/sessions.create  { agent, repo, base_branch, model?, mcp? }
+→ relay/events.subscribe { session_id?, after_seq }  ← stream of { session_id, seq, acp_msg }
+→ relay/prompt           { session_id, content[] }
+→ relay/permission.respond { session_id, request_id, option_id }
+→ relay/cancel           { session_id }
+→ relay/diff             { session_id }              ← changes since base, committed or not
+→ relay/sessions.archive { session_id, force? }      ← removed worktree, or warning
+→ relay/workspace.check  {}                          ← status of each setup step
+→ relay/repos.add        { path | git_url }          ← repo id, default branch
+→ relay/usage            { since }                   ← usage rows
+→ relay/fs.tree          { session_id }              ← worktree files + git status
+→ relay/fs.read          { session_id, path, ref? }  ← content at base, HEAD or working copy
+→ relay/fs.write         { session_id, path, content, expected_hash }
+→ relay/fs.watch         { session_id }              ← stream of changed paths
+→ relay/ide.open         { session_id }              ← port of a browser VS Code to tunnel
+→ relay/config.inspect   { agents[] }                ← what each agent has today
+→ relay/config.plan      { items[], scope }          ← per-agent file changes
+→ relay/config.apply     { plan_id }                 ← per-agent result + backup id
+→ relay/config.rollback  { backup_id }</pre>
+      <p>Events carry the raw ACP message unchanged, so the UI and the analytics see exactly what the agent sent.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Model selection and gateway <small>how routing works</small></summary>
+    <div class="det">
+      <ul>
+        <li>Build the model picker from session config options (category <code>model</code>, plus <code>thought_level</code>). Fall back to <code>session/set_model</code>, and hide the picker if neither exists.</li>
+        <li>The gateway is set on the agent process, not in ACP: the relay injects base URL and token environment variables when it spawns an adapter.</li>
+        <li>Subscription logins (Claude Pro/Max, ChatGPT) generally bypass a gateway. Decide per agent between subscription and API-key billing.</li>
+        <li>Keep each agent on its own vendor's API format; use the gateway as pass-through with logging.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">Default UI · tentative</span>
+  <h2>What users see on first launch</h2>
+  <p>A first pass at the default interface, to iterate on. Sessions from every workspace on the left, with the ones waiting on you flagged. The selected session's stream in the middle. Its changes on the right, as a diff or in a full code editor.</p>
+  <div class="mock-out">
+  <div class="mock-scroll" role="img" aria-label="Mockup of the default AgentControl interface: session list, session stream with a pending permission, and a diff of the worktree.">
+  <div class="mock" aria-hidden="true">
+    <div class="m-chrome"><div class="m-dots"><i></i><i></i><i></i></div><div class="m-url">localhost:4747/sessions/rate-limit-api</div></div>
+    <div class="m-top">
+      <span class="m-brand">AgentControl</span>
+      <span class="m-search">Search sessions, files, prompts<span class="m-kbd">⌘K</span></span>
+      <span style="flex:1"></span>
+      <span class="m-btn">Config</span>
+      <span class="m-btn">Analytics</span>
+      <span class="m-btn mod">Modify this UI<span class="m-kbd">⌘.</span></span>
+      <span class="m-btn pri">New session</span>
+    </div>
+    <div class="m-body">
+      <div class="m-side">
+        <div class="m-ws">
+          <div class="m-wsh"><span>dev-box</span><span>3</span></div>
+          <div class="m-s sel"><b><i class="dot wait"></i>Rate limit API<em class="m-tag">approve</em></b><span>Claude Code · wants to run npm test</span></div>
+          <div class="m-s"><b><i class="dot run"></i>Fix flaky e2e tests</b><span>Codex · running 6m · 2 files</span></div>
+          <div class="m-s"><b><i class="dot done"></i>Upgrade to React 19</b><span>Claude Code · done · <span class="m-plus">+412</span> <span class="m-minus">−98</span></span></div>
+        </div>
+        <div class="m-ws">
+          <div class="m-wsh"><span>gpu-01</span><span>2</span></div>
+          <div class="m-s"><b><i class="dot wait"></i>Eval harness refactor<em class="m-tag">reply</em></b><span>Codex · asked which metric to keep</span></div>
+          <div class="m-s"><b><i class="dot run"></i>Profile data loader</b><span>Claude Code · running 21m</span></div>
+        </div>
+        <div class="m-ws">
+          <div class="m-wsh"><span>local</span><span>1</span></div>
+          <div class="m-s"><b><i class="dot done"></i>UI: add cost column</b><span>Modify agent · kept</span></div>
+        </div>
+      </div>
+      <div class="m-main">
+        <div class="m-head"><h4>Rate limit API</h4><span>Claude Code · Opus 5.5</span><span>dev-box:~/api</span><span>agent/rate-limit</span><span>$1.84 · 42k tokens</span></div>
+        <div class="m-feed">
+          <div class="m-user">Add per-API-key rate limiting to the public API, 100 req/min, with a test.</div>
+          <div class="m-think">Thought for 18s · Express app with no limiter yet. A sliding window in Redis fits, since Redis is already a dependency.</div>
+          <div class="m-plan"><span class="x">✓ Find the request pipeline</span><span class="x">✓ Add rateLimit middleware</span><span>○ Write tests and run them</span></div>
+          <div class="m-tool"><span class="k">read</span><code>src/server.ts</code><span class="r">✓</span></div>
+          <div class="m-tool"><span class="k">edit</span><code>src/middleware/rateLimit.ts</code><span class="r m-plus">+48</span></div>
+          <div class="m-tool"><span class="k">edit</span><code>test/rateLimit.test.ts</code><span class="r m-plus">+36</span></div>
+          <div class="m-perm"><b>Claude Code wants to run <code>npm test -- rateLimit</code></b><div class="row"><span class="m-btn pri">Allow once</span><span class="m-btn">Always allow npm test</span><span class="m-btn">Deny</span></div></div>
+        </div>
+        <div class="m-comp">
+          <div class="m-input">Reply to Claude Code…</div>
+          <div class="m-chips"><span class="m-chip">Model: Opus 5.5</span><span class="m-chip">Thinking: high</span><span class="m-chip">Mode: ask before commands</span><span class="m-chip">MCP: github, postgres</span></div>
+        </div>
+      </div>
+      <div class="m-right">
+        <div class="m-tabs"><span class="on">Changes 3</span><span>Editor</span><span>Terminal</span><span class="m-btn">Open in VS Code</span></div>
+        <div class="m-files">
+          <div class="m-file on"><span>src/middleware/rateLimit.ts</span><em class="m-plus">+48</em></div>
+          <div class="m-file"><span>src/server.ts</span><em><span class="m-plus">+3</span> <span class="m-minus">−1</span></em></div>
+          <div class="m-file"><span>test/rateLimit.test.ts</span><em class="m-plus">+36</em></div>
+        </div>
+        <div class="m-code">
+          <div><i>1</i>import type { Request, Response, NextFunction } from "express";</div>
+          <div><i>2</i>import { redis } from "../redis";</div>
+          <div class="a"><i>3</i>+</div>
+          <div class="a"><i>4</i>+const WINDOW_MS = 60_000;</div>
+          <div class="a"><i>5</i>+const LIMIT = 100;</div>
+          <div class="a"><i>6</i>+</div>
+          <div class="a"><i>7</i>+export async function rateLimit(</div>
+          <div class="a"><i>8</i>+  req: Request, res: Response, next: NextFunction) {</div>
+          <div class="a"><i>9</i>+  const key = `rl:${req.header("x-api-key")}`;</div>
+          <div class="a"><i>10</i>+  const now = Date.now();</div>
+          <div class="a"><i>11</i>+  await redis.zremrangebyscore(key, 0, now - WINDOW_MS);</div>
+          <div class="a"><i>12</i>+  if ((await redis.zcard(key)) >= LIMIT) {</div>
+          <div class="a"><i>13</i>+    return res.status(429).json({ error: "rate_limited" });</div>
+          <div class="a"><i>14</i>+  }</div>
+          <div class="a"><i>15</i>+  await redis.zadd(key, now, `${now}`);</div>
+          <div class="a"><i>16</i>+  next();</div>
+          <div class="a"><i>17</i>+}</div>
+        </div>
+      </div>
+    </div>
+    <div class="m-status"><span><b>2</b> waiting</span><span><b>2</b> running</span><span>Today <b>$14.20</b></span><span>dev-box connected</span><span>gpu-01 connected</span></div>
+  </div>
+  </div>
+  <p class="m-cap">Tentative mockup, built in HTML. Every part of it is user code the Modify agent can change.</p>
+  </div>
+
+  <details>
+    <summary>Code editor for the worktree <small>Monaco built in, VS Code on demand</small></summary>
+    <div class="det">
+      <p>Three levels, all open source or standard, so we build no editor ourselves:</p>
+      <ol>
+        <li><b>Built in: Monaco Editor.</b> The editor component of VS Code (MIT). The Changes tab uses its diff editor (base vs working copy, side by side or inline). The Editor tab opens any worktree file with syntax highlighting, search, multi-cursor and go-to-line. Files come from the relay through <code>fs.tree</code>, <code>fs.read</code> and <code>fs.watch</code>, so the view updates as the agent edits.</li>
+        <li><b>Full IDE in the browser: code-server</b> (Coder, MIT, actively released). The relay starts it on the workspace, pointed at the session's worktree. The local app forwards its port over the existing SSH connection and opens it in a new tab, with extensions, terminal and language servers.</li>
+        <li><b>Desktop editor.</b> A <code>vscode://vscode-remote/ssh-remote+&lt;host&gt;/&lt;worktree&gt;</code> link opens desktop VS Code on the same folder through Remote-SSH. Cursor and other forks use the same pattern with their own scheme.</li>
+      </ol>
+      <p><b>Editing while an agent runs.</b> Saves go through <code>fs.write</code> with the hash the user last saw. If the agent changed the file since, the save is refused and the editor shows the new version. By default the editor is read-only while a turn is in progress and editable between turns.</p>
+      <p class="muted">Monaco is used directly, not through <code>@monaco-editor/react</code>: that wrapper has one maintainer, no release since Feb 2025, and loads Monaco from a CDN by default, which a local-first app shouldn't do.</p>
+    </div>
+  </details>
+  <details>
+    <summary>What to improve in the default UI <small>design questions to work through</small></summary>
+    <div class="det">
+      <ul>
+        <li><b>Triage first.</b> Should the landing view be an inbox of sessions waiting on you, instead of a list grouped by workspace?</li>
+        <li><b>Answer without opening.</b> Approve or reply from the session list, with keyboard shortcuts to move through the queue.</li>
+        <li><b>Long streams.</b> Collapse runs of read and search tool calls into one line; keep edits, commands and questions visible.</li>
+        <li><b>Review flow.</b> Per-file "looks good" marks, inline comments sent back to the agent as a prompt, then create a PR.</li>
+        <li><b>Status at a glance.</b> Elapsed time, cost so far and context size per session, with a warning near limits.</li>
+        <li><b>Notifications.</b> Browser notifications when a session starts waiting, with a per-session mute.</li>
+        <li><b>Narrow screens.</b> A phone layout for approving and replying while away from the desk.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">Harness configuration</span>
+  <h2>Configure every agent from one place</h2>
+  <p>Each harness keeps MCP servers, skills, hooks and instructions in its own files and formats. The app holds one canonical version of all of it, lets you edit it in the UI, and the relay writes the right files for each agent on each workspace.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>What</th><th>Configured in the UI</th></tr></thead>
+    <tbody>
+      <tr><td>MCP servers</td><td>Command or URL, arguments, env vars and secrets, which agents and workspaces get them. Test a server before enabling it.</td></tr>
+      <tr><td>Skills</td><td>Browse, create and edit <code>SKILL.md</code> folders; install from a skills registry; enable per agent and scope.</td></tr>
+      <tr><td>Hooks</td><td>Events such as before a tool runs, after an edit, at session start or stop; written once, translated to each agent's hook format.</td></tr>
+      <tr><td>Instructions</td><td>Global and per-repo instructions, written to <code>CLAUDE.md</code>, <code>AGENTS.md</code> or <code>GEMINI.md</code> as each agent expects.</td></tr>
+      <tr><td>Subagents and commands</td><td>Custom agents and slash commands, converted to skills where a harness has no equivalent.</td></tr>
+      <tr><td>Permissions</td><td>Allowed and denied tools, approval mode, sandbox level.</td></tr>
+      <tr><td>Defaults</td><td>Default model and thinking level, gateway on or off, environment variables per workspace.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every item has a scope: <b>global</b> (all workspaces), <b>workspace</b>, or <b>repo</b>. Narrower scopes override wider ones, and the UI shows the effective config for any session before it starts.</p>
+
+  <details>
+    <summary>How a change is deployed <small>inspect, plan, apply</small></summary>
+    <div class="det">
+      <ol>
+        <li><b>Inspect.</b> The relay reads what each agent has today on the workspace. On first connect, the UI offers to import it, so existing setups aren't lost.</li>
+        <li><b>Plan.</b> The relay translates the canonical items into each agent's native files and returns the file-level diff. The UI shows it before anything is written.</li>
+        <li><b>Apply.</b> The relay backs up the touched files, writes the new ones, and reports per agent. Rollback restores the backup.</li>
+        <li><b>Watch for drift.</b> The relay rechecks file hashes on connect. If someone edited a file by hand, the item is marked as drifted with options to adopt the change or overwrite it.</li>
+      </ol>
+      <p>Only files the app manages are touched. Managed entries carry a marker so hand-written config around them is left alone.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Per-session config through ACP <small>no files written</small></summary>
+    <div class="det">
+      <p>MCP servers can also be passed in <code>session/new</code>, which starts them for that session only. Use this for one-off or experimental servers, and for secrets you don't want written to disk: the relay injects them as environment variables when it starts the server.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Support differs by harness <small>verify per version</small></summary>
+    <div class="det">
+      <div class="tablewrap"><table>
+        <thead><tr><th>Feature</th><th>Claude Code</th><th>Codex</th><th>Gemini CLI</th><th>OpenCode</th></tr></thead>
+        <tbody>
+          <tr><td>MCP</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Skills</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Hooks</td><td>Yes</td><td>Yes, recent versions</td><td>Partial</td><td>Via plugins</td></tr>
+          <tr><td>Subagents</td><td>Yes</td><td>Yes</td><td>Check</td><td>Yes</td></tr>
+          <tr><td>Instructions file</td><td><code>CLAUDE.md</code></td><td><code>AGENTS.md</code></td><td><code>GEMINI.md</code></td><td><code>AGENTS.md</code></td></tr>
+        </tbody>
+      </table></div>
+      <p>The UI shows, for each item, which agents will receive it and which can't. Where a feature is missing, the plan says so instead of failing silently. This table is a starting point and must be checked against each agent's current docs.</p>
+    </div>
+  </details>
+  <details>
+    <summary>What to reuse <small>don't write every translator</small></summary>
+    <div class="det">
+      <ul>
+        <li><b>crossby</b> already translates skills, hooks, permissions and MCP between Claude Code, Codex, Gemini, Cursor and Copilot. We port its mappings rather than call it: it's Python (every workspace would need Python), six months old, by one author, and lists no license on PyPI.</li>
+        <li>The <code>.agents/</code> convention gives a shared skills folder that several harnesses read directly; we write to it where supported.</li>
+        <li><code>vercel-labs/skills</code> and the <code>agents</code> CLI are references for registry installs, not dependencies.</li>
+      </ul>
+      <p>Keep the translation layer behind one interface per harness, so adding an agent means adding one adapter.</p>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">The malleable part</span>
+  <h2>How the UI rewrites itself</h2>
+  <p>The UI is a small web project inside the app's data folder. A built-in Modify agent edits it on request. The user only sees the result and two buttons: Keep and Undo.</p>
+  <ol>
+    <li>The user asks for a change, for example "add a cost column and sort by it".</li>
+    <li>The Modify agent, a local ACP session of Claude Code or Codex, edits a staging copy of the UI.</li>
+    <li>A typecheck and build run after each edit. Errors go back to the agent until they pass.</li>
+    <li>The finished change is copied to the live folder at once, and Vite hot-reloads it.</li>
+    <li>Keep commits the change to a hidden git repository, with the request as the message. Undo goes back one commit.</li>
+  </ol>
+  <div class="callout"><b>Never lock the user out.</b> <code>/_safe</code> is served by the app, not by the user's UI. It always shows the Modify chat and the version history, so any broken change can be rolled back in one click.</div>
+
+  <details>
+    <summary>Folder layout and agent rules</summary>
+    <div class="det">
+<pre>~/.agentcontrol/
+├─ state.db
+├─ ui.git/              UI history (kept outside the agent's folder)
+├─ ui/                  live UI (served by Vite)
+├─ ui-staging/          Modify agent's working copy
+└─ ui/AGENTS.md         rules for the Modify agent</pre>
+      <ul>
+        <li>Data only through <code>@agentcontrol/sdk</code>; never call the API directly.</li>
+        <li>Only bundled libraries are available. No <code>npm install</code>.</li>
+        <li>Prefer editing <code>layout.json</code> for arrangement changes; put new features in your own files, plugged into the default UI's named slots, instead of editing default components.</li>
+        <li>Run the check command before finishing.</li>
+      </ul>
+      <p><b>The Modify agent is fenced in.</b> It may edit files only inside <code>ui-staging/</code>; it runs no shell commands (the app runs the checks itself and sends back the result) and has no web access beyond its model's API. This is enforced twice: through the agent's own permission settings, and by the app automatically refusing any other permission request the agent sends.</p>
+    </div>
+  </details>
+  <details>
+    <summary>Why hot reload is instant</summary>
+    <div class="det">
+      <p>Vite serves each source file as its own ES module and keeps a WebSocket open to the page. When a file changes, it converts only that file and tells the browser to re-import it; React Fast Refresh swaps the component in place and keeps its state. Cost scales with the size of the change, not the app.</p>
+      <p>Changes in a non-component file bubble up to the nearest importer that can accept them, or trigger a full page reload. That is why the agent works in staging and the live folder gets one clean update.</p>
+    </div>
+  </details>
+  <details open>
+    <summary>Updating the default UI <small>merge, agent fixes conflicts, checks, Keep or Undo</small></summary>
+    <div class="det">
+      <ol>
+        <li>The new app version commits its default UI onto <code>upstream</code>.</li>
+        <li>In the staging folder, <code>upstream</code> is merged into <code>main</code>. Clean merges need nothing more.</li>
+        <li>For each conflict, the Modify agent gets the conflicted files and the original requests behind the user's changes, so it rebuilds what the user wanted, not just the old lines.</li>
+        <li>The usual checks run: typecheck, build, lint, and a browser test that the UI loads.</li>
+        <li>The user sees a summary, for example <i>"Update 1.2: 4 of your changes kept automatically, 1 conflict resolved (cost column moved to the new session table)"</i>, then Keep or Undo.</li>
+      </ol>
+      <p><b>Merge, not rebase.</b> A rebase replays each change one by one, so one conflict can come back several times. A merge brings both histories together once, so each conflict is resolved once. The result is the same: the user's changes on top of the latest default UI.</p>
+      <div class="callout"><b>An update never breaks the UI.</b> If the agent can't make the checks pass, the current UI keeps running, the update waits, and <code>/_safe</code> still rolls back.</div>
+      <p><b>Keeping conflicts rare.</b></p>
+      <ul>
+        <li>Layout changes go in <code>layout.json</code>; data merges far more cleanly than code.</li>
+        <li>New features go in the user's own files, plugged into named slots the default UI provides (session row, toolbar, side panels), so template updates rarely touch them.</li>
+        <li><code>@agentcontrol/sdk</code> stays backward compatible: a function is deprecated for one release before removal. If a removal slips through, the typecheck catches it during the update.</li>
+      </ul>
+    </div>
+  </details>
+  <details>
+    <summary>Versions and history <small>a hidden git repository</small></summary>
+    <div class="det">
+<pre>upstream:  v1.0 ─────────── v1.1 ─────────── v1.2      default UI from each app release
+             \                \                \
+main:         A ── B ── C ──── M1 ── D ── E ──── M2     your changes (A–E), updates (M)</pre>
+      <ul>
+        <li><b>Git without installing git.</b> <code>isomorphic-git</code> is bundled in the app; Macs have no git until the developer tools are installed.</li>
+        <li><b>Two branches.</b> <code>upstream</code> gets one commit per default UI version. <code>main</code> is the user's UI: every Keep is a commit whose message is the original request.</li>
+        <li><b>The agent never sees git.</b> The repository lives in <code>ui.git/</code>, outside the folder the Modify agent works in, so it can't commit, reset or rebase by itself.</li>
+        <li><b>Undo and history</b> are the commit log. Undo is a new commit restoring the previous state, so nothing is ever lost.</li>
+        <li><b>Sharing</b> exports one version as a single file. Importing someone else's UI shows its diff first, because it runs with full access to your agents.</li>
+      </ul>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">Getting started and distribution</span>
+  <h2>Easy to run from source, easy to install on a Mac</h2>
+  <p>Two audiences, two paths. Contributors clone the repo and run one command. Everyone else installs a signed Mac app or uses Homebrew. Both paths run the same binary, so there's one thing to test.</p>
+  <div class="two">
+    <div class="box"><h3>From source</h3>
+<pre>git clone …/agentcontrol
+cd agentcontrol
+bun install
+bun dev</pre>
+      <ul>
+        <li>Bun is the only prerequisite. No Docker, no database to set up, no required environment variables.</li>
+        <li><code>bun dev</code> starts the app, the UI with hot reload, and a relay for the local machine, then opens the browser.</li>
+        <li>SQLite and the data folder are created on first run; the local machine is added as a workspace automatically.</li>
+      </ul>
+    </div>
+    <div class="box"><h3>Install on a Mac</h3>
+<pre>brew install --cask agentcontrol
+# or download AgentControl.dmg</pre>
+      <ul>
+        <li>A signed and notarized <code>.dmg</code> with a small menu bar app: it starts the local server, opens the UI, and shows how many sessions are waiting on you.</li>
+        <li>Apple Silicon and Intel builds, published on GitHub Releases.</li>
+        <li>Updates in place from the menu bar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <details>
+    <summary>Repository layout <small>one Bun workspace</small></summary>
+    <div class="det">
+<pre>agentcontrol/
+├─ AGENTS.md        coding rules for every agent (CLAUDE.md imports it)
+├─ LICENSE          MIT
+├─ packages/
+│  ├─ protocol/     shared types: relay methods, events, config items
+│  ├─ app/          local server: API, SSH, SQLite, Modify agent
+│  ├─ relay/        workspace daemon: ACP clients, worktrees, fs, config
+│  ├─ sdk/          @agentcontrol/sdk used by the UI
+│  ├─ ui-template/  default UI (Vite + React), copied to the data folder
+│  └─ mac/          menu bar shell and installer scripts
+├─ e2e/             end-to-end tests and their helpers
+├─ scripts/         build, sign, notarize, release
+└─ package.json     bun dev · bun test · bun run check · bun run build</pre>
+      <ul>
+        <li><code>bun dev</code> runs the app with <code>--watch</code>, so server changes restart it and UI changes hot-reload.</li>
+        <li><code>bun test</code> runs the end-to-end suite against a mock ACP agent (no real agent or API key needed); <code>bun run check</code> runs every quality gate plus the tests.</li>
+        <li>A <code>dev:remote &lt;host&gt;</code> script pushes the current relay build to an SSH workspace for end-to-end testing.</li>
+      </ul>
+    </div>
+  </details>
+  <details>
+    <summary>Building the Mac installer <small>signing, notarization, updates</small></summary>
+    <div class="det">
+      <ol>
+        <li><b>Binaries.</b> <code>bun build --compile</code> produces the app for <code>darwin-arm64</code> and <code>darwin-x64</code>, and the relay for <code>linux-x64</code> and <code>linux-arm64</code>. Relay binaries ship inside the app, so the app always deploys a relay of the same version.</li>
+        <li><b>App shell.</b> A thin menu bar app wraps the binary. Options, from lightest: a small Swift launcher; Electrobun (Bun-based desktop shell); Tauri. The UI itself stays in the browser, so the shell does very little.</li>
+        <li><b>Sign and notarize.</b> An Apple Developer ID (99 USD a year) is required, or Gatekeeper blocks the app. <code>codesign</code> with hardened runtime, then <code>xcrun notarytool</code> and <code>stapler</code>.</li>
+        <li><b>Package.</b> <code>create-dmg</code> builds the disk image; a Homebrew cask in our own tap points to it.</li>
+        <li><b>Release.</b> A GitHub Actions workflow on a macOS runner does all of the above on a version tag and publishes to GitHub Releases.</li>
+        <li><b>Updates.</b> Sparkle (for a Swift shell) or the shell's own updater checks GitHub Releases. On update, the app redeploys the matching relay to each workspace on next connect.</li>
+      </ol>
+      <p><b>Version handshake.</b> <code>relay/hello</code> exchanges versions. If they differ, the app upgrades the relay before opening sessions; running sessions keep the old relay until they end.</p>
+      <p class="muted">Before signing is set up, the fallback is a Homebrew tap formula for the CLI binary, run with <code>agentcontrol</code> from a terminal.</p>
+    </div>
+  </details>
+</section>
+
+<section id="quality">
+  <span class="eyebrow">Code architecture and quality</span>
+  <h2>Maintainable by default, enforced by the build</h2>
+  <p>The code must stay easy to change after hundreds of agent-written commits. The rules are written down once in <code>AGENTS.md</code>, and every rule a tool can check is checked on every push. A rule only in a document will be broken; a rule in CI breaks the build instead.</p>
+
+  <div class="two">
+    <div class="box"><h3>Principles</h3><ul>
+      <li><b>Single responsibility first.</b> One module, one reason to change. If describing a file needs "and", split it.</li>
+      <li><b>KISS.</b> Plain functions and modules. No abstraction until the second real use, no DI framework, no clever types, no <code>utils/</code> dumping ground.</li>
+      <li><b>Open/closed where it pays.</b> Agents and harness translators sit behind one small interface each, so adding an agent means adding one adapter.</li>
+      <li><b>Small interfaces, injected edges.</b> Logic receives its store, transport and clock as parameters. Only the edges (ACP, SSH, SQLite, fs, HTTP) touch the outside world.</li>
+    </ul></div>
+    <div class="box"><h3>Tests</h3><ul>
+      <li><b>End-to-end only. No unit tests.</b> Every test starts the real app and relay and drives them as a user would.</li>
+      <li><b>GIVEN / WHEN / THEN</b> with a plain-language sentence at every step, saying exactly what is set up, done and checked.</li>
+      <li><b>Setup helpers and assertion helpers</b> named after the domain fact, so the test reads as a specification.</li>
+      <li><b>The only fake is the agent:</b> a scripted mock ACP agent, so tests are deterministic and need no API key.</li>
+    </ul></div>
+  </div>
+
+  <details open>
+    <summary>Code architecture <small>packages, features, dependency rules</small></summary>
+    <div class="det">
+<pre>ui-template ──▶ sdk ──HTTP──▶ app ──SSH/JSON-RPC──▶ relay ──ACP──▶ agents
+                 │             │                      │
+                 └──────────▶ protocol ◀──────────────┘   (protocol imports nothing)</pre>
+      <ul>
+        <li><b>Feature folders inside each package</b>, not layers: <code>relay/src/sessions/</code>, <code>relay/src/worktrees/</code>, <code>relay/src/config/</code>. Each feature exposes one <code>index.ts</code>; other features import only that.</li>
+        <li><b>Thin edges, plain core.</b> Adapters translate ACP, SSH, SQLite and HTTP into plain data; the logic in between is ordinary functions over that data.</li>
+        <li><b>Dispatch tables over long switches.</b> ACP update kinds map to one small handler each, which keeps every function under the complexity limit.</li>
+        <li><b>Package rules are enforced:</b> the UI talks only to the SDK, the relay never imports the app, nothing imports a feature's internals, and there are no circular imports.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary>How tests are written <small>given / when / then, with readable helpers</small></summary>
+    <div class="det">
+<pre>// e2e/sessions/waiting-on-you.e2e.ts
+test("a session that asks to run a command is shown as waiting on you", async () =&gt; {
+  // ********************************************************************
+  // ** GIVEN the app is running with one local workspace
+  // ********************************************************************
+  const app = await startAppWithLocalWorkspace();
+  // AND the agent will ask permission to run `npm test` on its first turn
+  app.mockAgent.willAskToRunCommand("npm test");
+
+  // ********************************************************************
+  // ** WHEN the user starts a session asking to add rate limiting
+  // ********************************************************************
+  const session = await app.user.startsSession({ prompt: "Add rate limiting" });
+
+  // ********************************************************************
+  // ** THEN the session list flags the session as waiting for approval
+  // ********************************************************************
+  await expectSessionWaitingForApproval(app, session);
+  // AND the pending request names the `npm test` command
+  await expectPendingRequestToRunCommand(app, session, "npm test");
+});</pre>
+      <ul>
+        <li><b>GIVEN</b>, <b>WHEN</b> and <b>THEN</b> each open a block with a three-line banner comment (<code>// ****</code> / <code>// ** GIVEN …</code> / <code>// ****</code>), so the three phases stand out at a glance. Extra steps inside a block use a single <code>// AND …</code> line. Every comment says in plain words what is set up, done or checked; the code under it is one or two helper calls. Browser tests follow the same layout.</li>
+        <li>One behaviour per test. The test name is a sentence about what the user sees.</li>
+        <li>No logic in tests: no <code>if</code>, loops or sleeps. Helpers wait for events instead of sleeping.</li>
+        <li>Every test gets its own data folder and workspace, so tests run in parallel and never share state.</li>
+        <li>Assertion helpers fail with a human message: <i>expected session "Add rate limiting" to be waiting for approval, but it is running</i>.</li>
+      </ul>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Too generic</th><th>Says what is checked</th></tr></thead>
+        <tbody>
+          <tr><td><code>assertOutput(res)</code></td><td><code>expectDiffToListChangedFile(session, "src/rateLimit.ts")</code></td></tr>
+          <tr><td><code>checkSession(s)</code></td><td><code>expectSessionWaitingForApproval(app, session)</code></td></tr>
+          <tr><td><code>verifyState()</code></td><td><code>expectRelayToReplayEventsAfter(session, 42)</code></td></tr>
+          <tr><td><code>setupData()</code></td><td><code>app.mockAgent.willEditFile("src/server.ts")</code></td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Two levels of end-to-end test.</b> API tests drive the real app, relay and mock agent through <code>@agentcontrol/sdk</code> with <code>bun test</code>; browser tests drive the default UI with Playwright. Remote paths run over real SSH to a local <code>sshd</code> in CI. A nightly smoke run uses the real Claude Code and Codex adapters with API keys.</p>
+<pre>e2e/
+├─ sessions/           *.e2e.ts, one file per user-facing feature
+├─ sync/
+├─ editor/
+└─ support/
+   ├─ setup/           startAppWithLocalWorkspace, …
+   ├─ expect/          expectSessionWaitingForApproval, …
+   └─ mock-agent/      scripted ACP agent over stdio</pre>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Quality gates and options <small>everything we can configure, and what breaks the build</small></summary>
+    <div class="det">
+      <p>All gates run through one command, <code>bun run check</code>, locally and in CI, so it passes in CI if it passes on your machine. Thresholds only ever go down. When a limit is hit, the code is split; the limit is never raised.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Area</th><th>Tool and setting</th><th>Plan</th></tr></thead>
+        <tbody>
+          <tr><td>Cyclomatic complexity</td><td>ESLint <code>complexity</code>: <b>max 5</b> per function.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Cognitive complexity</td><td><code>eslint-plugin-sonarjs</code> <code>cognitive-complexity</code>: <b>max 8</b>.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Size and nesting</td><td><code>max-depth</code> 2, <code>max-params</code> 3 (pass an object), <code>max-statements</code> 12, <code>max-lines-per-function</code> 30, <code>max-lines</code> 200 per file, <code>max-nested-callbacks</code> 2, <code>no-nested-ternary</code>.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Type strictness</td><td><code>strict</code>, <code>noUncheckedIndexedAccess</code>, <code>exactOptionalPropertyTypes</code>, <code>noImplicitOverride</code>, <code>noUnused*</code>, <code>noFallthroughCasesInSwitch</code>; typescript-eslint <code>strict-type-checked</code>: no <code>any</code> and no unsafe use of untyped values, exhaustive switches, no floating promises.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Architecture rules</td><td><code>dependency-cruiser</code>: package layering, no cycles, no imports of another feature's internals.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Dead code</td><td><code>knip</code>: unused files, exports and dependencies.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Duplication</td><td><code>jscpd</code>: blocks of 50+ tokens, threshold 1%.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>No escape hatches</td><td><code>--max-warnings 0</code>; every <code>eslint-disable</code> needs a written reason, no blanket disables, unused disables are errors.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Formatting</td><td>Biome formatter (or Prettier), checked in CI. No style debates in review.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Security</td><td><code>bun audit</code> for vulnerable dependencies, <code>gitleaks</code> for committed secrets, Dependabot (built into GitHub) for updates.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Git hooks</td><td><code>lefthook</code>: format and lint staged files before commit; typecheck and quick e2e before push.</td><td><span class="pill">setup</span></td></tr>
+          <tr><td>Branch protection</td><td>GitHub: all checks required, no direct push to <code>main</code>, linear history.</td><td><span class="pill">setup</span></td></tr>
+          <tr><td>UI bundle budget</td><td><code>size-limit</code> on the default UI.</td><td><span class="pill build">phase 3</span></td></tr>
+          <tr><td>E2E coverage</td><td>Bun coverage threshold. It only sees code in the test process, so app and relay coverage across processes needs extra work.</td><td><span class="pill build">later</span></td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">Left out to keep dependencies down: <code>type-coverage</code> (strict typescript-eslint already bans untyped values), <code>commitlint</code>, StrykerJS mutation testing (26 dependencies, too slow for an e2e-only suite) and SonarQube Cloud (repeats these gates).</p>
+      <p><b>Why ESLint for rules.</b> It is the only TypeScript linter with the real cyclomatic <code>complexity</code> rule, plus SonarJS for cognitive complexity. Biome only measures cognitive complexity, so it handles formatting here, not rules.</p>
+      <p class="muted">The Modify agent's check gate can reuse the same lint config on the user's UI, perhaps with softer limits, so self-written UI stays readable too.</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>AGENTS.md <small>the first file in the repository</small></summary>
+    <div class="det">
+      <p>Written before any code. Codex and OpenCode read <code>AGENTS.md</code> directly; <code>CLAUDE.md</code> contains only <code>@AGENTS.md</code> so Claude Code reads the same rules, and Gemini CLI is pointed at it through its context file setting. One source, every agent.</p>
+      <ol>
+        <li><b>Principles:</b> SOLID with the S first, KISS, with a short example of each.</li>
+        <li><b>Structure:</b> packages, feature folders, the dependency rules above.</li>
+        <li><b>Tests:</b> end-to-end only, given / when / then, helper naming, a full example test.</li>
+        <li><b>Quality gates:</b> each limit and the expected fix: split the function, never raise the limit or disable the rule.</li>
+        <li><b>Commands:</b> <code>bun dev</code>, <code>bun test</code>, <code>bun run check</code>.</li>
+        <li><b>Definition of done:</b> <code>bun run check</code> passes, and new behaviour has an end-to-end test that reads as a specification.</li>
+      </ol>
+    </div>
+  </details>
+</section>
+
+<section>
+  <span class="eyebrow">Roadmap</span>
+  <h2>Build order</h2>
+  <div class="phases">
+    <div class="phase"><span class="tag">Step 1 · before any feature work</span><h3>Create and configure the repository</h3><p>Create the GitHub repo with branch protection and an MIT <code>LICENSE</code>. Write <code>AGENTS.md</code> first. Set up the Bun workspace with empty packages, strict TypeScript and every quality gate at its threshold, and prove each one breaks the build on a deliberately bad sample. Build the e2e harness (mock ACP agent, first setup and assertion helpers) with one passing test, and CI running <code>bun run check</code> on every push. Nothing else starts until this is green.</p></div>
+    <div class="phase"><span class="tag">Phase 0 · setup</span><h3>One-command start</h3><p>Shared protocol package, <code>bun dev</code> and <code>bun test</code> working from a fresh clone.</p></div>
+    <div class="phase"><span class="tag">Phase 0 · spike</span><h3>Log every ACP event</h3><p>A 50-line script drives the Claude Code and Codex adapters on the local machine and prints every update. Confirms streaming granularity, thinking, diffs in tool calls and session load.</p></div>
+    <div class="phase"><span class="tag">Phase 1 · MVP</span><h3>Local relay and event log</h3><p>The relay runs on the laptop as a local workspace, the same code that later goes remote: spawns adapters, writes JSONL, holds permissions, worktree setup, session diff, archive. Local workspace setup checklist. Decide here between our own relay and sandbox-agent.</p></div>
+    <div class="phase"><span class="tag">Phase 2 · MVP</span><h3>Local app</h3><p>SQLite store, sync from the local relay with resume from sequence N, derived session status.</p></div>
+    <div class="phase"><span class="tag">Phase 3 · MVP</span><h3>API, SDK and default UI</h3><p>Session list with waiting badges and Archive, session view with streaming, thinking, tool cards and permission prompts, Changes and Editor tabs on Monaco, Open in VS Code.</p></div>
+    <div class="phase"><span class="tag">Phase 4 · MVP</span><h3>Modify agent and UI updates</h3><p>Staging folder, checks, hot reload, Keep and Undo, history in the hidden git repo, <code>/_safe</code>, the Modify agent fenced into <code>ui-staging/</code>. Default UI update flow: merge, conflicts resolved by the agent, checks, Keep or Undo. End-to-end test: a user change and a template change to the same file both survive the update.</p></div>
+    <div class="phase"><span class="tag">MVP release</span><h3>First Mac release</h3><p>Signed and notarized <code>.dmg</code>, Homebrew cask, in-app updates. Local agents, the full UI and the Modify agent.</p></div>
+    <div class="phase"><span class="tag">Phase 5</span><h3>Remote workspaces</h3><p>SSH connection manager, Add workspace setup with Check and repair, relay deployment and version handshake, Linux relay builds, sessions that survive SSH drops and laptop sleep.</p></div>
+    <div class="phase"><span class="tag">Phase 6</span><h3>Harness configuration</h3><p>Canonical config store, import of existing setups, MCP, skills, hooks and instructions editors, plan and apply with backups, drift detection.</p></div>
+    <div class="phase"><span class="tag">Phase 7</span><h3>Analytics</h3><p>Cost and usage per session, model and workspace, plus behaviour insights to improve how sessions run.</p></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Watch list</span>
+  <h2>Risks and open questions</h2>
+  <div class="two">
+    <div class="box"><h3>Risks</h3><ul>
+      <li>ACP adapters lag behind native CLIs; some features may never appear in events.</li>
+      <li>Agent-written UI code breaks in ways a typecheck misses.</li>
+      <li>Thinking varies by vendor: summaries rather than raw reasoning.</li>
+      <li>Shared UIs are code with full access to your agents.</li>
+      <li>Config formats change between harness versions and can silently break translations.</li>
+      <li>Aggressive limits slow early work and invite rule disabling; the reason-required rule and review must hold the line.</li>
+      <li>An e2e-only suite is slower; it must stay parallel and free of sleeps to keep feedback fast.</li>
+    </ul></div>
+    <div class="box"><h3>Open questions</h3><ul>
+      <li>Own relay or sandbox-agent?</li>
+      <li>Menu bar shell: Swift launcher, Electrobun or Tauri?</li>
+      <li>Subscription login or API keys per agent, which decides the gateway.</li>
+      <li>How much of the default UI is layout data vs components.</li>
+      <li>Where behaviour analytics run: rules, or an agent reviewing sessions.</li>
+      <li>Should the app own all harness config, or only the items it created?</li>
+      <li>Allow editing files while an agent is mid-turn, or lock the editor until the turn ends?</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Reference</span>
+  <h2>Market scan</h2>
+  <p>No existing product covers all three goals. These are worth studying or reusing.</p>
+  <details>
+    <summary>Multi-agent desktop apps <small>Emdash, Superset, Zeron, Conductor, y</small></summary>
+    <div class="det"><ul>
+      <li><b>Emdash</b> (open source, YC W26): worktree per task, diff review, PRs, installs hooks to track agent status.</li>
+      <li><b>Superset</b>: runs any CLI agent, notifies when attention is needed, built-in diff viewer and editor.</li>
+      <li><b>Zeron</b>: native control plane with live branch diff, local-first daemon, optional multi-device sync.</li>
+      <li><b>Conductor</b>: polished, macOS only, Claude Code, Codex and Cursor.</li>
+      <li><b>y</b>: closest to our idea; a malleable app with a protected kernel and an editable userland UI with snapshots.</li>
+      <li>Daemon references: Paseo, blemeesd, Codecast (auto-deploys its daemon over SSH).</li>
+    </ul></div>
+  </details>
+  <details>
+    <summary>Skills, hooks and MCP sync <small>crossby, omni-skills, agents</small></summary>
+    <div class="det"><ul>
+      <li><b>crossby</b>: syncs skills, permissions, hooks and MCP, translated per tool.</li>
+      <li><b>omni-skills</b>: one canonical store; hooks transpiled into each tool's format.</li>
+      <li><b>agents</b> (amtiYo): <code>.agents</code> source of truth for MCP, skills and instructions; no hooks.</li>
+      <li><b>vercel-labs/skills</b>: installs skills across 35+ agents.</li>
+    </ul></div>
+  </details>
+  <details>
+    <summary>Session analytics <small>ccusage, CodeBurn, LangWatch</small></summary>
+    <div class="det"><ul>
+      <li><b>ccusage</b>: reference parser for local agent logs; cost by day, session and 5-hour block.</li>
+      <li><b>CodeBurn</b>: cost by project, branch, task and PR with optimization suggestions.</li>
+      <li><b>LangWatch</b>: OpenTelemetry traces per session, including idle time waiting on the user.</li>
+      <li><b>context-analyzer</b>: shows how cost per call grows with context size.</li>
+    </ul></div>
+  </details>
+</section>
+
+<footer>
+  Sources: <a href="https://agentclientprotocol.com/protocol">ACP protocol</a> · <a href="https://agentrq.com/blog/which-coding-agents-support-acp-agent-client-protocol">ACP agent support</a> · <a href="https://github.com/rivet-dev/sandbox-agent">sandbox-agent</a> · <a href="https://codex.danielvaughan.com/2026/03/28/codex-app-server-json-rpc-protocol/">Codex app-server</a> · <a href="https://github.com/y-times-y/y">y</a> · <a href="https://docs.langchain.com/oss/javascript/langchain/frontend/generative-ui">json-render</a> · <a href="https://pypi.org/project/crossby">crossby</a> · <a href="https://github.com/andyrewlee/awesome-agent-orchestrators">awesome-agent-orchestrators</a>
+</footer>
+</div>
+
+</body></html>

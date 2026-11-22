@@ -1,0 +1,18 @@
+{
+  "name": "agentcontrol",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": ["packages/*", "e2e"],
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "2.9.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.5",
+    "typescript": "6.0.3"
+  }
+}
