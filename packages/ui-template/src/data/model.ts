@@ -3,9 +3,11 @@ import type {
   CheckStep,
   DiffResult,
   FsEntry,
+  ModifyState,
   RepoWithSetup,
   SessionEvent,
   SessionRow,
+  UiVersionEntry,
   UsageRow,
 } from "@agentcontrol/sdk";
 import type { ConnectionState } from "../status/index.ts";
@@ -38,6 +40,10 @@ export type DataState = {
   agents: readonly AgentKind[];
   checks: readonly CheckStep[];
   checking: boolean;
+  /** Where the Modify agent is; undefined until the app has answered. */
+  modify: ModifyState | undefined;
+  /** Saved versions of the UI, newest first. */
+  versions: readonly UiVersionEntry[];
 };
 
 export const initialState: DataState = {
@@ -54,6 +60,8 @@ export const initialState: DataState = {
   agents: [],
   checks: [],
   checking: false,
+  modify: undefined,
+  versions: [],
 };
 
 export const fileKey = (sessionId: string, path: string): string => `${sessionId}\u0000${path}`;

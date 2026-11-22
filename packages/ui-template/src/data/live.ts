@@ -1,6 +1,7 @@
 import type { SessionId } from "@agentcontrol/sdk";
 import type { Context } from "./context.ts";
 import type { DataState } from "./model.ts";
+import { applyModify } from "./modify-data.ts";
 import { applyEvent, applySummaries } from "./sessions-data.ts";
 
 type Handlers = {
@@ -28,6 +29,9 @@ export function startLive(ctx: Context, handlers: Handlers): () => void {
     },
     onSessions: (summaries) => {
       applySummaries(ctx, summaries);
+    },
+    onModify: (state) => {
+      applyModify(ctx, state);
     },
     onFilesChanged: ({ sessionId }) => {
       handlers.filesChanged(sessionId);

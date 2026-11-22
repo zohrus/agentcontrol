@@ -4,6 +4,8 @@ import { buildViewItems, Composer, isTurnRunning, Stream } from "../session-view
 
 type Props = {
   events: readonly SessionEvent[];
+  /** False while a change is being made or waits for Keep or Undo: the agent takes no new request. */
+  canSend: boolean;
   onSendPrompt: (text: string) => void;
 };
 
@@ -11,17 +13,19 @@ const modifyActions = { onAnswerPermission: () => undefined };
 const noop = () => undefined;
 
 /** The conversation with the Modify agent: the session stream plus a prompt box. */
-export function ModifyChat({ events, onSendPrompt }: Props) {
+export function ModifyChat({ events, canSend, onSendPrompt }: Props) {
   const items = useMemo(() => buildViewItems(events), [events]);
   return (
     <>
       <Stream items={items} actions={modifyActions} />
-      <Composer
-        running={isTurnRunning(events)}
-        placeholder="Describe a change to this UI…"
-        onSendPrompt={onSendPrompt}
-        onCancel={noop}
-      />
+      {canSend && (
+        <Composer
+          running={isTurnRunning(events)}
+          placeholder="Describe a change to this UI…"
+          onSendPrompt={onSendPrompt}
+          onCancel={noop}
+        />
+      )}
     </>
   );
 }

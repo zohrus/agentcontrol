@@ -1,6 +1,5 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import type { Client } from "@agentcontrol/sdk";
-import { useState } from "react";
 import { DataProvider, describeError, useOpenSession, useStatusStats } from "./data/index.ts";
 import {
   AppShell,
@@ -17,6 +16,7 @@ import {
   SessionPane,
   SessionsPane,
   useArchiveFlow,
+  useOpenDialog,
   useSelectedSession,
 } from "./panes/index.ts";
 import { showToast, ToastHost } from "./toasts/index.ts";
@@ -52,7 +52,7 @@ function paneSlots({ selectedId, select, archive, open }: PaneOptions) {
 
 function Workbench() {
   const [selectedId, select] = useSelectedSession();
-  const [dialog, setDialog] = useState<DialogName>();
+  const [dialog, setDialog] = useOpenDialog();
   const archive = useArchiveFlow();
   const stats = useStatusStats();
   useOpenSession(selectedId);
