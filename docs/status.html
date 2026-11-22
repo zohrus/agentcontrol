@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 16:55 UTC";
+const UPDATED = "22 Nov 2026, 17:15 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -206,9 +206,9 @@ const C = [
   { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
-  { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script that runs the Claude Code and Codex adapters locally and logs every ACP message, plus notes for the relay. Being written now; a real run needs API keys or your Mac attached.", path:"spike/" },
+  { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
   // Phase 1
-  { id:"relay-core", phase:"p1", name:"Relay daemon", status:"planned", desc:"JSON-RPC over stdio, keeps sessions alive when the app closes, version handshake.", path:"packages/relay" },
+  { id:"relay-core", phase:"p1", name:"Relay daemon", status:"progress", desc:"JSON-RPC over stdio, keeps sessions alive when the app closes, version handshake.", path:"packages/relay" },
   { id:"acp-client", phase:"p1", name:"ACP client", status:"progress", desc:"Spawns claude-agent-acp and codex-acp per session and answers them as the client.", path:"packages/relay/src/acp" },
   { id:"event-log", phase:"p1", name:"Event log", status:"progress", desc:"Appends every ACP message to a JSONL file per session with a sequence number.", path:"packages/relay/src/log" },
   { id:"permissions", phase:"p1", name:"Permission holding", status:"progress", desc:"Keeps pending permission requests until you answer, even hours later.", path:"packages/relay/src/permissions" },
@@ -216,12 +216,12 @@ const C = [
   { id:"relay-fs", phase:"p1", name:"Worktree files", status:"progress", desc:"fs.tree, fs.read, fs.write with hash check, fs.watch for the editor.", path:"packages/relay/src/fs" },
   // Phase 2
   { id:"relay-conn", phase:"p2", name:"Relay connections", status:"planned", desc:"Starts and talks to relays: the local one over stdio now, SSH in phase 5.", path:"packages/app/src/relays" },
-  { id:"store", phase:"p2", name:"Store", status:"planned", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
+  { id:"store", phase:"p2", name:"Store", status:"progress", desc:"SQLite with Drizzle: workspaces, sessions, events, UI versions.", path:"packages/app/src/store" },
   { id:"sync", phase:"p2", name:"Sync", status:"planned", desc:"Copies relay events into the store and resumes after sequence N on reconnect.", path:"packages/app/src/sync" },
-  { id:"session-status", phase:"p2", name:"Session status", status:"planned", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
+  { id:"session-status", phase:"p2", name:"Session status", status:"progress", desc:"Derives running, waiting on you, idle and done from the events.", path:"packages/app/src/status" },
   { id:"api", phase:"p2", name:"API", status:"planned", desc:"Hono HTTP commands and queries plus one live SSE stream.", path:"packages/app/src/api" },
   { id:"workspace-setup", phase:"p1", name:"Workspace setup", status:"planned", desc:"Guided checklist with Check and repair: machine, relay, agents, repos, imported config.", path:"packages/app/src/setup" },
-  { id:"archive", phase:"p1", name:"Archive", status:"planned", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
+  { id:"archive", phase:"p1", name:"Archive", status:"progress", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
   // Phase 3
   { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"planned", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
   { id:"ui-shell", phase:"p3", name:"Default UI", status:"planned", desc:"Vite, React, Tailwind, shadcn/ui template copied to the data folder.", path:"packages/ui-template" },
@@ -252,14 +252,12 @@ const C = [
 ];
 
 const NOW = [
-  "Phase 1 relay, three subagents in parallel: event log",
-  "ACP client and permission holding",
-  "Worktrees, session diff, worktree files and repo setup",
-  "ACP spike script: last lint fixes",
-  "Next: wire the relay together (daemon, sessions, archive) with end-to-end tests",
+  "Wiring the relay: daemon that outlives the app, session lifecycle, archive, first relay end-to-end tests",
+  "App store: SQLite with Drizzle (Phase 2)",
+  "Written, waiting for end-to-end tests: event log, ACP client, permissions, worktrees, diff, files",
 ];
 const BLOCKED = [
-  "ACP spike real run: needs Anthropic and OpenAI API keys, or your Mac attached",
+  "Codex in the spike: needs an OpenAI API key and api.openai.com allowed in this environment, or your Mac attached",
 ];
 const LOG = [
   ["22 Nov 2026 16:05", "Status page and architecture diagram published. Waiting for the final plan handover."],
@@ -267,6 +265,7 @@ const LOG = [
   ["22 Nov 2026 16:20", "GitHub access works. Final plan, AGENTS.md, TASKS.md, MIT license and the empty Bun workspace pushed to main. Step 1 started with three parallel subagents."],
   ["22 Nov 2026 16:40", "Quality gates done: 23 deliberately bad samples each break the build. Mock ACP agent and test harness done: 4 end-to-end tests pass. CI, Dependabot, gitleaks and git hooks added."],
   ["22 Nov 2026 16:55", "Shared protocol package done: JSON-RPC envelope, events and 17 relay methods. Phase 1 relay started with three parallel subagents."],
+  ["22 Nov 2026 17:15", "Relay parts written and pushed: event log, ACP client with message tap, permission holding, worktrees, session diff, worktree files, repo store. Spike ran real Claude Code turns. Now wiring the relay together and starting the app store."],
 ];
 /* ===== END DATA ===== */
 
