@@ -7,8 +7,11 @@ import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
+import { readApiToken } from "./api-token.ts";
+import { aBrowser, type Browser } from "./browser.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
+import { type Outsiders, outsidersOf } from "./outsiders.ts";
 import { type RelayHost, startRelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
 
@@ -16,10 +19,10 @@ const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 const STREAM_WAIT_MS = 5000;
 
 /** The app running with one local workspace, driven the way a user's browser drives it. */
-export interface RunningApp extends AppAccess {
+export interface RunningApp extends AppAccess, Outsiders {
+  /** A browser that has not opened any page of the app yet. */
+  aBrowser(): Browser;
   readonly dataDir: string;
-  /** Where the app listens now; a browser opens its UI here (when started `withUi`). */
-  readonly baseUrl: string;
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
@@ -101,7 +104,7 @@ async function prepareWorkspace(relayEnv: Record<string, string> = {}) {
 
 /** The parts of the access every helper uses, reading the SDK and URL of the app as it is now. */
 function accessOf(options: {
-  base: Omit<AppAccess, "sdk" | "baseUrl">;
+  base: Omit<AppAccess, "sdk" | "baseUrl" | "token">;
   current: () => Opened;
 }): AppAccess {
   const { current } = options;
@@ -112,6 +115,9 @@ function accessOf(options: {
     },
     get baseUrl() {
       return current().baseUrl;
+    },
+    get token() {
+      return current().token;
     },
   };
 }
@@ -131,6 +137,8 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   });
   return Object.assign(access, {
     user: appUserOf(access),
+    ...outsidersOf(access),
+    aBrowser: () => aBrowser(access),
     restartsTheApp: async (restart: { modify?: ModifyConfig } = {}) => {
       const port = Number(new URL(current.baseUrl).port);
       await current.close();
@@ -143,6 +151,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
 
 interface Opened {
   baseUrl: string;
+  token: string;
   sdk: AppAccess["sdk"];
   close(): Promise<void>;
 }
@@ -163,10 +172,12 @@ async function openApp(options: {
       heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
     },
   });
-  const sdk = createClient({ baseUrl: app.baseUrl });
+  const token = await readApiToken(options.dataDir);
+  const sdk = createClient({ baseUrl: app.baseUrl, token });
   const stopStream = await followLiveStream(sdk, heard);
   return {
     baseUrl: app.baseUrl,
+    token,
     sdk,
     close: async () => {
       stopStream();

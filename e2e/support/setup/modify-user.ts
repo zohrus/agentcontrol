@@ -27,6 +27,8 @@ export function modifyUserOf(app: AppAccess) {
   };
 }
 
+import { tokenInHtml } from "./browser.ts";
+
 /** What a person does on the recovery page, which the app serves itself. */
 function safePageUserOf(app: AppAccess) {
   return {
@@ -37,7 +39,10 @@ function safePageUserOf(app: AppAccess) {
       const commit = commitListedWith(page, message);
       await fetch(`${app.baseUrl}/api/modify/restore`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${String(tokenInHtml(page))}`,
+        },
         body: JSON.stringify({ commit }),
       });
     },

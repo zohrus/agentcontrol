@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import type { RelayClient } from "./relays/index.ts";
+import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
 import { createStore, type Store, type Workspace } from "./store/index.ts";
 import { createHub, type Hub, startSync, type Sync } from "./sync/index.ts";
@@ -54,6 +55,7 @@ const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };
 /** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the relay is synced. */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
+  const token = createToken();
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
   const sync = startSync({ store, hub, workspace: LOCAL, connect: options.connectRelay });
@@ -64,7 +66,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     const modify = modifyOf(options, { store, hub, sync });
     if (options.modify) await modify.ready();
     const deps = { store, hub, workspace: LOCAL, relay: sync, modify };
-    return startServer({ port: options.port, deps, ui });
+    return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
   }).catch(async (error: unknown) => {
     await ui?.close();
     await sync.stop();
