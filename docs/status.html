@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "22 Nov 2026, 16:20 UTC";
+const UPDATED = "22 Nov 2026, 16:40 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -200,10 +200,10 @@ const C = [
   // Phase 0
   { id:"repo", phase:"p0", name:"Repository and workspace", status:"done", desc:"Bun workspace, packages layout, bun dev and bun test from a fresh clone, MIT license.", path:"package.json" },
   { id:"plan-docs", phase:"p0", name:"Plan, TASKS.md, AGENTS.md", status:"done", desc:"Final plan, deferred tasks, and the coding rules every agent follows (CLAUDE.md imports AGENTS.md).", path:"AGENTS.md" },
-  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"progress", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, duplication, formatting, audit. Each gate proven to break the build. GitHub Actions, Dependabot, gitleaks, lefthook.", path:".github/workflows/" },
-  { id:"protocol", phase:"p0", name:"Shared protocol types", status:"planned", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
-  { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"progress", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
-  { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"progress", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
+  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"done", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, duplication, formatting, audit. Each gate proven to break the build. GitHub Actions, Dependabot, gitleaks, lefthook.", path:".github/workflows/" },
+  { id:"protocol", phase:"p0", name:"Shared protocol types", status:"progress", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
+  { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"done", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
+  { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script that runs the Claude Code and Codex adapters locally and logs every ACP message, plus notes for the relay. Being written now; a real run needs API keys or your Mac attached.", path:"spike/" },
@@ -252,9 +252,9 @@ const C = [
 ];
 
 const NOW = [
-  "Step 1, three subagents in parallel: quality gates and CI",
-  "Mock ACP agent and the GIVEN / WHEN / THEN test harness",
+  "Shared protocol package: the contract between relay, app and UI",
   "ACP spike script and adapter notes for the relay",
+  "Next: Phase 1 relay, split across parallel subagents",
 ];
 const BLOCKED = [
   "ACP spike real run: needs Anthropic and OpenAI API keys, or your Mac attached",
@@ -263,6 +263,7 @@ const LOG = [
   ["22 Nov 2026 16:05", "Status page and architecture diagram published. Waiting for the final plan handover."],
   ["22 Nov 2026 16:10", "First commit ready locally; push refused because the GitHub App can't write to the repo yet."],
   ["22 Nov 2026 16:20", "GitHub access works. Final plan, AGENTS.md, TASKS.md, MIT license and the empty Bun workspace pushed to main. Step 1 started with three parallel subagents."],
+  ["22 Nov 2026 16:40", "Quality gates done: 23 deliberately bad samples each break the build. Mock ACP agent and test harness done: 4 end-to-end tests pass. CI, Dependabot, gitleaks and git hooks added."],
 ];
 /* ===== END DATA ===== */
 
