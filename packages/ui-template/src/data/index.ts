@@ -15,6 +15,6 @@ export {
   useTurnRunning,
   useUsage,
 } from "./hooks.ts";
-export { type ModifyData, useModify } from "./modify-hooks.ts";
+export { useModify } from "./modify-hooks.ts";
 export { DataProvider, useController } from "./provider.tsx";
 export { createStore, useStoreValue } from "./store.ts";

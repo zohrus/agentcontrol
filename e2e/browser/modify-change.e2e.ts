@@ -4,9 +4,10 @@ import {
   expectModifyPanelToShow,
 } from "../support/browser/modify-browser-expectations.ts";
 import {
+  costColumnChangeReadyInModifyPanel,
   modifyAgentWillAskToRunACommand,
   modifyAgentWillBreakTheTypes,
-  modifyAgentWillShowColumns,
+  modifyPanelOpenWithAgentAddingCostColumn,
   startModifiableAppInBrowser,
 } from "../support/browser/modify-setups.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
@@ -20,9 +21,7 @@ test(
     // ********************************************************************
     // ** GIVEN the Modify panel is open and the Modify agent will add a Cost column
     // ********************************************************************
-    const app = await startModifiableAppInBrowser();
-    await modifyAgentWillShowColumns(app, ["Title", "Cost"]);
-    await app.page.opensTheModifyPanel();
+    const app = await modifyPanelOpenWithAgentAddingCostColumn();
 
     // ********************************************************************
     // ** WHEN the user asks to add a cost column
@@ -46,11 +45,7 @@ test(
     // ********************************************************************
     // ** GIVEN a cost column change that is ready in the Modify panel
     // ********************************************************************
-    const app = await startModifiableAppInBrowser();
-    await modifyAgentWillShowColumns(app, ["Title", "Cost"]);
-    await app.page.opensTheModifyPanel();
-    await app.page.asksToModifyTheUi("add a cost column");
-    await expectModifyPanelToShow(app, "Ready");
+    const app = await costColumnChangeReadyInModifyPanel();
 
     // ********************************************************************
     // ** WHEN the user presses Keep
@@ -73,11 +68,7 @@ test(
     // ********************************************************************
     // ** GIVEN a cost column change that is ready in the Modify panel
     // ********************************************************************
-    const app = await startModifiableAppInBrowser();
-    await modifyAgentWillShowColumns(app, ["Title", "Cost"]);
-    await app.page.opensTheModifyPanel();
-    await app.page.asksToModifyTheUi("add a cost column");
-    await expectModifyPanelToShow(app, "Ready");
+    const app = await costColumnChangeReadyInModifyPanel();
 
     // ********************************************************************
     // ** WHEN the user presses Undo

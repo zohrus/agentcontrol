@@ -4,7 +4,7 @@ import {
   expectModifyPanelToShow,
 } from "../support/browser/modify-browser-expectations.ts";
 import {
-  modifyAgentWillShowColumns,
+  costColumnChangeReadyInModifyPanel,
   startModifiableAppInBrowser,
 } from "../support/browser/modify-setups.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
@@ -73,11 +73,7 @@ test(
     // ********************************************************************
     // ** GIVEN a cost column change that is ready in the Modify panel
     // ********************************************************************
-    const app = await startModifiableAppInBrowser();
-    await modifyAgentWillShowColumns(app, ["Title", "Cost"]);
-    await app.page.opensTheModifyPanel();
-    await app.page.asksToModifyTheUi("add a cost column");
-    await expectModifyPanelToShow(app, "Ready");
+    const app = await costColumnChangeReadyInModifyPanel();
 
     // ********************************************************************
     // ** WHEN the page is reloaded
