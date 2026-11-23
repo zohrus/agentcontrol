@@ -84,7 +84,6 @@ export interface StartOptions {
   previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
-  /** How the app reaches ssh workspaces (`host.appSettings` of a started ssh host). */
   ssh?: Partial<SshSettings>;
   /** The repo holds this many files besides its readme, so a worktree has plenty. */
   repoFiles?: number;
@@ -161,7 +160,6 @@ interface Opened {
   close(): Promise<void>;
 }
 
-/** Records, each time the app sees a relay connection end, how many have ended so far. */
 function countEndedConnections(heard: Heard): () => void {
   return () => {
     heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
