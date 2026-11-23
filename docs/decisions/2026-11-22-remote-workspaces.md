@@ -27,22 +27,28 @@ locally and on a host; only the way the app reaches it differs.
 
 ## Version rule
 
-One relay daemon per data dir. The bridge of version N does not check the daemon's version; the
-**app** does, on `relay/hello` (`VERSION` from `protocol/src/version.ts`, set by the release build's
-`--define AGENTCONTROL_VERSION`, `0.0.0` from source). The app never syncs with a relay of another
-version. On a mismatch:
+One relay daemon per data dir. The app checks `relay/hello` against `VERSION` (the root
+`package.json` version, `protocol/src/version/`, one constant for app and relay). On a mismatch:
 
 1. `sessions.list` on the old daemon (read only). If no session has a running turn or a pending
-   permission, the app runs `<new binary> stop --data-dir ...` over ssh and reconnects at once; the
+   permission, the app runs `<binary of this version> stop --data-dir ...` over ssh (`relay stop`
+   reports and exits non-zero on failure, which fails the replacement) and reconnects at once; the
    new bridge starts a daemon of the new version. Nothing was running, so nothing is lost.
-2. Otherwise the workspace is `needs-relay-update` with a reason naming how many sessions are still
-   working. The old daemon is left alone; the sync loop tries again on its backoff, so it is replaced
-   when the sessions end. `POST /api/workspaces/:id/restart-relay` replaces it now (its agents end).
+2. Otherwise the relay is used as it is and the workspace is `needs-relay-update`, with a reason
+   naming how many sessions are working and the relay's version (`relayVersion`).
+   `POST /api/workspaces/:id/restart-relay` replaces it when the user chooses (its agents end).
 
-Sessions on a workspace in that state are read from the store and read-only. For the local
-workspace there is no automatic replacement (the Mac installer ships both binaries of one version);
-a mismatch shows as `needs-relay-update`. `AGENTCONTROL_RELAY_VERSION` overrides what the relay
-reports, for tests only (an older release is simulated by a binary that sets it).
+For the local workspace the same applies when `AppOptions.stopLocalRelay` is given (main.ts gives
+it); without it the mismatch is only reported. `AGENTCONTROL_RELAY_VERSION` overrides what a relay
+process reports, for tests only (an older release is simulated by a binary that sets it).
+`/api/workspace` (this Mac or `?workspace=`) and `workspaces.list()` are the same `WorkspaceInfo`.
+
+## Agents on a host
+
+A non-interactive ssh session has a minimal PATH. On connect the app reads the user's login-shell
+PATH (`$SHELL -lc`) once and starts the relay with `env PATH=...`, so a daemon started by that
+bridge finds agents installed by npm, nvm or `~/.local/bin`. A daemon that was already running keeps
+the PATH it had.
 
 ## Multi-workspace
 
@@ -78,4 +84,5 @@ use the stdio channel.
 passed with `-F` (`AppOptions.ssh.configFile`) and a TCP proxy in front of it that a test can cut
 (`drops`) or take down (`goesDown`). The relay "binary" the app installs is a small script that runs
 the checkout's relay with the host's environment, so no compile is needed. Needs `sshd` and
-`/run/sshd` (CI installs `openssh-server`).
+`/run/sshd` (CI installs `openssh-server`). One test compiles the real relay (`bun build
+--compile`) for the test machine and installs that binary over ssh.

@@ -14,6 +14,8 @@ export interface RelayBinarySpec {
   home: string;
   /** The mock agent's script (every agent kind runs the mock agent, so the handshakes pass). */
   mockAgentScript: string;
+  /** The command that starts Claude Code, when it is not the mock agent by its absolute path. */
+  claudeCommand?: string[];
   /** Makes the relay report this version instead of the app's, to look like an older release. */
   version?: string;
 }
@@ -29,7 +31,7 @@ export async function writeRelayBinary(spec: RelayBinarySpec): Promise<void> {
     "#!/bin/sh",
     `export HOME=${quoted(spec.home)}`,
     `export AGENTCONTROL_AGENT_MOCK_CMD=${quoted(mockCommand)}`,
-    `export AGENTCONTROL_AGENT_CLAUDE_CODE_CMD=${quoted(mockCommand)}`,
+    `export AGENTCONTROL_AGENT_CLAUDE_CODE_CMD=${quoted(spec.claudeCommand ? JSON.stringify(spec.claudeCommand) : mockCommand)}`,
     `export AGENTCONTROL_AGENT_CODEX_CMD=${quoted(mockCommand)}`,
     `export MOCK_AGENT_SCRIPT=${quoted(spec.mockAgentScript)}`,
     ...(spec.version === undefined

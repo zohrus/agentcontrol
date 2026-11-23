@@ -2,7 +2,7 @@ import { INSPECT_SCRIPT, parseHostInfo } from "./host-info.ts";
 import { forwardOverSsh } from "./ssh-forward.ts";
 import { explainSsh } from "./ssh-failure.ts";
 import { installRelayBinary } from "./ssh-install.ts";
-import { remoteWord } from "./ssh-quote.ts";
+import { remoteWord, shellQuote } from "./ssh-quote.ts";
 import { runSsh, runSshOrFail, type SshDestination, sshArgv } from "./ssh-run.ts";
 import type { WorkspaceTarget } from "./target.ts";
 
@@ -19,6 +19,19 @@ const BINARY_NAME = "agentcontrol-relay";
 const binaryPathIn = (root: string, version: string): string =>
   `${root}/relay/${version}/${BINARY_NAME}`;
 
+/** `env PATH=...` in front of the relay, when a PATH is to be set. */
+const withPath = (path: string | undefined): string[] =>
+  path === undefined ? [] : ["env", shellQuote(`PATH=${path}`)];
+
+const LOGIN_PATH_SCRIPT = `"\${SHELL:-/bin/sh}" -lc 'printf "AGENTCONTROL_PATH=%s" "$PATH"'`;
+
+/** The PATH of the user's login shell on the host; a profile's chatter before it is ignored. */
+async function readLoginPath(destination: SshDestination): Promise<string | undefined> {
+  const result = await runSsh({ destination, script: LOGIN_PATH_SCRIPT });
+  const found = /AGENTCONTROL_PATH=([^\n]*)$/.exec(result.stdout);
+  return found?.[1] === "" ? undefined : found?.[1];
+}
+
 /** A workspace on another machine, reached with the system `ssh` (config, keys and agent as usual). */
 export function sshTarget(options: SshTargetOptions): WorkspaceTarget {
   const { host, configFile, version, root = "~/.agentcontrol" } = options;
@@ -29,7 +42,12 @@ export function sshTarget(options: SshTargetOptions): WorkspaceTarget {
   const inDataDir = ["--data-dir", remoteWord(dataDir)];
   return {
     kind: "ssh",
-    bridgeCommand: () => [...sshArgv(destination), ...relayArgv("--stdio", ...inDataDir)],
+    bridgeCommand: (settings) => [
+      ...sshArgv(destination),
+      ...withPath(settings?.path),
+      ...relayArgv("--stdio", ...inDataDir),
+    ],
+    loginPath: () => readLoginPath(destination),
     inspect: async () => parseHostInfo(await runSshOrFail({ destination, script: INSPECT_SCRIPT })),
     isInstalled: async () => {
       const result = await runSsh({ destination, script: `test -x ${remoteWord(binary)}` });

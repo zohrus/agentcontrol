@@ -24,8 +24,17 @@ export interface ForwardedPort {
  */
 export interface WorkspaceTarget {
   readonly kind: "local" | "ssh";
-  /** The argv that runs the relay bridge on the target, with its `--stdio` and `--data-dir` flags. */
-  bridgeCommand(): string[];
+  /**
+   * The argv that runs the relay bridge on the target, with its `--stdio` and `--data-dir` flags.
+   * With `path` the relay (and the agents it starts) run with that PATH.
+   */
+  bridgeCommand(options?: { path?: string | undefined }): string[];
+  /**
+   * The PATH the user's login shell has on the target, so agents installed by the user (npm, nvm,
+   * ~/.local/bin) are found although a non-interactive ssh session has a minimal one. Undefined when
+   * it cannot be read, or when the app's own PATH is the right one (local).
+   */
+  loginPath(): Promise<string | undefined>;
   /** OS, CPU architecture, free disk and git of the target. Rejects with the reason it is unreachable. */
   inspect(): Promise<HostInfo>;
   /** Whether the relay binary of this app's version is in place on the target. */

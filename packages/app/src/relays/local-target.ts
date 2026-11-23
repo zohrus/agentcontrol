@@ -9,6 +9,7 @@ export function localTarget(options: { command: string[]; dataDir: string }): Wo
   return {
     kind: "local",
     bridgeCommand: () => [...command, "--stdio", "--data-dir", dataDir],
+    loginPath: () => Promise.resolve(undefined),
     inspect: async () => {
       const stats = await statfs(homedir());
       return {

@@ -1,3 +1,4 @@
+import { VERSION } from "@agentcontrol/protocol";
 import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,10 +7,9 @@ import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
 import { type SshNetwork, startSshNetwork } from "./ssh-network.ts";
+import { type SshHostOptions, writeLoginShellWithAgent } from "./ssh-host-options.ts";
 import { writeRelayBinary } from "./ssh-relay-binary.ts";
 import { startSshd } from "./ssh-sshd.ts";
-
-const APP_VERSION = "0.0.0";
 
 /**
  * Another machine, reached over real ssh: a private sshd on this computer, with its own keys, a
@@ -48,7 +48,7 @@ export interface SshHost {
   agentWillPauseBetween(first: string, second: string): void;
 }
 
-async function prepareRemoteSide(folder: string) {
+async function prepareRemoteSide(folder: string, options: SshHostOptions) {
   const home = join(folder, "remote", "home");
   const remoteRoot = join(home, ".agentcontrol");
   await mkdir(home, { recursive: true });
@@ -58,8 +58,11 @@ async function prepareRemoteSide(folder: string) {
   );
   const mockAgent = await createMockAgent();
   const built = join(folder, "build", "agentcontrol-relay");
-  await writeRelayBinary({ path: built, home, mockAgentScript: mockAgent.scriptPath });
-  return { home, remoteRoot, mockAgent, built };
+  const login = options.agentOnLoginPathOnly ? await writeLoginShellWithAgent(folder) : undefined;
+  const claudeCommand = login?.claudeCommand;
+  const spec = { path: built, home, mockAgentScript: mockAgent.scriptPath };
+  await writeRelayBinary({ ...spec, ...(claudeCommand && { claudeCommand }) });
+  return { home, remoteRoot, mockAgent, built, shell: login?.shell };
 }
 
 function stopRelayOnHostAtTestEnd(options: { built: string; relayDataDir: string }): void {
@@ -72,7 +75,11 @@ function stopRelayOnHostAtTestEnd(options: { built: string; relayDataDir: string
 const ALIAS = "test-host";
 
 /** The ssh server, the network in front of it, and the config file that reaches it. */
-async function startReachableMachine(options: { folder: string; home: string }) {
+async function startReachableMachine(options: {
+  folder: string;
+  home: string;
+  shell: string | undefined;
+}) {
   const { folder } = options;
   const sshd = await startSshd(options);
   onTestEnd(() => sshd.stop());
@@ -107,6 +114,12 @@ function hostAgentOf(options: { mockAgent: MockAgent; releaseFile: string }) {
   };
 }
 
+/** The file the app installs on the host: a missing one, a given (compiled) binary, or the script. */
+function installedFrom(options: SshHostOptions, script: string): string {
+  if (options.relayBinaryMissing) return "/nonexistent/agentcontrol-relay";
+  return options.relayBinary ?? script;
+}
+
 /** The pid in the relay's pid file, if it has one. */
 async function readRelayPid(relayDataDir: string): Promise<number | undefined> {
   const text = await readFile(join(relayDataDir, "relay.pid"), "utf8").catch(() => "");
@@ -117,13 +130,12 @@ interface Parts {
   folder: string;
   machine: { network: SshNetwork; configFile: string };
   side: Awaited<ReturnType<typeof prepareRemoteSide>>;
-  /** The app has no relay binary to install for this host. */
-  relayBinaryMissing: boolean;
+  options: SshHostOptions;
 }
 
 /** The host as tests use it, from the parts that were started. */
 async function hostOf(parts: Parts): Promise<SshHost> {
-  const { folder, machine, side, relayBinaryMissing } = parts;
+  const { folder, machine, side, options } = parts;
   const relayDataDir = join(side.remoteRoot, "relay-data");
   const releaseFile = join(folder, "release");
   const { configFile, network } = machine;
@@ -138,10 +150,10 @@ async function hostOf(parts: Parts): Promise<SshHost> {
     relayDataDir,
     releaseFile,
     ...hostAgentOf({ mockAgent: side.mockAgent, releaseFile }),
-    installedRelay: join(side.remoteRoot, "relay", APP_VERSION, "agentcontrol-relay"),
+    installedRelay: join(side.remoteRoot, "relay", VERSION, "agentcontrol-relay"),
     appSettings: {
       configFile,
-      relayBinaryFor: () => (relayBinaryMissing ? "/nonexistent/agentcontrol-relay" : side.built),
+      relayBinaryFor: () => installedFrom(options, side.built),
       backoffMaxMs: 300,
     },
     relayPid: () => readRelayPid(relayDataDir),
@@ -149,16 +161,14 @@ async function hostOf(parts: Parts): Promise<SshHost> {
 }
 
 /** Starts a host: sshd, a proxy in front of it, a home folder, a repo and a mock agent. */
-export async function startSshHost(
-  options: { relayBinaryMissing?: boolean } = {},
-): Promise<SshHost> {
+export async function startSshHost(options: SshHostOptions = {}): Promise<SshHost> {
   const folder = await realpath(await mkdtemp(join(tmpdir(), "agentcontrol-ssh-")));
   onTestEnd(() => rm(folder, { recursive: true, force: true }));
-  const side = await prepareRemoteSide(folder);
-  const machine = await startReachableMachine({ folder, home: side.home });
+  const side = await prepareRemoteSide(folder, options);
+  const machine = await startReachableMachine({ folder, home: side.home, shell: side.shell });
   stopRelayOnHostAtTestEnd({
     built: side.built,
     relayDataDir: join(side.remoteRoot, "relay-data"),
   });
-  return hostOf({ folder, machine, side, relayBinaryMissing: options.relayBinaryMissing === true });
+  return hostOf({ folder, machine, side, options });
 }

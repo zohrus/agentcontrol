@@ -39,7 +39,8 @@ export function sshConnector(options: {
       await installOn({ ...options, machine: await target.inspect() });
     }
     const capture = { explain: (stderr: string) => target.explainFailure(stderr) };
-    return relayClientOver(spawnBridge({ argv: target.bridgeCommand(), capture }));
+    const path = await target.loginPath();
+    return relayClientOver(spawnBridge({ argv: target.bridgeCommand({ path }), capture }));
   };
 }
 

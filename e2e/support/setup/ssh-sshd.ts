@@ -40,8 +40,9 @@ function configOf(options: {
   hostKey: string;
   port: number;
   home: string;
+  shell?: string | undefined;
 }): string {
-  const { folder, hostKey, port, home } = options;
+  const { folder, hostKey, port, home, shell } = options;
   return [
     `Port ${String(port)}`,
     "ListenAddress 127.0.0.1",
@@ -53,7 +54,7 @@ function configOf(options: {
     "UsePAM no",
     "StrictModes no",
     "LogLevel ERROR",
-    `SetEnv HOME=${home}`,
+    `SetEnv HOME=${home}${shell === undefined ? "" : ` SHELL=${shell}`}`,
   ].join("\n");
 }
 
@@ -109,14 +110,19 @@ function hostBlockOf(options: {
  * Its sessions see `home` as `$HOME`, so nothing of the real home folder is used.
  * Needs the OpenSSH server installed and the privilege separation folder /run/sshd to exist.
  */
-export async function startSshd(options: { folder: string; home: string }): Promise<Sshd> {
-  const { folder, home } = options;
+export async function startSshd(options: {
+  folder: string;
+  home: string;
+  /** The host user's login shell, as `$SHELL` in sessions. */
+  shell?: string | undefined;
+}): Promise<Sshd> {
+  const { folder, home, shell } = options;
   if (!existsSync(SSHD)) throw new Error(`The OpenSSH server is missing: install it (${SSHD}).`);
   await mkdir("/run/sshd", { recursive: true });
   const { hostKey, clientKey } = await writeKeys(folder);
   const port = freePort();
   const configFile = join(folder, "sshd_config");
-  await Bun.write(configFile, configOf({ folder, hostKey, port, home }));
+  await Bun.write(configFile, configOf({ folder, hostKey, port, home, shell }));
   const child = Bun.spawn([SSHD, "-D", "-e", "-f", configFile], {
     stdout: "ignore",
     stderr: "ignore",

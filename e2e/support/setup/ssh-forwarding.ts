@@ -1,3 +1,4 @@
+import { VERSION } from "@agentcontrol/protocol";
 import { type ForwardedPort, sshTarget } from "@agentcontrol/app";
 import { onTestEnd } from "./cleanup.ts";
 import type { SshHost } from "./ssh-host.ts";
@@ -31,7 +32,7 @@ export async function forwardsPortOfHost(
   const target = sshTarget({
     host: host.alias,
     configFile: host.configFile,
-    version: "0.0.0",
+    version: VERSION,
     root: host.remoteRoot,
   });
   const forwarded = await target.forwardPort(remotePort);
