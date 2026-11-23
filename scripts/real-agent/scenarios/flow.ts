@@ -30,7 +30,7 @@ export async function secondPrompt(run: Run): Promise<void> {
   const events = await waitsForTurns(run, 2);
   const second = lastAnswerOf(events);
   run.note(`second answer: ${second.slice(0, 80)}`);
-  await run.record({ id, name: "second-prompt" });
+  await run.record({ id, name: "edit-and-second-prompt" });
   expectThat(second.includes("Hello, agent"), "expected the second turn to know the new greeting");
 }
 

@@ -17,22 +17,33 @@ const LEFT_ALONE_ON_PURPOSE = [
   "session_info_update",
 ];
 
-/** Five logs of a few dozen events each, read on a machine that may be busy with a whole test run. */
-const SERVE_TIMEOUT_MS = 15_000;
+/** A few logs of some dozens of events each, read on a machine that may be busy with a whole test run. */
+const SERVE_TIMEOUT_MS = 17_000;
 
-async function eventsOf(relay: RelayAccess, session: RecordedSession): Promise<SessionEvent[]> {
-  const served = (): SessionEvent[] =>
-    relay.events.entries.filter((event) => event.sessionId === session.id);
+const eventsOf = (relay: RelayAccess, session: RecordedSession): SessionEvent[] =>
+  relay.events.entries.filter((event) => event.sessionId === session.id);
+
+/** The relay has served every recorded event; it also records that the recorded agent is gone. */
+function unservedSessions(relay: RelayAccess, sessions: RecordedSession[]): string[] {
+  const reached = (session: RecordedSession): boolean =>
+    eventsOf(relay, session).some((event) => event.seq === session.lastSeq);
+  return sessions.filter((session) => !reached(session)).map((session) => session.name);
+}
+
+async function waitsForEveryRecording(
+  relay: RelayAccess,
+  sessions: RecordedSession[],
+): Promise<void> {
   await eventually(
-    `expected the relay to serve all ${String(session.lastSeq)} events of the recording "${session.name}"`,
+    "expected the relay to serve every event of the recordings",
     () => {
-      // The relay also records that the recorded agent is gone, after the recording's last event.
-      const reached = served().some((event) => event.seq === session.lastSeq);
-      return Promise.resolve(reached ? undefined : `it served ${String(served().length)}`);
+      const missing = unservedSessions(relay, sessions);
+      return Promise.resolve(
+        missing.length === 0 ? undefined : `${missing.join(", ")} are missing events`,
+      );
     },
     SERVE_TIMEOUT_MS,
   );
-  return served();
 }
 
 function uninterpretedNames(events: SessionEvent[]): string[] {
@@ -46,8 +57,9 @@ export async function expectRecordingsToBeFullyInterpreted(
   relay: RelayAccess,
   sessions: RecordedSession[],
 ): Promise<void> {
+  await waitsForEveryRecording(relay, sessions);
   for (const session of sessions) {
-    const gaps = uninterpretedNames(await eventsOf(relay, session));
+    const gaps = uninterpretedNames(eventsOf(relay, session));
     if (gaps.length > 0) {
       throw new Error(
         `expected the recording "${session.name}" to be fully interpreted, but ${gaps.join(", ")} arrived as "other"`,
@@ -69,9 +81,10 @@ export async function expectRecordingsToCoverTheSupportedKinds(
     "turn-usage",
     "turn-ended",
   ];
+  await waitsForEveryRecording(relay, sessions);
   const seen = new Set<string>();
   for (const session of sessions) {
-    allUpdates(await eventsOf(relay, session)).forEach((update) => seen.add(update.type));
+    allUpdates(eventsOf(relay, session)).forEach((update) => seen.add(update.type));
   }
   const missing = wanted.filter((type) => !seen.has(type));
   if (missing.length > 0) {

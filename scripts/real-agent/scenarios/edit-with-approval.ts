@@ -111,7 +111,6 @@ export async function editWithApproval(run: Run): Promise<void> {
     !finished.turnRunning && finished.pendingPermissions.length === 0,
     "expected a finished turn with nothing pending",
   );
-  await run.record({ id, name: "edit-with-approval" });
   const events = await world.eventsOf(id);
   noteUpdates(run, events);
   await expectStreamMatchesHistory(run, events);
