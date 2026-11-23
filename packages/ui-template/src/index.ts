@@ -11,7 +11,8 @@ export {
   type TopBarActions,
 } from "./layout/index.ts";
 export {
-  type CheckGate,
+  type ChangeProgress,
+  ConnectedModifyDialog,
   ModifyDialog,
   ModifyPanel,
   type ModifyPanelProps,

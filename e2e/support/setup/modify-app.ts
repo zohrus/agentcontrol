@@ -37,7 +37,7 @@ const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
  * behind that name is the mock agent too.
  */
 export async function startAppWithModifiableUi(
-  options: { agent?: ModifyConfig["agent"] } = {},
+  options: { agent?: ModifyConfig["agent"]; withUi?: boolean } = {},
 ): Promise<ModifiableApp> {
   const templateDir = await createUiTemplate();
   const agent = options.agent ?? "mock";
@@ -45,6 +45,7 @@ export async function startAppWithModifiableUi(
   const modify = baseConfig(templateDir, agent);
   const app = await startAppWithLocalWorkspace({
     modify,
+    ...(options.withUi ? { withUi: true } : {}),
     ...(agent === "mock" ? {} : { relayEnv }),
   });
   return Object.assign(app, { templateDir });
