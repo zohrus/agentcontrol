@@ -102,7 +102,7 @@ Notarization needs one of these two sets:
 
 ## What could not be verified on Linux
 
-Everything Mac-specific was written without running it: the Swift menu bar app (never compiled),
+Everything Mac-specific was written without running it: the Swift menu bar app (compiled on a CI Mac runner, never launched by a person),
 `make-app.sh`, `sign-and-notarize.sh` (codesign, notarytool, stapler, hdiutil), the entitlements
 needed by the Bun binaries under the hardened runtime, and the cross-architecture `swift build`.
 The first run of the `build` workflow on `macos-latest` is the real test; expect to fix small
