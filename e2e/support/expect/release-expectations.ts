@@ -37,6 +37,16 @@ export async function expectUiServedFromTheDataFolder(app: ReleaseApp): Promise<
   }
 }
 
+/** The UI server hands out the UI's own script, not a refusal. */
+export async function expectUiScriptToBeServed(app: ReleaseApp): Promise<void> {
+  const answer = await fetch(`${app.baseUrl}/src/main.ts`);
+  if (answer.status !== 200) {
+    throw new Error(
+      `expected the UI server to serve /src/main.ts, but it answered ${String(answer.status)}: ${await answer.text()}`,
+    );
+  }
+}
+
 /** The app's database has every migration of the drizzle folder, not only the ones it was built with. */
 export function expectEveryMigrationToBeApplied(
   app: AppAccess,

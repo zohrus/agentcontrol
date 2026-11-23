@@ -11,10 +11,11 @@ permissions:
 jobs:
   mac:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/setup
+      # Builds dist/release/darwin-arm64 and darwin-x64 (each about 700 MB with its node_modules).
       - run: bun run build
       # `bash script`, not `./script`: a lost executable bit in git must not break the build.
       - name: Build the app and an unsigned dmg for each architecture
@@ -24,25 +25,34 @@ jobs:
             swift_arch=$([ "$arch" = x64 ] && echo x86_64 || echo arm64)
             (cd packages/mac && swift build -c release --arch "$swift_arch")
             bash scripts/mac/make-app.sh "$arch"
-            # No secrets here, so this is an ad-hoc signed dmg for testing.
+            # No secrets here: nested native code, binaries and bundle are ad-hoc signed.
             bash scripts/mac/sign-and-notarize.sh "$arch"
+            df -h . | tail -1
           done
-      - name: The ad-hoc signature is valid and covers the bundle
+      - name: The ad-hoc signature is valid, nested native code included
         run: |
           set -euo pipefail
           for arch in arm64 x64; do
             app="dist/app-$arch/AgentControl.app"
             codesign -dv --verbose=2 "$app"
-            codesign --verify --deep --strict "$app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            # Every native addon and library inside is signed on its own, and there are some.
+            nested=0
+            while IFS= read -r -d '' file; do
+              codesign --verify --strict "$file"
+              nested=$((nested + 1))
+            done < <(find "$app/Contents/Resources" -type f \( -name '*.node' -o -name '*.dylib' \) -print0)
+            echo "$arch: $nested nested native files verified"
+            test "$nested" -gt 0
             for file in MacOS/AgentControlMenu Resources/agentcontrol Resources/agentcontrol-relay; do
               test -x "$app/Contents/$file"
             done
           done
-      # Only the runner's own architecture can run here.
-      - name: Smoke test the compiled app and relay inside the bundle
+      # Only the runner's own architecture can run here (the x64 app needs Rosetta on arm64).
+      - name: Smoke test the compiled app inside the bundle
         run: |
           arch=$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64)
-          bash scripts/mac/smoke-app.sh "dist/app-$arch/AgentControl.app"
+          bun scripts/smoke-binary.ts --app "dist/app-$arch/AgentControl.app/Contents/Resources"
       # The unsigned dmg is the shipped artifact: open it and run what is inside, as a user would.
       - name: The dmg mounts, and the app inside it runs
         run: |
@@ -54,16 +64,34 @@ jobs:
             hdiutil attach "$dmg" -readonly -nobrowse -mountpoint "$mount"
             test -x "$mount/AgentControl.app/Contents/MacOS/AgentControlMenu"
             codesign --verify --deep --strict "$mount/AgentControl.app"
-            case "$dmg" in *"-$native.dmg") bash scripts/mac/smoke-app.sh "$mount/AgentControl.app" ;; esac
+            case "$dmg" in
+              *"-$native.dmg")
+                bun scripts/smoke-binary.ts --app "$mount/AgentControl.app/Contents/Resources" ;;
+            esac
             hdiutil detach "$mount"
           done
+      - name: Checksums of the release folders, and the size of what ships
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            (cd "dist/release/darwin-$arch" && find . -type f -print0 | sort -z \
+              | xargs -0 shasum -a 256) > "dist/release-darwin-$arch.sha256"
+          done
+          {
+            echo "### Sizes"
+            ls -l dist/*.dmg | awk '{ printf "%s: %.0f MB\n\n", $NF, $5 / 1048576 }'
+            du -sm dist/release/* | awk '{ printf "%s: %s MB (unpacked)\n\n", $2, $1 }'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: agentcontrol-mac
           path: |
             dist/*.dmg
-            dist/agentcontrol-*
+            dist/release-darwin-*.sha256
             dist/manifest.json
+          # The dmgs are compressed already.
+          compression-level: 0
+          retention-days: 14
           if-no-files-found: error
 
   linux-relay:

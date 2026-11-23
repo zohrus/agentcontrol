@@ -1,7 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestEnd } from "./cleanup.ts";
+import { aDataFolder } from "./data-folder.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
 import { startRelayHost } from "./relay-host.ts";
@@ -23,12 +22,13 @@ export interface WorkspaceOptions {
   repoFiles?: number;
   /** The version the relay reports it is, when it is not this release. */
   relayVersion?: string;
+  /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
+  dataFolderBehindALink?: boolean;
 }
 
 /** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
 export async function prepareWorkspace(options: WorkspaceOptions) {
-  const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
-  onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
+  const dataDir = await aDataFolder(options.dataFolderBehindALink === true);
   const repoPath = await createLocalRepo({ extraFiles: options.repoFiles ?? 0 });
   const mockAgent = await createMockAgent();
   const env = { ...mockAgentEnvironment(mockAgent), ...options.relayEnv };

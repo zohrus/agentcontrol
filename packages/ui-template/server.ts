@@ -34,12 +34,14 @@ async function freePort(): Promise<number> {
 }
 
 /**
- * The folders Vite may serve files from besides the project: where its node_modules really is,
- * because that folder is a link to the dependencies shipped with the app.
+ * The folders Vite may serve files from: the project, under its real path too (Vite checks the
+ * real path of every file, and macOS's temp folder `/var` is a link to `/private/var`), and where
+ * its node_modules really is, because that folder is a link to the dependencies shipped with the app.
  */
 async function allowedFolders(root: string): Promise<string[]> {
+  const real = await realpath(root).catch(() => root);
   const modules = await realpath(join(root, "node_modules")).catch(() => undefined);
-  return modules === undefined ? [root] : [root, modules];
+  return [...new Set([root, real, ...(modules === undefined ? [] : [modules])])];
 }
 
 /**
