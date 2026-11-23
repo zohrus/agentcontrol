@@ -19,9 +19,37 @@ export interface WriteFile {
   expectedHash: string;
 }
 
-/** A session's worktree: list, read and write files. */
-export function filesApi(api: Api) {
+/** `/preview/<ticket>/<path>?v=<load>` with each part of the path escaped, on the app at `baseUrl`. */
+function previewAddress(call: { baseUrl: string; ticket: string; path: string; load: number }) {
+  const escaped = call.path.split("/").map(encodeURIComponent).join("/");
+  return `${call.baseUrl}/preview/${call.ticket}/${escaped}?v=${String(call.load)}`;
+}
+
+/** Where a worktree file can be shown as a web page. */
+function previewApi(api: Api, baseUrl: string) {
+  let loads = 0;
   return {
+    /**
+     * The address that shows a worktree file as a web page: an HTML file, or any file next to it
+     * (`index.html` for a folder). Call it again to reload: every call returns a new address (a
+     * new `?v=`), so an iframe shown the new address loads the page again. An address stops
+     * working after an hour unused, when the session is archived, or when the app restarts. It
+     * works only for this session and without the app's
+     * credentials: load it in `<iframe sandbox="allow-scripts allow-forms">`. The app serves it
+     * with a Content-Security-Policy that gives the page its own opaque origin, no access to the
+     * API and no network requests. Throws ApiError "session-not-found" for an archived session.
+     */
+    previewUrl: async (id: SessionId, path: string): Promise<string> => {
+      const { ticket } = await read(api.sessions[":id"].preview.$post({ param: { id } }));
+      return previewAddress({ baseUrl, ticket, path, load: ++loads });
+    },
+  };
+}
+
+/** A session's worktree: list, read and write files, and the address to preview one. */
+export function filesApi(api: Api, baseUrl: string) {
+  return {
+    ...previewApi(api, baseUrl),
     /** Every file and folder in the worktree, with git status. Also starts live change events. */
     tree: async (id: SessionId): Promise<FsEntry[]> => {
       const { entries } = await read(api.sessions[":id"].files.$get({ param: { id } }));

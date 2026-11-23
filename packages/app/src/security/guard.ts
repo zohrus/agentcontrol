@@ -25,6 +25,10 @@ function bearerOf(header: string | undefined): string | undefined {
 
 const isApiPath = (path: string): boolean => path === "/api" || path.startsWith("/api/");
 
+/** Previews of session files: not app documents, and authorised by the ticket in their address. */
+const isPreviewPath = (path: string): boolean =>
+  path === "/preview" || path.startsWith("/preview/");
+
 /**
  * The only requests allowed without the secret: reading what the app serves outside `/api`, that
  * is the UI's page and its scripts and styles. They hold no data and must never perform an action.
@@ -44,11 +48,13 @@ function markAnswerSafe(c: Context): void {
 }
 
 /**
- * Documents the app serves itself get the secret; nothing under `/api` ever does. An answer with
- * no body (a 304 or a HEAD, even with an HTML content type) has no page to put it in.
+ * Documents the app serves itself get the secret; nothing under `/api` ever does, and neither does
+ * a preview: that is a page an agent wrote, and it must never see the secret. An answer with no
+ * body (a 304 or a HEAD, even with an HTML content type) has no page to put it in.
  */
 async function addTokenToDocument(c: Context, token: string): Promise<void> {
-  if (isApiPath(c.req.path) || !isHtml(c.res) || c.res.body === null) return;
+  if (isApiPath(c.req.path) || isPreviewPath(c.req.path)) return;
+  if (!isHtml(c.res) || c.res.body === null) return;
   const page = await withTokenInPage({ response: c.res, token });
   // Hono copies the old headers over a new response; clear it first so the headers we dropped
   // (etag, content-length) and the no-store we set stay as they are.
@@ -67,6 +73,9 @@ export function guard(options: GuardOptions): MiddlewareHandler {
       headers: c.req.raw.headers,
       port: options.port(),
       linkable: readsAPage(c),
+      // A previewed page lives in a sandbox with an opaque origin, so its own files arrive with
+      // `Origin: null` and `Sec-Fetch-Site: cross-site`. The ticket in the address authorises them.
+      fromAnySite: isPreviewPath(c.req.path) && readsAPage(c),
     });
     if (refusal) return refuse(c, refusal);
     const given = bearerOf(c.req.header("authorization"));

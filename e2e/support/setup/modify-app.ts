@@ -15,7 +15,7 @@ export interface ModifiableApp extends RunningApp {
 }
 
 /** A copy of the fixture UI that the test owns; its node_modules is the real one, for tsc and vite. */
-async function createUiTemplate(): Promise<string> {
+export async function createUiTemplate(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "agentcontrol-ui-template-"));
   onTestEnd(() => rm(dir, { recursive: true, force: true }));
   await cp(fixtureDir, dir, { recursive: true });

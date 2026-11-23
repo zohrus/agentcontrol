@@ -20,6 +20,13 @@ export const FsReadParams = z.object({ ...target, ref: z.enum(["base", "head", "
 /** Result of relay/fs.read: the content and the hash to pass back on write. */
 export const FsReadResult = z.object({ content: z.string(), hash: z.string() });
 
+/** Most bytes `relay/fs.readBytes` hands over; a bigger file is a `fileTooLarge` error. */
+export const FS_READ_BYTES_LIMIT = 10 * 1024 * 1024;
+/** Params of relay/fs.readBytes: the working-copy file of a session, as raw bytes. */
+export const FsReadBytesParams = z.object(target);
+/** Result of relay/fs.readBytes: the file's bytes as base64 (binary-safe, unlike `fs.read`). */
+export const FsReadBytesResult = z.object({ base64: z.string() });
+
 /** Params of relay/fs.write: fails with staleFile if the hash no longer matches. */
 export const FsWriteParams = z.object({
   ...target,
@@ -39,6 +46,8 @@ export type FsEntry = z.infer<typeof FsEntry>;
 export type FsTreeResult = z.infer<typeof FsTreeResult>;
 export type FsReadParams = z.infer<typeof FsReadParams>;
 export type FsReadResult = z.infer<typeof FsReadResult>;
+export type FsReadBytesParams = z.infer<typeof FsReadBytesParams>;
+export type FsReadBytesResult = z.infer<typeof FsReadBytesResult>;
 export type FsWriteParams = z.infer<typeof FsWriteParams>;
 export type FsWriteResult = z.infer<typeof FsWriteResult>;
 export type FsWatchResult = z.infer<typeof FsWatchResult>;

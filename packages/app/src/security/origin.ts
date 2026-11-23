@@ -43,6 +43,8 @@ export function refusalFor(options: {
   port: number;
   /** A read of a page outside `/api`: a link on another site may open it (the page stays unreadable there). */
   linkable: boolean;
+  /** Skip the Origin check: the route is authorised some other way (a preview's ticket). */
+  fromAnySite: boolean;
 }): Refusal | undefined {
   const { headers, port } = options;
   if (!isOwnHost({ host: headers.get("host"), port })) {
@@ -52,7 +54,7 @@ export function refusalFor(options: {
       message: "This address is not the app's own. Open it at http://127.0.0.1 or localhost.",
     };
   }
-  if (refusedOrigin(options)) {
+  if (!options.fromAnySite && refusedOrigin(options)) {
     return {
       status: 403,
       code: "forbidden-origin",

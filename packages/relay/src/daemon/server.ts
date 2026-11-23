@@ -3,7 +3,7 @@ import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
-import type { HostEnv } from "../agents/index.ts";
+import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
 import { VERSION } from "@agentcontrol/protocol";
 import { createEventLog } from "../event-log/index.ts";
@@ -140,13 +140,19 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
   return { handlers, sessions };
 }
 
+/** The process environment plus `options.env`; adapters are downloaded into the relay's folder. */
+function hostEnvFor(options: DaemonOptions): HostEnv {
+  const adapterCache = { [ADAPTER_CACHE]: join(options.dataDir, "adapters") };
+  return { ...adapterCache, ...process.env, ...options.env };
+}
+
 /** Listens on `<dataDir>/relay.sock` and serves every client until stopped. */
 export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const { dataDir } = options;
   await mkdir(dataDir, { recursive: true });
   const socketPath = socketPathIn(dataDir);
   await claimSocket(socketPath);
-  const hostEnv = { ...process.env, ...options.env };
+  const hostEnv = hostEnvFor(options);
   const { handlers, sessions } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);

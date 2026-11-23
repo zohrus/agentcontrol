@@ -1,4 +1,4 @@
-import { mkdir, realpath, symlink } from "node:fs/promises";
+import { mkdir, readlink, realpath, rm, symlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { UiVersion, UiVersions } from "../ui-versions/index.ts";
 import { type CheckResult, type RunCommand, runChecks, runWithBun } from "./checks.ts";
@@ -39,13 +39,18 @@ interface UiWorkspaceOptions {
 /**
  * Dependencies: users have no package manager and the Modify agent may not run `npm install`, so
  * node_modules comes from the app: a symlink to the template package's own node_modules. It is
- * never copied or committed (the history skips node_modules, dist and dot-folders).
+ * never copied or committed (the history skips node_modules, dist and dot-folders). Every start
+ * points the link at this release's folder, so moving or updating the app does not break it.
  */
 async function linkDependencies(options: { templateDir: string; dir: string }): Promise<void> {
   const link = join(options.dir, "node_modules");
-  if (await exists(link)) return;
+  const target = await realpath(join(options.templateDir, "node_modules"));
+  const current = await readlink(link).catch(() => undefined);
+  // Already right, or a real folder that someone put there: leave both alone.
+  if (current === target || (current === undefined && (await exists(link)))) return;
   await mkdir(options.dir, { recursive: true });
-  await symlink(await realpath(join(options.templateDir, "node_modules")), link, "dir");
+  await rm(link, { force: true });
+  await symlink(target, link, "dir");
 }
 
 interface Context {
@@ -70,9 +75,10 @@ async function checkoutBoth(ctx: Context): Promise<void> {
 async function ensureReady(ctx: Context): Promise<void> {
   await guard(ctx);
   // The live node_modules link is created last, so it marks a finished first run.
-  if (await exists(join(ctx.liveDir, "node_modules"))) return;
-  await ctx.versions.init(ctx);
-  await checkoutBoth(ctx);
+  if (!(await exists(join(ctx.liveDir, "node_modules")))) {
+    await ctx.versions.init(ctx);
+    await checkoutBoth(ctx);
+  }
   await linkDependencies({ templateDir: ctx.templateDir, dir: ctx.stagingDir });
   await linkDependencies({ templateDir: ctx.templateDir, dir: ctx.liveDir });
 }

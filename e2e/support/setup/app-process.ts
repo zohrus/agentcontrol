@@ -14,7 +14,7 @@ export interface AppProcess {
   stop(): Promise<void>;
 }
 
-async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
+export async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
   const reader = stdout.getReader();
   const decoder = new TextDecoder();
   let seen = "";
@@ -27,7 +27,7 @@ async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<str
   }
 }
 
-function afterTimeout(): Promise<never> {
+export function afterTimeout(): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => {
       reject(new Error("the app did not report that it was listening in time"));
@@ -75,6 +75,8 @@ interface LaunchOptions extends ProcessLaunch {
   relayDown?: boolean | undefined;
   /** The default UI and Modify agent; in-process runs only. */
   modify?: ModifyConfig | undefined;
+  /** How long a preview link lasts after its last use; in-process runs only. */
+  previewLifetimeMs?: number | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
 }
@@ -86,6 +88,9 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     port: options.port ?? 0,
     ...(options.ui && { ui: options.ui }),
     ...(options.modify && { modify: options.modify }),
+    ...(options.previewLifetimeMs !== undefined && {
+      previewLifetimeMs: options.previewLifetimeMs,
+    }),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

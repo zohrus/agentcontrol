@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 08:35 UTC";
+const UPDATED = "23 Nov 2026, 10:10 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -208,6 +208,8 @@ const C = [
   { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"progress", desc:"Done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages. In progress: workdir seam (worktree or plain folder), single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
   { id:"server-security", phase:"p2", name:"Local server lock-down", status:"done", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app. The token is sent as a header, never as a cookie. 12 tests.", path:"packages/app/src/security" },
+  { id:"real-agent", phase:"p0s", name:"Real Claude Code through the app", status:"done", desc:"Nine real scenarios pass through relay, app and UI: edit with approval, reject, cancel, second prompt, usage, restarts, archive, Modify. Three bugs found and fixed. Codex still unverified (no working key).", path:"scripts/real-agent-smoke.ts" },
+  { id:"readme", phase:"p0", name:"README and first-run fixes", status:"done", desc:"README, contributing guide and docs index, every command run for real. Plain messages for a busy port, a missing folder and a stopped agent.", path:"README.md" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
@@ -233,8 +235,8 @@ const C = [
   { id:"session-list", phase:"p3", name:"Session list", status:"done", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
   { id:"session-view", phase:"p3", name:"Session view", status:"done", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
   { id:"changes-tab", phase:"p3", name:"Changes and Editor tabs", status:"done", desc:"Monaco diff of the worktree and a file editor; Open in VS Code.", path:"" },
-  { id:"html-preview", phase:"p3", name:"HTML preview (browser support)", status:"progress", desc:"Render an HTML file from a session's worktree inside the app, in a sandboxed Preview tab that refreshes when the agent edits it.", path:"" },
-  { id:"md-preview", phase:"p3", name:"Markdown preview", status:"progress", desc:"Rendered Markdown in the Preview tab. Only if a maintained open-source library passes our dependency rules (marked, markdown-it or micromark to evaluate).", path:"" },
+  { id:"html-preview", phase:"p3", name:"HTML preview (browser support)", status:"done", desc:"Render an HTML file from a session's worktree inside the app, in a sandboxed Preview tab that refreshes when the agent edits it.", path:"" },
+  { id:"md-preview", phase:"p3", name:"Markdown preview", status:"done", desc:"Rendered Markdown in the Preview tab, using marked (no dependencies, MIT) and DOMPurify, inside the same sandbox as HTML previews.", path:"" },
   // Phase 4
   { id:"modify", phase:"p4", name:"Modify agent", status:"done", desc:"Local agent session that only edits ui-staging/; the app runs the checks.", path:"packages/app/src/modify" },
   { id:"ui-versions", phase:"p4", name:"UI versions", status:"done", desc:"Hidden git repo (isomorphic-git): each Keep is a commit, Undo, history.", path:"packages/app/src/ui-versions" },
@@ -261,10 +263,9 @@ const C = [
 
 const NOW = [
   "Compiled app working end to end with no source tree (needed for the Mac release)",
-  "Real Claude Code driven through the whole app, with fixes for what breaks",
   "Follow-up fixes: app start when the relay is down, relay shutdown order, weak coverage spots, version numbers",
-  "Preview tab (final check) and README with first-run check (final check)",
-  "Paused until the machine has room: remote SSH workspaces, UI coverage",
+  "UI under the coverage rule: browser coverage and the missing browser tests",
+  "Paused until the machine has room: remote SSH workspaces",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
@@ -293,6 +294,7 @@ const LOG = [
   ["23 Nov 2026 00:10", "Landed: harness config backend (38 tests, verified against real Claude Code and Codex) and the Modify agent backend (fenced agent, check gate, Keep and Undo, default-UI updates, /_safe; 26 tests). Coverage 98.2%. Next wave started: Modify panel in the UI, Preview tab, SSH workspaces, follow-up fixes."],
   ["23 Nov 2026 00:45", "Local server lock-down landed: every route, the live stream and /_safe now refuse requests from other websites or without the app's secret token. A working local copy runs from source with bun dev (checked on Linux; not yet run on a Mac)."],
   ["23 Nov 2026 08:35", "CI on GitHub is green on main for the first time. The Swift menu bar app builds on a real Mac for both chip types and the app bundle is assembled and ad-hoc signed there. Modify panel in the UI landed with 10 browser tests. Fixed: tests run from a git hook were changing this repository's own git settings. Decision: first Mac release is unsigned; Apple Developer ID parked."],
+  ["23 Nov 2026 10:10", "Landed: real Claude Code working through the whole app (it never asked for permission before; fixed), README and first-run fixes, and the Preview tab with sandboxed HTML and Markdown. 82 test runs pass, coverage 98.4%."],
 ];
 /* ===== END DATA ===== */
 

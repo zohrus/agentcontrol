@@ -25,6 +25,7 @@ export const RelayMethods = {
   [N.reposSetSetup]: { params: w.ReposSetSetupParams, result: w.ReposSetSetupResult },
   [N.fsTree]: { params: f.FsSessionParams, result: f.FsTreeResult },
   [N.fsRead]: { params: f.FsReadParams, result: f.FsReadResult },
+  [N.fsReadBytes]: { params: f.FsReadBytesParams, result: f.FsReadBytesResult },
   [N.fsWrite]: { params: f.FsWriteParams, result: f.FsWriteResult },
   [N.fsWatch]: { params: f.FsSessionParams, result: f.FsWatchResult },
   [N.usage]: { params: UsageParams, result: UsageResult },

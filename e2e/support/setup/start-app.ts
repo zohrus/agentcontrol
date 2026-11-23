@@ -80,6 +80,8 @@ export interface StartOptions {
   uiDist?: string;
   /** The default UI and the agent that edits it; the live and staging UI are ready at start. */
   modify?: ModifyConfig;
+  /** How long a preview link stays valid after its last use, in milliseconds (default: an hour). */
+  previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
   /** The repo holds this many files besides its readme, so a worktree has plenty. */
@@ -123,8 +125,10 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   if (options.relayStopped) await host.stop();
   const heard = newHeard();
   const ui = uiOf(options);
+  const fixed = { dataDir, env, host, heard, ui, relayDown: options.relayStopped };
+  const lifetime = { previewLifetimeMs: options.previewLifetimeMs };
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, relayDown: options.relayStopped, ...extra });
+    openApp({ ...fixed, ...lifetime, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -153,6 +157,13 @@ interface Opened {
   close(): Promise<void>;
 }
 
+/** Records, each time the app sees a relay connection end, how many have ended so far. */
+function countEndedConnections(heard: Heard): () => void {
+  return () => {
+    heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
+  };
+}
+
 async function openApp(options: {
   dataDir: string;
   env: Record<string, string>;
@@ -162,13 +173,12 @@ async function openApp(options: {
   relayDown: boolean | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
+  previewLifetimeMs?: number | undefined;
 }): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({
     ...options,
-    onRelayConnectionEnded: () => {
-      heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
-    },
+    onRelayConnectionEnded: countEndedConnections(heard),
   });
   const token = await readApiToken(options.dataDir);
   const sdk = createClient({ baseUrl: app.baseUrl, token });

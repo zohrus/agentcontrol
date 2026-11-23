@@ -1,3 +1,4 @@
+export { readBytes } from "./read-bytes.ts";
 export { readFileAt } from "./read.ts";
 export { fileTree } from "./tree.ts";
 export { watchFiles } from "./watch.ts";

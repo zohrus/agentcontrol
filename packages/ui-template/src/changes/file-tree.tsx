@@ -1,6 +1,7 @@
 import type { FsEntry } from "@agentcontrol/protocol";
 import { useState } from "react";
 import { cn, inputClass } from "../components/index.ts";
+import { PreviewAction } from "../preview/index.ts";
 
 const MAX_SHOWN = 200;
 
@@ -8,6 +9,7 @@ type Props = {
   entries: readonly FsEntry[];
   selectedPath: string | undefined;
   onSelect: (path: string) => void;
+  onPreview: (path: string) => void;
 };
 
 /** The files whose name contains the filter: the first MAX_SHOWN to list, and how many there are. */
@@ -22,23 +24,26 @@ function FileRow({
   path,
   selected,
   onSelect,
+  onPreview,
 }: {
   path: string;
   selected: boolean;
   onSelect: () => void;
+  onPreview: (path: string) => void;
 }) {
   return (
-    <li>
+    <li className="flex items-center gap-1">
       <button
         type="button"
         onClick={onSelect}
         className={cn(
-          "w-full truncate rounded px-1.5 py-0.5 text-left font-mono text-[11px]",
+          "min-w-0 flex-1 truncate rounded px-1.5 py-0.5 text-left font-mono text-[11px]",
           selected && "bg-accent-soft",
         )}
       >
         {path}
       </button>
+      <PreviewAction path={path} onPreview={onPreview} />
     </li>
   );
 }
@@ -58,7 +63,7 @@ function FilterInput({ value, onChange }: { value: string; onChange: (text: stri
 }
 
 /** Every file of the worktree, filterable by name; picking one opens it in the editor. */
-export function FileTree({ entries, selectedPath, onSelect }: Props) {
+export function FileTree({ entries, selectedPath, onSelect, onPreview }: Props) {
   const [filter, setFilter] = useState("");
   const { shown, total } = matching(entries, filter);
   return (
@@ -73,6 +78,7 @@ export function FileTree({ entries, selectedPath, onSelect }: Props) {
             key={path}
             path={path}
             selected={path === selectedPath}
+            onPreview={onPreview}
             onSelect={() => {
               onSelect(path);
             }}
