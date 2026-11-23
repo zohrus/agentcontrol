@@ -24,11 +24,14 @@ export interface WorkspaceOptions {
   relayVersion?: string;
   /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
   dataFolderBehindALink?: boolean;
+  /** Puts files into the app's data folder before the app starts, as an earlier release left them. */
+  beforeTheAppStarts?: (dataDir: string) => Promise<void>;
 }
 
 /** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
 export async function prepareWorkspace(options: WorkspaceOptions) {
   const dataDir = await aDataFolder(options.dataFolderBehindALink === true);
+  await options.beforeTheAppStarts?.(dataDir);
   const repoPath = await createLocalRepo({ extraFiles: options.repoFiles ?? 0 });
   const mockAgent = await createMockAgent();
   const env = { ...mockAgentEnvironment(mockAgent), ...options.relayEnv };

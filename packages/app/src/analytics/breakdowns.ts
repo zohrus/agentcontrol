@@ -27,7 +27,8 @@ function rowSlices(call: {
     for (const row of rows) {
       const { key, label } = call.keyOf(row);
       const slice = groups.get(key) ?? { key, label, session, rows: [] };
-      groups.set(key, { ...slice, rows: [...slice.rows, row] });
+      slice.rows.push(row);
+      groups.set(key, slice);
     }
     return [...groups.values()];
   });
@@ -48,7 +49,11 @@ function breakdownOf(key: string, slices: Slice[]): Breakdown {
 
 function grouped(slices: Slice[]): Breakdown[] {
   const byKey = new Map<string, Slice[]>();
-  for (const slice of slices) byKey.set(slice.key, [...(byKey.get(slice.key) ?? []), slice]);
+  for (const slice of slices) {
+    const group = byKey.get(slice.key) ?? [];
+    group.push(slice);
+    byKey.set(slice.key, group);
+  }
   return [...byKey].map(([key, group]) => breakdownOf(key, group));
 }
 

@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { Store } from "../store/index.ts";
 import { collectSessions } from "./collect.ts";
+import { createFactsCache } from "./facts-cache.ts";
 import { filtersOf, FilterQuery } from "./filters.ts";
 import { insightsOf } from "./insights.ts";
 import { sortedSessions, TableQuery, tableOptionsOf } from "./session-table.ts";
@@ -37,9 +38,10 @@ export interface Analytics {
 export function createAnalytics(call: { store: Store; now?: () => number }): Analytics {
   const { store } = call;
   const now = call.now ?? Date.now;
+  const cache = createFactsCache();
   const collect = (query: z.infer<typeof FilterQuery>) => {
     const filters = filtersOf(query);
-    return { filters, entries: collectSessions({ store, filters, now: now() }) };
+    return { filters, entries: collectSessions({ store, cache, filters, now: now() }) };
   };
   return {
     summary: (query) => {
