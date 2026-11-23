@@ -23,6 +23,8 @@ export interface SessionContext {
   stopRecording(): void;
   /** Appends an event without waiting; a failed write is reported on stderr. */
   record(sessionId: SessionId, input: EventInput): void;
+  /** Ends the session's terminals; called before its folder is removed. */
+  endTerminals(sessionId: SessionId): Promise<void>;
   /** The next free index for a block of ports. */
   nextPortIndex(): number;
 }
@@ -35,6 +37,8 @@ export interface SessionInfo {
   branch: string;
   /** Absent means "worktree". For a "directory" session `worktreePath` is its folder. */
   kind?: SessionKind | undefined;
+  /** First port of the session's block of ports (`PORT`), when it has one. */
+  portBase?: number | undefined;
 }
 
 /** A session's location, from its in-memory state; fails with sessionNotFound when it has none. */

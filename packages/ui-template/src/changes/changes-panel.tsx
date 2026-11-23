@@ -3,6 +3,7 @@ import type { SessionId } from "@agentcontrol/sdk";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/index.ts";
 import { PreviewTab } from "../preview/index.ts";
+import { TerminalTab } from "../terminal/index.ts";
 import { ChangesTab, type ChangesTabProps } from "./changes-tab.tsx";
 import { EditorTab, type EditorTabProps } from "./editor-tab.tsx";
 import { FileTree } from "./file-tree.tsx";
@@ -72,6 +73,7 @@ function PanelTabs({ changes, vscode }: { changes: number; vscode: string }) {
       <TabsTrigger value="changes">Changes {changes}</TabsTrigger>
       <TabsTrigger value="editor">Editor</TabsTrigger>
       <TabsTrigger value="preview">Preview</TabsTrigger>
+      <TabsTrigger value="terminal">Terminal</TabsTrigger>
       <OpenInVSCode href={vscode} />
     </TabsList>
   );
@@ -97,6 +99,9 @@ export function ChangesPanel(props: ChangesPanelProps) {
       </TabsContent>
       <TabsContent value="editor">
         <EditorContent {...props} onPreview={onPreview} />
+      </TabsContent>
+      <TabsContent value="terminal" forceMount>
+        <TerminalTab id={props.sessionId} active={tab === "terminal"} />
       </TabsContent>
       <TabsContent value="preview">
         <PreviewContent {...props} />

@@ -1,4 +1,11 @@
-import type { RepoId, RepoSetup, SessionId, StartSession } from "@agentcontrol/sdk";
+import type {
+  Client,
+  OpenTerminal,
+  RepoId,
+  RepoSetup,
+  SessionId,
+  StartSession,
+} from "@agentcontrol/sdk";
 import { saveFile } from "./changes-data.ts";
 import {
   answerPermission,
@@ -76,6 +83,16 @@ function resyncOf(ctx: Context, selection: ReturnType<typeof createSelection>): 
   };
 }
 
+/** What the UI asks of the SDK as it is, with no state of its own. */
+function passedThrough(client: Client) {
+  return {
+    /** The address that shows a worktree file as a page (a new `?v=` each time, on the session's one preview ticket). */
+    previewUrl: (id: SessionId, path: string) => client.files.previewUrl(id, path),
+    /** Opens the user's shell in the session's folder (the Terminal tab). */
+    openTerminal: (id: SessionId, options: OpenTerminal) => client.terminal.open(id, options),
+  };
+}
+
 /** What the UI can ask for: the state to read, and the actions the user can take. */
 export function createController({ client, report }: ControllerOptions) {
   const store = createStore(initialState);
@@ -101,8 +118,7 @@ export function createController({ client, report }: ControllerOptions) {
       }),
     /** Calls `listener` for every change to a session's files; returns the function that stops it. */
     watchFileChanges: changes.add,
-    /** The address that shows a worktree file as a page (a new `?v=` each time, on the session's one preview ticket). */
-    previewUrl: (id: SessionId, path: string) => client.files.previewUrl(id, path),
+    ...passedThrough(client),
     select: selection.select,
     openFile: selection.openFile,
   };

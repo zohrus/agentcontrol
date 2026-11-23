@@ -1,30 +1,25 @@
-import { LOCAL_WORKSPACE } from "../data/index.ts";
-import type { Insight, SessionAnalytics } from "@agentcontrol/sdk";
+import type { Insight } from "@agentcontrol/sdk";
 
 type Props = {
   insights: Insight[];
-  sessions: SessionAnalytics[];
   onOpen: (workspaceId: string, sessionId: string) => void;
 };
 
 const MOST_LINKS = 5;
 
-function Links({ insight, sessions, onOpen }: Omit<Props, "insights"> & { insight: Insight }) {
-  const workspaceOf = (id: string): string =>
-    sessions.find((s) => s.sessionId === id)?.workspaceId ?? LOCAL_WORKSPACE;
-  const titleOf = (id: string): string => sessions.find((s) => s.sessionId === id)?.title ?? id;
+function Links({ insight, onOpen }: Pick<Props, "onOpen"> & { insight: Insight }) {
   return (
     <ul className="m-0 mt-1 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-[11px]">
-      {insight.sessionIds.slice(0, MOST_LINKS).map((id) => (
-        <li key={id}>
+      {insight.sessions.slice(0, MOST_LINKS).map((ref) => (
+        <li key={`${ref.workspaceId}/${ref.sessionId}`}>
           <button
             type="button"
             className="max-w-56 truncate text-accent underline-offset-2 hover:underline"
             onClick={() => {
-              onOpen(workspaceOf(id), id);
+              onOpen(ref.workspaceId, ref.sessionId);
             }}
           >
-            {titleOf(id)}
+            {ref.title}
           </button>
         </li>
       ))}
@@ -33,7 +28,7 @@ function Links({ insight, sessions, onOpen }: Omit<Props, "insights"> & { insigh
 }
 
 /** What stands out, in plain sentences, each with links to the sessions that show it. */
-export function InsightsPanel({ insights, sessions, onOpen }: Props) {
+export function InsightsPanel({ insights, onOpen }: Props) {
   return (
     <section
       aria-labelledby="insights-title"
@@ -49,7 +44,7 @@ export function InsightsPanel({ insights, sessions, onOpen }: Props) {
           {insights.map((insight) => (
             <li key={insight.rule} data-testid={`insight-${insight.rule}`}>
               <p className="m-0">{insight.text}</p>
-              <Links insight={insight} sessions={sessions} onOpen={onOpen} />
+              <Links insight={insight} onOpen={onOpen} />
             </li>
           ))}
         </ul>

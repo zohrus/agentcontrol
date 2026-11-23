@@ -21,7 +21,10 @@ async function makeRepo(): Promise<string> {
 
 type Events = { events: { kind: string }[] };
 
-export async function sessionRuns(app: SmokeApp): Promise<void> {
+/** Starts a session with the mock agent and waits for its turn to end; returns its id and events. */
+export async function runsAMockSession(
+  app: SmokeApp,
+): Promise<{ id: string; events: Events["events"] }> {
   const reply = { kind: "reply", text: "hello from the mock agent" };
   await writeScript(app, [[reply, { kind: "finish", stopReason: "end_turn" }]]);
   const body = { agent: "mock", repoPath: await makeRepo(), baseBranch: "main", prompt: "hi" };
@@ -37,6 +40,11 @@ export async function sessionRuns(app: SmokeApp): Promise<void> {
       return events.some((event) => event.kind === "turn-ended") ? events : undefined;
     },
   });
+  return { id: started.sessionId, events };
+}
+
+export async function sessionRuns(app: SmokeApp): Promise<void> {
+  const { events } = await runsAMockSession(app);
   expect(
     events.some((event) => event.kind === "agent-started"),
     "the agent never started",

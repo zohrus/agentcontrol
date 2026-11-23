@@ -109,3 +109,12 @@ export function expectSafePageCallToBeAccepted(call: SafePageCall): void {
     );
   }
 }
+
+/** The socket was closed with WebSocket close code 1008 (policy violation). */
+export function expectSocketClosedAsPolicyViolation(code: number): void {
+  if (code !== 1008) {
+    throw new Error(
+      `expected the app to close the socket with 1008, but it closed it with ${String(code)}`,
+    );
+  }
+}

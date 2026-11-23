@@ -9,7 +9,7 @@ interface PageWithToken {
  * The secret the app put into the page it served (`<meta name="agentcontrol-token">`), or
  * undefined outside a browser page. The app adds it only to documents it serves itself.
  */
-function tokenFromPage(): string | undefined {
+export function tokenFromPage(): string | undefined {
   const { document } = globalThis as PageWithToken;
   const meta = document?.querySelector('meta[name="agentcontrol-token"]');
   return meta?.getAttribute("content") ?? undefined;

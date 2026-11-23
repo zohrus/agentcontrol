@@ -1,6 +1,7 @@
 import type { Context, MiddlewareHandler } from "hono";
 import { refusalFor } from "./origin.ts";
 import { isHtml, withTokenInPage } from "./page-token.ts";
+import { socketTokenOf } from "./socket-token.ts";
 import { isToken } from "./token.ts";
 
 export interface GuardOptions {
@@ -22,6 +23,10 @@ function refuse(c: Context, refusal: { status: 401 | 403; code: string; message:
 function bearerOf(header: string | undefined): string | undefined {
   return /^Bearer (\S+)$/i.exec(header ?? "")?.[1];
 }
+
+/** The secret the request carries: a bearer header, or (WebSocket upgrades) a subprotocol. */
+const secretOf = (c: Context): string | undefined =>
+  bearerOf(c.req.header("authorization")) ?? socketTokenOf(c.req.raw);
 
 const isApiPath = (path: string): boolean => path === "/api" || path.startsWith("/api/");
 
@@ -78,7 +83,7 @@ export function guard(options: GuardOptions): MiddlewareHandler {
       fromAnySite: isPreviewPath(c.req.path) && readsAPage(c),
     });
     if (refusal) return refuse(c, refusal);
-    const given = bearerOf(c.req.header("authorization"));
+    const given = secretOf(c);
     if (!isToken({ given, token: options.token }) && !readsAPage(c)) {
       return refuse(c, unauthorized);
     }

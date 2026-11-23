@@ -50,3 +50,15 @@ export async function expectSessionTable(
     fail(`expected the session table to list ${JSON.stringify(call.titles)}`, titles);
   }
 }
+
+/** The insight's link to the session says which workspace the session is in, and its title. */
+export async function expectInsightToLinkTo(
+  app: AppAccess,
+  call: { rule: string; workspaceId: string; title: string },
+): Promise<void> {
+  const insights = await app.sdk.analytics.insights({});
+  const links = insights.find((insight) => insight.rule === call.rule)?.sessions ?? [];
+  const found = links.some((l) => l.workspaceId === call.workspaceId && l.title === call.title);
+  if (!found)
+    fail(`expected "${call.rule}" to link to "${call.title}" in ${call.workspaceId}`, links);
+}

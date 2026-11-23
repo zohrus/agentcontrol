@@ -1,3 +1,4 @@
+import { pointingAt } from "./insight-sessions.ts";
 import type { Breakdown, Insight, SessionAnalytics } from "./types.ts";
 import { count, dollars, percent, quoted } from "./wording.ts";
 
@@ -22,7 +23,7 @@ export function lowCacheShare(sessions: SessionAnalytics[]): Insight | undefined
   if (total < MIN_INPUT_TOKENS || reads / total >= LOW_CACHE_SHARE) return undefined;
   const fresh = sessions.toSorted((a, b) => freshInput(b) - freshInput(a));
   const text = `Only ${percent(reads / total)} of the input tokens were cache reads, which are cheap; ${percent(1 - reads / total)} were sent fresh. Long sessions that keep their context steady use the cache more.`;
-  return { rule: "low-cache-share", text, sessionIds: fresh.slice(0, 5).map((s) => s.sessionId) };
+  return { rule: "low-cache-share", text, ...pointingAt(fresh.slice(0, 5)) };
 }
 
 const costPerLine = (s: SessionAnalytics): number =>
@@ -49,7 +50,7 @@ export function costlyPerLine(sessions: SessionAnalytics[]): Insight | undefined
   const [worst] = outliers;
   if (worst === undefined) return undefined;
   const text = `${count(outliers.length, "session")} cost more than ${String(OUTLIER_FACTOR)}x the median per changed line (${dollars(typical)}); ${quoted(worst.title)} cost ${dollars(costPerLine(worst))} per line.`;
-  return { rule: "costly-per-line", text, sessionIds: outliers.map((s) => s.sessionId) };
+  return { rule: "costly-per-line", text, ...pointingAt(outliers) };
 }
 
 const perTurn = (model: Breakdown): number => model.tokens.total / Math.max(1, model.turns);
@@ -68,5 +69,5 @@ export function modelsCompared(call: {
   if (used.length < 2 || perTurn(heaviest) < MODEL_GAP * perTurn(lightest)) return undefined;
   const text = `${heaviest.label} used ${Math.round(perTurn(heaviest)).toLocaleString("en-US")} tokens per turn, ${(perTurn(heaviest) / perTurn(lightest)).toFixed(1)}x ${lightest.label} (${Math.round(perTurn(lightest)).toLocaleString("en-US")}).`;
   const behind = call.sessions.filter((s) => s.model === heaviest.key || s.model === lightest.key);
-  return { rule: "models-compared", text, sessionIds: behind.map((s) => s.sessionId) };
+  return { rule: "models-compared", text, ...pointingAt(behind) };
 }

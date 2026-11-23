@@ -14,6 +14,8 @@ async function stopAgent(ctx: SessionContext, sessionId: SessionId): Promise<voi
 async function tearDown(ctx: SessionContext, call: { sessionId: SessionId; info: SessionInfo }) {
   const { sessionId, info } = call;
   await stopAgent(ctx, sessionId);
+  // A shell or a watcher it started would otherwise keep using the folder while it is removed.
+  await ctx.endTerminals(sessionId);
   await workdirOf(info).remove();
   await ctx.log.append(sessionId, { kind: "session-archived", payload: {} });
 }

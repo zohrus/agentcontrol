@@ -1,4 +1,4 @@
-export { createWorktree, portBaseFor } from "./create.ts";
+export { createWorktree, portBaseFor, portEnv } from "./create.ts";
 export type { CreatedWorktree } from "./create.ts";
 export { diffWorktree } from "./diff.ts";
 export { removeWorktree } from "./remove.ts";
