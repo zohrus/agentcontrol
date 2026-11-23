@@ -16,6 +16,14 @@ const only = onlyAt === -1 ? "" : (process.argv[onlyAt + 1] ?? "");
 const linuxApp = process.argv.includes("--linux-app");
 const pkg = (await Bun.file("package.json").json()) as { version?: string };
 const version = pkg.version ?? "0.0.0";
+const protocol = (await Bun.file("packages/protocol/package.json").json()) as { version?: string };
+// The running code reports the protocol package's version, because that file ships in a release.
+if (protocol.version !== version) {
+  console.error(
+    `packages/protocol/package.json says ${String(protocol.version)} but the release is ${version}. Make them the same.`,
+  );
+  process.exit(1);
+}
 
 const { build, skipped } = splitByEntry(
   allTargets({ linuxApp }).filter((t) => t.name.includes(only)),
