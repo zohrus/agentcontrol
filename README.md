@@ -22,7 +22,7 @@ Pre-release. There is no installer yet. **Running from source is the supported w
   it on first open. Open it through System Settings > Privacy & Security > Open Anyway, or run
   `xattr -dr com.apple.quarantine /Applications/AgentControl.app`.
 - No Homebrew install and no automatic updates yet.
-- Not finished: "Analytics" and "Modify this UI" in the toolbar (see the roadmap below), remote
+- Not finished: "Analytics" in the toolbar, the "Modify this UI" panel (new, not yet tried by hand here), remote
   (SSH) workspaces, the Preview tab.
 
 ## Requirements
@@ -84,7 +84,7 @@ Everything is under `~/.agentcontrol/` (set `AGENTCONTROL_HOME` or `--data-dir` 
 | `relay/repos.json` | The repositories you added, with their worktree setup. |
 | `relay/sessions/<id>/events.jsonl` | The full log of one session. |
 | `relay/worktrees/<id>/` | The working copy of each live session. |
-| `ui/`, `ui-staging/`, `ui-template/`, `ui-upstream-version`, `ui.git/` | The copy of the UI that "Modify this UI" will edit, its versions, and the default it came from. `bun dev` serves the UI from `packages/ui-template` instead, so these are not used yet. |
+| `ui/`, `ui-staging/`, `ui-template/`, `ui-upstream-version`, `ui.git/` | The copy of the UI that "Modify this UI" edits, its versions, and the default it came from. `bun dev` serves the UI from `packages/ui-template`; I have not checked whether Modify changes show up in `bun dev`. |
 
 ### Stopping the relay
 
@@ -154,7 +154,7 @@ reach `main` through `bun run integrate`, not pull requests. Read [AGENTS.md](AG
 | Phase | State |
 |---|---|
 | Relay, local app, SDK and default UI | Working from source |
-| Modify agent (backend, `/_safe`) | Backend done; the "Modify this UI" panel is not connected yet |
+| Modify agent (backend, `/_safe`) | Backend done; the panel is connected, but I have not tried it by hand |
 | Mac app and `.dmg` | Written, not run on a Mac; unsigned when released |
 | Remote (SSH) workspaces | In progress |
 | Harness config (MCP, skills, hooks) | Backend done; no UI yet |
