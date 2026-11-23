@@ -84,7 +84,7 @@ const askToRunCommand: Handler<"askToRunCommand"> = async (step, turn) => {
     status: "pending",
     rawInput,
   });
-  const allowed = await askUser(turn, step.command);
+  const allowed = !turn.asksBeforeActing || (await askUser(turn, step.command));
   const status = allowed ? "completed" : "failed";
   await send(turn, { sessionUpdate: "tool_call_update", toolCallId, status });
   return allowed ? undefined : "end_turn";

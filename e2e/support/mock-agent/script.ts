@@ -35,7 +35,14 @@ const stepSchema = z.discriminatedUnion("kind", [
 ]);
 
 /** One list of steps per prompt turn: the first prompt runs turn 0, the second turn 1, and so on. */
-const scriptSchema = z.object({ turns: z.array(z.array(stepSchema)) });
+const scriptSchema = z.object({
+  turns: z.array(z.array(stepSchema)),
+  /**
+   * Behave like the Claude Code adapter: offer its permission modes and start in this one. In any
+   * mode but "default" (shown as "Manual") the agent never asks before it runs a command.
+   */
+  startsInMode: z.string().optional(),
+});
 
 export type Step = z.infer<typeof stepSchema>;
 export type MockAgentScript = z.infer<typeof scriptSchema>;

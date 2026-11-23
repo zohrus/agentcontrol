@@ -32,11 +32,17 @@ async function commit(worktree: string, file: { path: string; content: string })
 /** The things a person does with a session in the app, as relay calls. */
 function sessionUserOf(relay: RelayAccess) {
   return {
-    /** Starts a session on the local repo; the first prompt is sent once the agent is up. */
-    startsSession: async (options: { prompt: string }): Promise<Session> => {
+    /**
+     * Starts a session on the local repo; the first prompt is sent once the agent is up. With
+     * `agent: "claude-code"` the relay's Claude Code command must point at the mock agent.
+     */
+    startsSession: async (options: {
+      prompt: string;
+      agent?: "mock" | "claude-code";
+    }): Promise<Session> => {
       await relay.mockAgent.writeScript();
       const { sessionId } = await relay.call(RelayName.sessionsCreate, {
-        agent: "mock",
+        agent: options.agent ?? "mock",
         repoPath: relay.repoPath,
         baseBranch: "main",
         prompt: options.prompt,

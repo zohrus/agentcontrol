@@ -5,6 +5,7 @@ import {
   type RequestPermissionRequest,
 } from "@agentclientprotocol/sdk";
 import { commandFor } from "./commands.ts";
+import { modeToSwitchTo } from "./modes.ts";
 import { type SpawnedAgent, spawnAgent } from "./spawn.ts";
 import { tapStream } from "./tap.ts";
 import type { AgentProcess, PermissionAnswer, StartAgentOptions } from "./types.ts";
@@ -41,11 +42,15 @@ async function handshake(connection: Connection, options: StartAgentOptions): Pr
     protocolVersion: PROTOCOL_VERSION,
     clientCapabilities: {},
   });
-  const { sessionId } = await connection.agent.request(methods.agent.session.new, {
+  const { sessionId, modes } = await connection.agent.request(methods.agent.session.new, {
     cwd: options.cwd,
     mcpServers: [],
     ...(options.sessionMeta ? { _meta: options.sessionMeta } : {}),
   });
+  const modeId = modeToSwitchTo(options.kind, modes);
+  if (modeId !== undefined) {
+    await connection.agent.request(methods.agent.session.setMode, { sessionId, modeId });
+  }
   return sessionId;
 }
 
