@@ -18,6 +18,7 @@ import { terminalHandlers } from "./handlers-terminal.ts";
 import { usageHandlers } from "./handlers-usage.ts";
 import { workspaceHandlers } from "./handlers-workspace.ts";
 import { socketPathIn, tryConnect } from "./socket.ts";
+import { waitForStoppingRelay } from "./stopping.ts";
 
 export const pidFileIn = (dataDir: string): string => join(dataDir, "relay.pid");
 
@@ -42,12 +43,15 @@ function serve(socket: Socket, handlers: Handlers): void {
   socket.on("error", () => undefined);
 }
 
-async function claimSocket(socketPath: string): Promise<void> {
+async function claimSocket(call: { socketPath: string; pidFile: string }): Promise<void> {
+  const { socketPath, pidFile } = call;
   const running = await tryConnect(socketPath);
   if (running) {
     running.destroy();
     throw new Error(`A relay is already running at ${socketPath}.`);
   }
+  // Not listening any more does not mean gone: a relay that is stopping still has its files.
+  await waitForStoppingRelay(pidFile);
   await rm(socketPath, { force: true });
 }
 
@@ -174,7 +178,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const { dataDir } = options;
   await mkdir(dataDir, { recursive: true });
   const socketPath = socketPathIn(dataDir);
-  await claimSocket(socketPath);
+  await claimSocket({ socketPath, pidFile: pidFileIn(dataDir) });
   const hostEnv = hostEnvFor(options);
   const { handlers, sessions, terminals } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);

@@ -7,6 +7,7 @@ import { eventually } from "./eventually.ts";
 import { connectToRelay, type RelayClient } from "./relay-client.ts";
 import type { SshHost } from "./ssh-host.ts";
 import { writeRelayBinary } from "./ssh-relay-binary.ts";
+import { tryConnect } from "./try-connect.ts";
 import { socketWire } from "./wire.ts";
 
 /** A relay of an older version already running on the host, as a previous app version left it. */
@@ -19,12 +20,18 @@ export interface OldRelay {
   endsTheWork(sessionId: SessionId): Promise<void>;
 }
 
-/** Connects to the relay daemon's socket once it is there, and follows its events. */
+/**
+ * Connects to the relay daemon's socket once it takes clients, and follows its events. The socket
+ * file is there a moment before the daemon listens on it, so the file is not proof: only a
+ * connection that is accepted is.
+ */
 async function connectToDaemon(host: SshHost): Promise<RelayClient> {
   const socket = join(host.relayDataDir, "relay.sock");
-  await eventually("expected the old relay to start", () =>
-    Promise.resolve(existsSync(socket) ? undefined : "it has no socket yet"),
-  );
+  await eventually("expected the old relay to start", async () => {
+    const probe = existsSync(socket) ? await tryConnect(socket) : undefined;
+    probe?.destroy();
+    return probe === undefined ? "it takes no clients yet" : undefined;
+  });
   const client = connectToRelay(socketWire(socket));
   onTestEnd(() => client.disconnect());
   await client.call(RelayName.eventsSubscribe, { afterSeq: {} });
