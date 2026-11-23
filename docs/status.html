@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 00:10 UTC";
+const UPDATED = "23 Nov 2026, 00:45 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -207,7 +207,7 @@ const C = [
   { id:"coverage", phase:"p0", name:"Coverage gate", status:"done", desc:"End-to-end line coverage must be at least 95%, in total and on changed lines; now 97.95%. Deterministic: five identical runs. Enforced in the check, before every push and in CI. The UI package is not counted yet.", path:"scripts/coverage.ts" },
   { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"progress", desc:"Done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages. In progress: workdir seam (worktree or plain folder), single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
-  { id:"server-security", phase:"p2", name:"Local server lock-down", status:"progress", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app.", path:"packages/app/src/security" },
+  { id:"server-security", phase:"p2", name:"Local server lock-down", status:"done", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app. The token is sent as a header, never as a cookie. 12 tests.", path:"packages/app/src/security" },
   { id:"status-page", phase:"p0", name:"Status page", status:"done", desc:"This page.", path:"docs/status.html" },
   // Spike
   { id:"spike", phase:"p0s", name:"ACP spike with real agents", status:"progress", desc:"Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load confirmed. Codex still needs an OpenAI key and network access to api.openai.com.", path:"spike/" },
@@ -260,7 +260,6 @@ const C = [
 ];
 
 const NOW = [
-  "Local server lock-down: final rebase so it also covers /_safe, Modify and config routes",
   "Modify panel in the UI, connected to its backend, with browser tests",
   "Preview tab: HTML files from a worktree rendered in a sandbox, and Markdown",
   "Remote SSH workspaces (Phase 5): install the relay over ssh, version check, several workspaces at once, tested over real ssh",
@@ -289,6 +288,7 @@ const LOG = [
   ["22 Nov 2026 22:20", "Coverage gate landed: 97.95% of lines covered by end-to-end tests, five identical runs, 44 new tests, suite down from about 23 s to 4 s by running the relay and app in-process. Finished on their branches and waiting to land: UI on live data with 8 browser tests, Modify backend with 11 tests, harness config verified against real Claude Code and Codex."],
   ["22 Nov 2026 23:10", "UI on live data landed: every action wired through the SDK, served by the app with hot reload, 10 browser tests, reading normalised updates only. Playwright added as a dependency so browser tests run in CI. Local server lock-down started."],
   ["23 Nov 2026 00:10", "Landed: harness config backend (38 tests, verified against real Claude Code and Codex) and the Modify agent backend (fenced agent, check gate, Keep and Undo, default-UI updates, /_safe; 26 tests). Coverage 98.2%. Next wave started: Modify panel in the UI, Preview tab, SSH workspaces, follow-up fixes."],
+  ["23 Nov 2026 00:45", "Local server lock-down landed: every route, the live stream and /_safe now refuse requests from other websites or without the app's secret token. A working local copy runs from source with bun dev (checked on Linux; not yet run on a Mac)."],
 ];
 /* ===== END DATA ===== */
 

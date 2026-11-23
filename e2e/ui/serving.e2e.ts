@@ -58,6 +58,6 @@ test("an app serving a built UI does not answer a missing file or an unknown API
   // ********************************************************************
   // ** THEN both are answered with 404 and not the UI page
   // ********************************************************************
-  await expectAddressNotToBeTheUi(app.baseUrl, "/missing.js");
-  await expectAddressNotToBeTheUi(app.baseUrl, "/api/nope");
+  await expectAddressNotToBeTheUi(app, "/missing.js");
+  await expectAddressNotToBeTheUi(app, "/api/nope");
 });

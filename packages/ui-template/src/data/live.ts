@@ -2,6 +2,7 @@ import type { SessionId } from "@agentcontrol/sdk";
 import type { Context } from "./context.ts";
 import type { DataState } from "./model.ts";
 import { applyModify } from "./modify-data.ts";
+import { forgetReload } from "./recover.ts";
 import { applyEvent, applySummaries } from "./sessions-data.ts";
 
 type Handlers = {
@@ -18,6 +19,7 @@ function setConnection(ctx: Context, connection: DataState["connection"]): void 
 export function startLive(ctx: Context, handlers: Handlers): () => void {
   return ctx.client.subscribe({
     onOpen: () => {
+      forgetReload();
       setConnection(ctx, "connected");
       handlers.resync();
     },

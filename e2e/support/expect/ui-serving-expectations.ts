@@ -1,7 +1,12 @@
 import { BUILT_UI_MARKER } from "../setup/built-ui.ts";
 
-async function answerAt(baseUrl: string, path: string): Promise<{ status: number; body: string }> {
-  const answer = await fetch(`${baseUrl}${path}`);
+async function answerAt(
+  baseUrl: string,
+  path: string,
+  token?: string,
+): Promise<{ status: number; body: string }> {
+  const headers = token === undefined ? {} : { authorization: `Bearer ${token}` };
+  const answer = await fetch(`${baseUrl}${path}`, { headers });
   return { status: answer.status, body: await answer.text() };
 }
 
@@ -14,8 +19,11 @@ export async function expectAddressToServeTheUi(baseUrl: string, path: string): 
 }
 
 /** The app answers this address with a plain "not found", not the UI's page. */
-export async function expectAddressNotToBeTheUi(baseUrl: string, path: string): Promise<void> {
-  const { status, body } = await answerAt(baseUrl, path);
+export async function expectAddressNotToBeTheUi(
+  app: { baseUrl: string; token: string },
+  path: string,
+): Promise<void> {
+  const { status, body } = await answerAt(app.baseUrl, path, app.token);
   if (status !== 404 || body.includes(BUILT_UI_MARKER)) {
     throw new Error(
       `expected ${path} to answer 404 without the UI page, but it answered ${String(status)}`,
