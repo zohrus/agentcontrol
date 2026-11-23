@@ -1,3 +1,4 @@
+import { Markdown } from "./markdown.tsx";
 import type { ItemOf } from "./view-items.ts";
 
 export function UserMessage({ item }: { item: ItemOf<"user"> }) {
@@ -9,7 +10,7 @@ export function UserMessage({ item }: { item: ItemOf<"user"> }) {
 }
 
 export function AgentMessage({ item }: { item: ItemOf<"message"> }) {
-  return <div className="whitespace-pre-wrap leading-relaxed">{item.text}</div>;
+  return <Markdown text={item.text} />;
 }
 
 export function Thought({ item }: { item: ItemOf<"thought"> }) {
