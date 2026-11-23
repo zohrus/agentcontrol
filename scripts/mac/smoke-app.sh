@@ -61,7 +61,7 @@ agents="$(curl -fsS -H "Authorization: Bearer $token" "$url/api/agents")" || fai
 echo "$agents" | grep -q '"agents"' || fail "/api/agents answered $agents"
 echo "relay answered through the app: $agents"
 
-kill "$server"
+kill "$server" 2> /dev/null || fail "the server exited before the smoke test finished"
 for _ in $(seq 1 100); do kill -0 "$server" 2> /dev/null || break; sleep 0.1; done
 kill -0 "$server" 2> /dev/null && fail "the server did not stop on SIGTERM"
 server=""
