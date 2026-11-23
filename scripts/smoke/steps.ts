@@ -11,8 +11,10 @@ import { sessionRuns } from "./session-steps.ts";
 const migrationsJournal = join(import.meta.dir, "../../packages/app/drizzle/meta/_journal.json");
 
 async function health(app: SmokeApp): Promise<void> {
-  const answer = JSON.stringify(await callApi(app, { path: "/api/health" }));
-  expect(answer === '{"ok":true}', `/api/health answered ${answer}`);
+  const answer = (await callApi(app, { path: "/api/health" })) as { ok?: unknown; relay?: unknown };
+  // The app is healthy only with its relay connected: a compiled app that cannot start its relay fails here.
+  const healthy = answer.ok === true && answer.relay === "connected";
+  expect(healthy, `/api/health answered ${JSON.stringify(answer)}`);
 }
 
 async function uiDocument(app: SmokeApp): Promise<void> {
