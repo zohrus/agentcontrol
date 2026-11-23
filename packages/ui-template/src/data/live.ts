@@ -1,12 +1,13 @@
-import type { SessionId } from "@agentcontrol/sdk";
 import type { Context } from "./context.ts";
 import type { DataState } from "./model.ts";
 import { applyModify } from "./modify-data.ts";
 import { forgetReload } from "./recover.ts";
 import { applyEvent, applySummaries } from "./sessions-data.ts";
+import type { SessionRef } from "./session-ref.ts";
+import { applyWorkspace } from "./workspaces-data.ts";
 
 /** Paths that changed in a session's worktree. */
-export type FileChange = { sessionId: SessionId; paths: readonly string[] };
+export type FileChange = { ref: SessionRef; paths: readonly string[] };
 
 type Handlers = {
   /** The stream (re)connected: refetch what is shown, since messages may have been missed. */
@@ -38,8 +39,11 @@ export function startLive(ctx: Context, handlers: Handlers): () => void {
     onModify: (state) => {
       applyModify(ctx, state);
     },
-    onFilesChanged: ({ sessionId, paths }) => {
-      handlers.filesChanged({ sessionId, paths });
+    onWorkspace: (workspace) => {
+      applyWorkspace(ctx, workspace);
+    },
+    onFilesChanged: ({ workspaceId, sessionId, paths }) => {
+      handlers.filesChanged({ ref: { workspaceId, id: sessionId }, paths });
     },
   });
 }

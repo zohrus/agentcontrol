@@ -1,51 +1,61 @@
-import type { SessionId } from "@agentcontrol/protocol";
-import { useEffect } from "react";
+import type { WorkspaceInfo } from "@agentcontrol/sdk";
+import { useEffect, useState } from "react";
 import { Button, Dialog } from "../components/index.ts";
-import { useController, useData } from "../data/index.ts";
+import {
+  LOCAL_WORKSPACE,
+  type SessionRef,
+  useChoices,
+  useController,
+  useData,
+  useWorkspaces,
+} from "../data/index.ts";
 import { ConnectedModifyDialog } from "../modify/index.ts";
-import { NewSessionDialog } from "../new-session/index.ts";
-import { WorkspaceSetupDialog } from "../workspace-setup/index.ts";
+import { NewSessionDialog, type WorkspaceChoice } from "../new-session/index.ts";
+import { canTakeCommands } from "../workspaces/index.ts";
+import { ConfigDialog } from "./config-dialog.tsx";
+import { WorkspacesDialogs } from "./workspaces-dialogs.tsx";
 
 /** The dialogs the top bar opens. Analytics has no backend yet and only says so. */
-export type DialogName = "new-session" | "workspace" | "analytics" | "modify";
+export type DialogName =
+  | "new-session"
+  | "workspaces"
+  | "add-workspace"
+  | "config"
+  | "analytics"
+  | "modify";
 
 type Shared = { open: boolean; onOpenChange: (open: boolean) => void };
 
-function NewSession({ onStarted, ...shared }: Shared & { onStarted: (id: SessionId) => void }) {
+const choiceOf = (w: WorkspaceInfo): WorkspaceChoice => ({
+  id: w.id,
+  label: w.label,
+  connected: canTakeCommands(w),
+});
+
+function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: SessionRef) => void }) {
   const controller = useController();
-  const repos = useData((s) => s.repos);
-  const agents = useData((s) => s.agents);
+  const [workspaceId, setWorkspaceId] = useState(LOCAL_WORKSPACE);
+  const choices = useChoices(workspaceId);
+  const ready = useData((s) => s.choices[workspaceId] !== undefined);
+  const workspaces = useWorkspaces().filter((workspace) => workspace.state !== "removed");
+  useEffect(() => {
+    if (shared.open) void controller.workspaces.loadChoices(workspaceId);
+  }, [controller, shared.open, workspaceId]);
   return (
     <NewSessionDialog
       {...shared}
-      repos={repos}
-      agents={agents}
+      workspaces={workspaces.map(choiceOf)}
+      workspaceId={workspaceId}
+      ready={ready}
+      onWorkspaceChange={setWorkspaceId}
+      repos={choices.repos}
+      agents={choices.agents}
       onStart={(request) => {
-        void controller.startSession(request).then((id) => {
-          if (id !== undefined) onStarted(id);
+        void controller.startSession(request).then((ref) => {
+          if (ref !== undefined) onStarted(ref);
         });
       }}
-      onAddRepository={(path) => controller.addRepository(path)}
-    />
-  );
-}
-
-function Workspace(shared: Shared) {
-  const controller = useController();
-  const checks = useData((s) => s.checks);
-  const checking = useData((s) => s.checking);
-  const repos = useData((s) => s.repos);
-  useEffect(() => {
-    if (shared.open) void controller.checkWorkspace();
-  }, [controller, shared.open]);
-  return (
-    <WorkspaceSetupDialog
-      {...shared}
-      steps={checks}
-      checking={checking}
-      repos={repos}
-      onRecheck={() => void controller.checkWorkspace()}
-      onSaveSetup={(repoId, setup) => void controller.saveSetup(repoId, setup)}
+      onAddRepository={(path) => controller.addRepository(path, workspaceId)}
     />
   );
 }
@@ -71,7 +81,7 @@ function ComingSoon({ name, onClose }: { name: "analytics" | undefined; onClose:
 type Props = {
   open: DialogName | undefined;
   onOpenChange: (name: DialogName | undefined) => void;
-  onStarted: (id: SessionId) => void;
+  onStarted: (ref: SessionRef) => void;
 };
 
 /** Every dialog the top bar can open, each shown when `open` names it. */
@@ -86,7 +96,8 @@ export function AppDialogs({ open, onOpenChange, onStarted }: Props) {
   return (
     <>
       <NewSession {...shared("new-session")} onStarted={onStarted} />
-      <Workspace {...shared("workspace")} />
+      <WorkspacesDialogs menu={shared("workspaces")} add={shared("add-workspace")} />
+      <ConfigDialog {...shared("config")} />
       <ConnectedModifyDialog {...shared("modify")} />
       <ComingSoon
         name={soon}

@@ -1,6 +1,11 @@
-import type { SessionId } from "@agentcontrol/protocol";
 import type { Client } from "@agentcontrol/sdk";
-import { DataProvider, describeError, useOpenSession, useStatusStats } from "./data/index.ts";
+import {
+  DataProvider,
+  describeError,
+  type SessionRef,
+  useOpenSession,
+  useStatusStats,
+} from "./data/index.ts";
 import {
   AppShell,
   defaultStatusBarSlots,
@@ -27,41 +32,48 @@ type Open = (name: DialogName) => () => void;
 
 const topBarSlots = (open: Open) =>
   defaultTopBarSlots({
-    onConfig: open("workspace"),
+    onWorkspaces: open("workspaces"),
+    onConfig: open("config"),
     onAnalytics: open("analytics"),
     onModify: open("modify"),
     onNewSession: open("new-session"),
   });
 
 type PaneOptions = {
-  selectedId: SessionId | undefined;
-  select: (id: SessionId) => void;
+  selected: SessionRef | undefined;
+  select: (ref: SessionRef) => void;
   archive: ReturnType<typeof useArchiveFlow>;
   open: Open;
 };
 
-function paneSlots({ selectedId, select, archive, open }: PaneOptions) {
+function paneSlots({ selected, select, archive, open }: PaneOptions) {
   return {
-    sessions: <SessionsPane selectedId={selectedId} onSelect={select} />,
+    sessions: <SessionsPane selected={selected} onSelect={select} />,
     session: (
-      <SessionPane id={selectedId} onNewSession={open("new-session")} onArchive={archive.request} />
+      <SessionPane
+        selected={selected}
+        onNewSession={open("new-session")}
+        onArchive={archive.request}
+      />
     ),
-    changes: <ChangesPane key={selectedId} id={selectedId} />,
+    changes: (
+      <ChangesPane key={selected && `${selected.workspaceId}/${selected.id}`} id={selected} />
+    ),
   };
 }
 
 function Workbench() {
-  const [selectedId, select] = useSelectedSession();
+  const [selected, select] = useSelectedSession();
   const [dialog, setDialog] = useOpenDialog();
   const archive = useArchiveFlow();
   const stats = useStatusStats();
-  useOpenSession(selectedId);
+  useOpenSession(selected);
   const open: Open = (name) => () => {
     setDialog(name);
   };
   const slots = {
     topBar: topBarSlots(open),
-    panes: paneSlots({ selectedId, select, archive, open }),
+    panes: paneSlots({ selected, select, archive, open }),
     statusBar: defaultStatusBarSlots(stats),
   };
   return (

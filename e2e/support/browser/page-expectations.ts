@@ -86,11 +86,16 @@ export function expectFocusOnRowOf(app: AppInBrowser, title: string): Promise<vo
   });
 }
 
-/** The page address names this session (`#/sessions/<id>`). */
-export function expectAddressToOpen(app: AppInBrowser, id: string): Promise<void> {
+/** The page address names this session (`#/sessions/<workspace>/<id>`, on this Mac unless said). */
+export function expectAddressToOpen(
+  app: AppInBrowser,
+  id: string,
+  workspaceId = "local",
+): Promise<void> {
   return pageEventually(`expected the address to open session ${id}`, async () => {
     const hash = await app.page.addressHash();
-    return hash === `#/sessions/${id}` ? undefined : `the address is ${quote(hash)}`;
+    const wanted = `#/sessions/${workspaceId}/${id}`;
+    return hash === wanted ? undefined : `the address is ${quote(hash)}`;
   });
 }
 

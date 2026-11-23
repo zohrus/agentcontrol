@@ -2,13 +2,25 @@ import type { AgentKind, RepoInfo } from "@agentcontrol/protocol";
 
 /** What the user asked for when pressing Start. */
 export type NewSessionRequest = {
+  /** The workspace (machine) the session runs on. */
+  workspaceId: string;
   agent: AgentKind;
   repoPath: string;
   baseBranch: string;
   prompt: string;
 };
 
+/** A machine a session can be started on. */
+export type WorkspaceChoice = { id: string; label: string; connected: boolean };
+
 export type NewSessionDialogProps = {
+  /** Where sessions can run; the choice is only offered when there is more than one. */
+  workspaces: readonly WorkspaceChoice[];
+  /** The chosen workspace, whose repositories and agents `repos` and `agents` are. */
+  workspaceId: string;
+  onWorkspaceChange: (id: string) => void;
+  /** False while the chosen workspace's repositories and agents are still being loaded. */
+  ready: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   repos: readonly RepoInfo[];

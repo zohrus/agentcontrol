@@ -10,6 +10,10 @@ const messages: Record<string, string> = {
   "relay-unavailable":
     "AgentControl is not connected to the agent service right now. It keeps trying.",
   "internal-error": "Something went wrong inside AgentControl.",
+  "workspace-exists": "That host is already a workspace.",
+  "workspace-removed": "That workspace was removed, so its sessions can only be read.",
+  "config-plan-stale":
+    "A file changed after you reviewed it, so nothing was written. Review the changes again.",
 };
 /** Codes whose own message tells the user something they can act on. */
 const withDetail = new Set([
@@ -23,13 +27,24 @@ const withDetail = new Set([
   "nothing-to-discard",
 ]);
 
+const Down = z.object({ workspaceId: z.string() });
+
+/** A request to a machine other than this Mac that is not connected: the app says which and why. */
+function isRemoteDown(error: ApiError): boolean {
+  const down = Down.safeParse(error.data);
+  return error.code === "relay-unavailable" && down.success && down.data.workspaceId !== "local";
+}
+
+function describeOther(error: unknown): string {
+  return error instanceof TypeError
+    ? "AgentControl cannot be reached right now. It keeps trying to reconnect."
+    : "Something went wrong in the page. Try again, or reload it.";
+}
+
 /** A failure in plain words for a toast or an inline message. */
 export function describeError(error: unknown): string {
-  if (!(error instanceof ApiError)) {
-    return error instanceof TypeError
-      ? "AgentControl cannot be reached right now. It keeps trying to reconnect."
-      : "Something went wrong in the page. Try again, or reload it.";
-  }
+  if (!(error instanceof ApiError)) return describeOther(error);
+  if (isRemoteDown(error)) return error.message;
   const base = messages[error.code] ?? "Something went wrong.";
   return withDetail.has(error.code) ? `${base} ${error.message}` : base;
 }

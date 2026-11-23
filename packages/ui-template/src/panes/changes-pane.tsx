@@ -1,7 +1,8 @@
-import type { DiffResult, SessionId } from "@agentcontrol/sdk";
+import type { DiffResult } from "@agentcontrol/sdk";
 import { useState } from "react";
 import { ChangesPanel } from "../changes/index.ts";
 import {
+  type SessionRef,
   useChangesError,
   useController,
   useDiff,
@@ -20,7 +21,7 @@ function Message({ text }: { text: string }) {
   return <p className="m-0 p-4 text-xs text-muted">{text}</p>;
 }
 
-function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
+function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
   const controller = useController();
   const events = useSessionEvents(id);
   const [picked, setPicked] = useState<string>();
@@ -34,7 +35,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
   };
   return (
     <ChangesPanel
-      sessionId={id}
+      sessionId={id.id}
       diff={diff}
       tree={tree}
       selectedPath={path}
@@ -58,7 +59,7 @@ function unavailableReason(summary: { status: string } | undefined, error: strin
 }
 
 /** The open session's changes: the diff, and an editor for its files. Remount it per session. */
-export function ChangesPane({ id }: { id: SessionId | undefined }) {
+export function ChangesPane({ id }: { id: SessionRef | undefined }) {
   const summary = useSession(id);
   const reason = unavailableReason(summary, useChangesError(id));
   const diff = useDiff(id);

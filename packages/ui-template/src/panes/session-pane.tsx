@@ -1,22 +1,31 @@
-import type { SessionId } from "@agentcontrol/protocol";
-import { useController, useData, useSession, useSessionEvents, useUsage } from "../data/index.ts";
+import {
+  type SessionRef,
+  useController,
+  useData,
+  useSession,
+  useSessionEvents,
+  useUsage,
+  useWorkspace,
+} from "../data/index.ts";
 import { SessionView } from "../session-view/index.ts";
+import { readOnlyNote } from "../workspaces/index.ts";
 import { EmptyState } from "./empty-state.tsx";
 
 type Props = {
-  id: SessionId | undefined;
+  selected: SessionRef | undefined;
   onNewSession: () => void;
-  onArchive: (id: SessionId) => void;
+  onArchive: (ref: SessionRef) => void;
 };
 
-/** The open session's stream and composer, or a guide when none is open. */
-export function SessionPane({ id, onNewSession, onArchive }: Props) {
+type OpenProps = { selected: SessionRef; onArchive: (ref: SessionRef) => void };
+
+function OpenSession({ selected, onArchive }: OpenProps) {
   const controller = useController();
   const loaded = useData((s) => s.loaded);
-  const summary = useSession(id);
-  const events = useSessionEvents(id);
-  const usage = useUsage(id);
-  if (id === undefined) return <EmptyState onNewSession={onNewSession} />;
+  const summary = useSession(selected);
+  const events = useSessionEvents(selected);
+  const usage = useUsage(selected);
+  const workspace = useWorkspace(selected.workspaceId);
   if (!summary) {
     return (
       <p className="p-4 text-muted">{loaded ? "That session no longer exists." : "Loading…"}</p>
@@ -28,14 +37,21 @@ export function SessionPane({ id, onNewSession, onArchive }: Props) {
       events={events}
       turnRunning={summary.turnRunning}
       usage={usage}
-      onSendPrompt={(text) => void controller.sendPrompt(id, text)}
-      onCancel={() => void controller.cancel(id)}
+      readOnlyNote={workspace && readOnlyNote(workspace)}
+      onSendPrompt={(text) => void controller.sendPrompt(selected.id, text)}
+      onCancel={() => void controller.cancel(selected.id)}
       onArchive={() => {
-        onArchive(id);
+        onArchive(selected);
       }}
       onAnswerPermission={(requestId, optionId) => {
-        void controller.answerPermission(id, requestId, optionId);
+        void controller.answerPermission(selected.id, requestId, optionId);
       }}
     />
   );
+}
+
+/** The open session's stream and composer, or a guide when none is open. */
+export function SessionPane({ selected, onNewSession, onArchive }: Props) {
+  if (selected === undefined) return <EmptyState onNewSession={onNewSession} />;
+  return <OpenSession selected={selected} onArchive={onArchive} />;
 }

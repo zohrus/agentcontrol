@@ -28,3 +28,12 @@ export async function attempt<T>(ctx: Context, work: () => Promise<T>): Promise<
     return undefined;
   }
 }
+
+/** Runs something the user asked for and says whether it worked; a failure is reported. */
+export async function succeeded(ctx: Context, work: () => Promise<unknown>): Promise<boolean> {
+  const done = await attempt(ctx, async () => {
+    await work();
+    return true;
+  });
+  return done === true;
+}

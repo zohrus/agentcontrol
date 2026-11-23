@@ -17,7 +17,8 @@ function WaitingBadge({ entry }: Pick<SessionRowProps, "entry">) {
 
 function detailText({ entry }: Pick<SessionRowProps, "entry">): string {
   const { summary, detail } = entry;
-  return detail ?? `${agentLabel(summary.agent)} · ${summary.status}`;
+  const readOnly = entry.readOnly ? " · read-only" : "";
+  return detail ?? `${agentLabel(summary.agent)} · ${summary.status}${readOnly}`;
 }
 
 /** The default session row: status dot, title, waiting badge, detail line and Approve / Deny. */

@@ -39,7 +39,7 @@ export function useChangesToPage(call: { id: SessionId; path: string }): number 
   useEffect(() => {
     const settle = settling(bump, SETTLE_MS);
     const stop = controller.watchFileChanges((change) => {
-      if (change.sessionId === id && touchesPage(change.paths, path)) settle.run();
+      if (change.ref.id === id && touchesPage(change.paths, path)) settle.run();
     });
     return () => {
       stop();

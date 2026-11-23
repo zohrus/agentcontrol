@@ -1,5 +1,5 @@
 {
-  "topBar": ["brand", "search", "spacer", "config", "analytics", "modify", "new-session"],
+  "topBar": ["brand", "search", "spacer", "workspaces", "config", "analytics", "modify", "new-session"],
   "panes": [
     { "slot": "sessions", "width": 260 },
     { "slot": "session" },

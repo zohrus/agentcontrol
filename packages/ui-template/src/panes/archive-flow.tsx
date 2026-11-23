@@ -1,10 +1,9 @@
-import type { SessionId } from "@agentcontrol/protocol";
 import { useState } from "react";
 import { ArchiveDialog } from "../archive/index.ts";
-import { useController, useSession } from "../data/index.ts";
+import { type SessionRef, useController, useSession } from "../data/index.ts";
 
 /** The session being archived, and the unsaved files the app named (none until it refused). */
-type Target = { id: SessionId; files: readonly string[] };
+type Target = { ref: SessionRef; files: readonly string[] };
 
 /**
  * Archiving: the user confirms first. When the worktree has unsaved changes the app refuses, and
@@ -15,16 +14,16 @@ export function useArchiveFlow() {
   const [target, setTarget] = useState<Target>();
   return {
     target,
-    request: (id: SessionId): void => {
-      setTarget({ id, files: [] });
+    request: (ref: SessionRef): void => {
+      setTarget({ ref, files: [] });
     },
     close: () => {
       setTarget(undefined);
     },
     confirm: async (chosen: Target): Promise<void> => {
       const force = chosen.files.length > 0;
-      const outcome = await controller.archive(chosen.id, force);
-      if (outcome.status === "blocked") setTarget({ id: chosen.id, files: outcome.files });
+      const outcome = await controller.archive(chosen.ref.id, force);
+      if (outcome.status === "blocked") setTarget({ ref: chosen.ref, files: outcome.files });
     },
   };
 }
@@ -32,7 +31,7 @@ export function useArchiveFlow() {
 type Flow = ReturnType<typeof useArchiveFlow>;
 
 function TargetDialog({ target, flow }: { target: Target; flow: Flow }) {
-  const title = useSession(target.id)?.title ?? "this session";
+  const title = useSession(target.ref)?.title ?? "this session";
   return (
     <ArchiveDialog
       open

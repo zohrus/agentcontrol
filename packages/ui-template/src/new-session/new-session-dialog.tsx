@@ -1,6 +1,7 @@
 import type { SyntheticEvent } from "react";
 import { Button, Dialog } from "../components/index.ts";
 import { RepoPicker } from "./repo-picker.tsx";
+import { WorkspaceField } from "./workspace-field.tsx";
 import { AgentField, BranchField, PromptField } from "./text-fields.tsx";
 import type { NewSessionDialogProps } from "./types.ts";
 import { useNewSessionDraft } from "./use-draft.ts";
@@ -23,13 +24,14 @@ function Footer({ valid, onCancel }: { valid: boolean; onCancel: () => void }) {
   );
 }
 
-function NewSessionForm({ repos, agents, onStart, onAddRepository, onOpenChange }: FormProps) {
+function NewSessionForm(props: FormProps) {
+  const { repos, agents, workspaceId, onStart, onAddRepository, onOpenChange } = props;
   const form = useNewSessionDraft({ repos, agents });
   const { agent, repoPath, baseBranch, prompt } = form.draft;
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     if (!form.valid || agent === "") return;
-    onStart({ agent, repoPath, baseBranch, prompt: prompt.trim() });
+    onStart({ workspaceId, agent, repoPath, baseBranch, prompt: prompt.trim() });
     onOpenChange(false);
   };
   return (
@@ -50,6 +52,7 @@ function NewSessionForm({ repos, agents, onStart, onAddRepository, onOpenChange 
 
 /** "New session": pick repository, base branch and agent, write the prompt and start. */
 export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
+  const formKey = `${form.workspaceId}:${String(form.ready)}`;
   return (
     <Dialog
       open={open}
@@ -57,7 +60,12 @@ export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
       title="New session"
       description="The agent works in its own copy of the repository, so your files stay untouched."
     >
-      <NewSessionForm {...form} />
+      <WorkspaceField
+        workspaces={form.workspaces}
+        value={form.workspaceId}
+        onChange={form.onWorkspaceChange}
+      />
+      <NewSessionForm key={formKey} {...form} />
     </Dialog>
   );
 }

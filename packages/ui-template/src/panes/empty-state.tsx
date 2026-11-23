@@ -18,7 +18,7 @@ function Guide({ title, text, action, onAction }: GuideProps) {
 /** Shown in the session pane when nothing is open: guides a new user to the first step. */
 export function EmptyState({ onNewSession }: { onNewSession: () => void }) {
   const loaded = useData((s) => s.loaded);
-  const hasRepos = useData((s) => s.repos.length > 0);
+  const hasRepos = useData((s) => (s.choices.local?.repos.length ?? 0) > 0);
   const hasSessions = useData((s) => s.sessions.length > 0);
   if (!loaded) return <p className="p-4 text-muted">Loading sessions…</p>;
   if (hasSessions) {

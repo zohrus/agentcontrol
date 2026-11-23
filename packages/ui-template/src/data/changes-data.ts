@@ -2,6 +2,7 @@ import { ApiError, type FileRef, isStaleFile, type SessionId } from "@agentcontr
 import { type Context, inBackground } from "./context.ts";
 import { describeError } from "./errors.ts";
 import { fileKey, type FileVersions } from "./model.ts";
+import { keyOf, type SessionRef } from "./session-ref.ts";
 
 const STALE_NOTICE =
   "This file changed on disk while you were editing, so your edit was not saved. " +
@@ -31,55 +32,63 @@ function holdFile(ctx: Context, key: string, file: FileVersions): void {
 /** Loads a file's base and working versions; keeps its notice unless a new one is given. */
 export async function loadFile(
   ctx: Context,
-  call: { id: SessionId; path: string; notice?: string },
+  call: { ref: SessionRef; path: string; notice?: string },
 ): Promise<void> {
-  const { id, path } = call;
+  const { ref, path } = call;
+  const { id } = ref;
   const [base, working] = await Promise.all([
     readVersion(ctx, { id, path, ref: "base" }),
     readVersion(ctx, { id, path, ref: "working" }),
   ]);
-  const key = fileKey(id, path);
+  const key = fileKey(ref, path);
   const notice = call.notice ?? fileOf(ctx, key).notice;
   holdFile(ctx, key, { base: base.content, working: working.content, hash: working.hash, notice });
 }
 
-function holdChangesError(ctx: Context, id: SessionId, message: string): void {
-  ctx.store.update((s) => ({ ...s, changesErrors: { ...s.changesErrors, [id]: message } }));
+function holdChangesError(ctx: Context, ref: SessionRef, message: string): void {
+  const key = keyOf(ref);
+  ctx.store.update((s) => ({ ...s, changesErrors: { ...s.changesErrors, [key]: message } }));
 }
 
 /** Loads a session's diff and file tree (which also starts live file-change events). */
-export async function refreshChanges(ctx: Context, id: SessionId): Promise<void> {
+export async function refreshChanges(ctx: Context, ref: SessionRef): Promise<void> {
+  const key = keyOf(ref);
   try {
     const [diff, entries] = await Promise.all([
-      ctx.client.sessions.diff(id),
-      ctx.client.files.tree(id),
+      ctx.client.sessions.diff(ref.id),
+      ctx.client.files.tree(ref.id),
     ]);
     ctx.store.update((s) => ({
       ...s,
-      diffs: { ...s.diffs, [id]: diff },
-      trees: { ...s.trees, [id]: entries },
+      diffs: { ...s.diffs, [key]: diff },
+      trees: { ...s.trees, [key]: entries },
     }));
-    holdChangesError(ctx, id, "");
+    holdChangesError(ctx, ref, "");
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    holdChangesError(ctx, id, describeError(error));
+    holdChangesError(ctx, ref, describeError(error));
   }
 }
 
 /** Saves an edit; when the file changed meanwhile, shows the newer version and says so. */
 export async function saveFile(
   ctx: Context,
-  call: { id: SessionId; path: string; content: string },
+  call: { ref: SessionRef; path: string; content: string },
 ): Promise<void> {
-  const { id, path, content } = call;
-  const key = fileKey(id, path);
+  const { ref, path, content } = call;
+  const key = fileKey(ref, path);
   const have = fileOf(ctx, key);
   try {
-    const hash = await ctx.client.files.write({ id, path, content, expectedHash: have.hash });
+    const hash = await ctx.client.files.write({
+      id: ref.id,
+      path,
+      content,
+      expectedHash: have.hash,
+    });
     holdFile(ctx, key, { base: have.base, working: content, hash, notice: undefined });
-    inBackground(ctx, refreshChanges(ctx, id));
+    inBackground(ctx, refreshChanges(ctx, ref));
   } catch (error) {
     if (!isStaleFile(error)) throw error;
-    await loadFile(ctx, { id, path, notice: STALE_NOTICE });
+    await loadFile(ctx, { ref, path, notice: STALE_NOTICE });
   }
 }

@@ -41,7 +41,7 @@ async function filesBelow(root: string, dir = ""): Promise<string[]> {
   return nested.flat();
 }
 
-function folderAt(path: string, skip: string[] = []): Folder {
+export function folderAt(path: string, skip: string[] = []): Folder {
   return {
     path,
     has: async (relativePath, content) => {
@@ -64,7 +64,7 @@ function folderAt(path: string, skip: string[] = []): Folder {
   };
 }
 
-async function temporaryFolder(prefix: string): Promise<string> {
+export async function temporaryFolder(prefix: string): Promise<string> {
   const path = await realpath(await mkdtemp(join(tmpdir(), prefix)));
   onTestEnd(() => rm(path, { recursive: true, force: true }));
   return path;

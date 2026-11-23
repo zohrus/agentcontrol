@@ -2,6 +2,7 @@ import { Button } from "../components/index.ts";
 import type { SlotMap } from "./bar-slots.tsx";
 
 export type TopBarActions = {
+  onWorkspaces: () => void;
   onConfig: () => void;
   onAnalytics: () => void;
   onModify: () => void;
@@ -32,6 +33,7 @@ export function defaultTopBarSlots(actions: TopBarActions): SlotMap {
   return {
     brand: <span className="text-sm font-semibold">AgentControl</span>,
     search: <SearchBox />,
+    workspaces: <Button onClick={actions.onWorkspaces}>Workspaces</Button>,
     config: <Button onClick={actions.onConfig}>Config</Button>,
     analytics: <Button onClick={actions.onAnalytics}>Analytics</Button>,
     modify: (

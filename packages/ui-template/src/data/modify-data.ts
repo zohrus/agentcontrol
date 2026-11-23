@@ -1,6 +1,10 @@
-import type { Client, ModifyState } from "@agentcontrol/sdk";
+import type { Client, ModifyState, SessionId } from "@agentcontrol/sdk";
 import { attempt, type Context, inBackground } from "./context.ts";
 import { loadEvents } from "./sessions-data.ts";
+import { keyOf, LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
+
+/** The Modify agent runs on this Mac, so its session is a local one. */
+export const modifySession = (id: SessionId): SessionRef => ({ workspaceId: LOCAL_WORKSPACE, id });
 
 type Call = (modify: Client["modify"]) => Promise<ModifyState>;
 
@@ -12,9 +16,8 @@ async function loadHistory(ctx: Context): Promise<void> {
 /** The Modify session's events are the chat: load them once, then the live stream keeps them current. */
 function followChat(ctx: Context, state: ModifyState): void {
   const id = state.sessionId;
-  if (id !== undefined && ctx.store.get().events[id] === undefined) {
-    inBackground(ctx, loadEvents(ctx, id));
-  }
+  if (id === undefined || ctx.store.get().events[keyOf(modifySession(id))] !== undefined) return;
+  inBackground(ctx, loadEvents(ctx, modifySession(id)));
 }
 
 /** Takes in a new Modify state; the history is read again when a change was settled. */
@@ -33,7 +36,8 @@ export async function loadModify(ctx: Context): Promise<void> {
   // A live message that arrived while this answer was on its way is newer than it.
   if (ctx.store.get().modify === heldBefore) ctx.store.update((s) => ({ ...s, modify: state }));
   const { sessionId } = ctx.store.get().modify ?? state;
-  await Promise.all([loadHistory(ctx), sessionId === undefined ? [] : loadEvents(ctx, sessionId)]);
+  const chat = sessionId === undefined ? [] : loadEvents(ctx, modifySession(sessionId));
+  await Promise.all([loadHistory(ctx), chat]);
 }
 
 /** Runs something the user asked of the Modify agent and shows the state it answers with. */
