@@ -11,6 +11,7 @@
 - [decisions/](decisions/README.md): one short file per decision others live with (format in its README).
   - [0001-dev-loop.md](decisions/0001-dev-loop.md): how the development loop works.
   - [0001-harness-config-ownership.md](decisions/0001-harness-config-ownership.md): the app owns only the config entries it created.
+  - [2026-11-23-ci.md](decisions/2026-11-23-ci.md): what each CI job proves; the first Mac release is unsigned.
   - [2026-11-22-duplication-threshold-zero.md](decisions/2026-11-22-duplication-threshold-zero.md): any duplicated block fails the build.
   - [2026-11-22-live-session-summaries.md](decisions/2026-11-22-live-session-summaries.md): the relay owns derived session state.
   - [2026-11-22-local-server-security.md](decisions/2026-11-22-local-server-security.md): host, origin and token checks on the local server.

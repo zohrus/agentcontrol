@@ -67,7 +67,8 @@ only when these variables are set.
 3. Pick the agent, write what it should do, and press **Start**. The first start of a real agent
    downloads its adapter.
 4. When the session shows **approve**, press **Approve** in the list or **Allow** in the
-   conversation.5. Open the **Changes** tab to see the diff since the base branch, the **Editor** tab to edit a file
+   conversation.
+5. Open the **Changes** tab to see the diff since the base branch, the **Editor** tab to edit a file
    (Ctrl/Cmd+S saves), and **Archive** when done. Archive keeps the branch
    (`agentcontrol/<session id>`) and the conversation, and removes the worktree. It warns first if
    files are not committed: those are lost.

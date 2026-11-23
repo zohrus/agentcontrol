@@ -23,7 +23,8 @@ export function TurnEnded({ item }: { item: ItemOf<"turn-ended"> }) {
 }
 
 function exitText({ exitCode, signal }: ItemOf<"agent-exited">): string {
-  if (signal === "SIGTERM") return "The agent was stopped, for example by archiving the session.";
+  if (signal === "SIGTERM")
+    return "The agent was stopped (signal SIGTERM), as when a session is archived.";
   if (signal) return `The agent exited (signal ${signal})`;
   return `The agent exited (exit code ${String(exitCode ?? "unknown")})`;
 }

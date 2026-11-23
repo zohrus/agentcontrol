@@ -18,7 +18,7 @@ export async function startsSecondAppOnTheSamePort(baseUrl: string): Promise<str
       connectRelay: () => relayClientOver(host.wire()),
     });
     await app.stop();
-    return "";
+    return "the second app started on the port the first one was using, but it should have been refused";
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }
