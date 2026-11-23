@@ -90,6 +90,10 @@ function passedThrough(client: Client) {
   return {
     /** The address that shows a worktree file as a page (a new `?v=` each time, on the session's one preview ticket). */
     previewUrl: (id: SessionId, path: string) => client.files.previewUrl(id, path),
+    /** Can the session's browser VS Code be opened, and if not, why not (in plain words). */
+    ideStatus: (id: SessionId) => client.ide.ideStatus(id),
+    /** Starts the session's browser VS Code and gives the address that shows it. */
+    openIde: (id: SessionId) => client.ide.openIde(id),
     /** Opens the user's shell in the session's folder (the Terminal tab). */
     openTerminal: (id: SessionId, options: OpenTerminal) => client.terminal.open(id, options),
   };

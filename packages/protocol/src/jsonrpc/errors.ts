@@ -19,5 +19,7 @@ export const ErrorCode = {
   sessionArchived: -32008,
   /** No such terminal, or it belongs to another client. */
   terminalNotFound: -32009,
+  /** code-server is not on the workspace's PATH: it is the user's tool, never installed by us. */
+  ideNotInstalled: -32011,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

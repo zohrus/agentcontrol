@@ -14,6 +14,7 @@
       "entry": [
         "**/*.e2e.ts",
         "support/mock-agent/main.ts",
+        "support/fake-code-server/main.ts",
         "support/setup/flaky-relay.ts",
         "support/setup/record-opened-url.ts"
       ],

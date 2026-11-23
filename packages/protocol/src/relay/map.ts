@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import * as c from "../config/index.ts";
 import * as f from "../files/index.ts";
+import * as i from "../ide/index.ts";
 import * as s from "../sessions/index.ts";
 import * as t from "../terminal/index.ts";
 import * as w from "../workspace/index.ts";
@@ -40,6 +41,14 @@ export const RelayMethods = {
   [N.terminalWrite]: { params: t.TerminalWriteParams, result: s.AckResult },
   [N.terminalResize]: { params: t.TerminalResizeParams, result: s.AckResult },
   [N.terminalClose]: { params: t.TerminalCloseParams, result: s.AckResult },
+  [N.ideStatus]: { params: i.IdeStatusParams, result: i.IdeStatusResult },
+  [N.ideStart]: { params: i.IdeStartParams, result: s.AckResult },
+  [N.ideStop]: { params: i.IdeStopParams, result: s.AckResult },
+  [N.ideRequest]: { params: i.IdeRequestParams, result: i.IdeRequestResult },
+  [N.ideAck]: { params: i.IdeAckParams, result: s.AckResult },
+  [N.ideClose]: { params: i.IdeCloseParams, result: s.AckResult },
+  [N.ideSocketOpen]: { params: i.IdeSocketOpenParams, result: i.IdeSocketOpenResult },
+  [N.ideSocketSend]: { params: i.IdeSocketMessageParams, result: s.AckResult },
 } as const;
 
 /** The name of a relay request method. */
@@ -56,4 +65,8 @@ export const RelayNotifications = {
   [N.fsChanged]: f.FsChangedParams,
   [N.terminalData]: t.TerminalDataParams,
   [N.terminalExit]: t.TerminalExitParams,
+  [N.ideBody]: i.IdeBodyParams,
+  [N.ideEnd]: i.IdeEndParams,
+  [N.ideSocketMessage]: i.IdeSocketMessageParams,
+  [N.ideSocketClosed]: i.IdeSocketClosedParams,
 } as const;

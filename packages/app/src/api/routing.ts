@@ -5,11 +5,14 @@ import type { Link } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
 import { ApiFailure } from "./errors.ts";
 
+/** What routing reads: the store (which workspace owns a session) and the workspaces (their relays). */
+export type Routing = Pick<ApiDeps, "store" | "workspaces">;
+
 /** The optional `?workspace=<id>` of a request that is not about one session; the local one by default. */
 export const WorkspaceQuery = z.object({ workspace: z.string().min(1).optional() });
 
 /** The session with this id, from the app's store; throws 404 when no workspace has it. */
-export function locateSession(deps: ApiDeps, id: SessionId): StoredSession {
+export function locateSession(deps: Routing, id: SessionId): StoredSession {
   const [session] = deps.store.findSessions(id);
   if (!session)
     throw new ApiFailure(404, { code: "session-not-found", message: `No session ${id}.` });
@@ -21,7 +24,7 @@ export function locateSession(deps: ApiDeps, id: SessionId): StoredSession {
  * removed or is not connected refuses with a plain-language reason: its sessions stay readable from
  * the store, but nothing can be sent to them.
  */
-function linkForWorkspace(deps: ApiDeps, workspaceId: string): Link {
+function linkForWorkspace(deps: Routing, workspaceId: string): Link {
   const info = deps.workspaces.info(workspaceId);
   if (!info) {
     throw new ApiFailure(404, {
@@ -49,7 +52,7 @@ function linkForWorkspace(deps: ApiDeps, workspaceId: string): Link {
  * workspace, else the local one.
  */
 export function routeRequest(
-  deps: ApiDeps,
+  deps: Routing,
   target: { sessionId?: SessionId; workspaceId?: string | undefined } = {},
 ): { workspaceId: string; link: Link } {
   const workspaceId =

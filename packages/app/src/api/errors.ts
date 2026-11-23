@@ -26,6 +26,7 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
   [ErrorCode.configStale]: { status: 409, code: "config-plan-stale" },
   [ErrorCode.sessionArchived]: { status: 409, code: "session-archived" },
   [ErrorCode.terminalNotFound]: { status: 404, code: "terminal-not-found" },
+  [ErrorCode.ideNotInstalled]: { status: 409, code: "ide-not-installed" },
   [ErrorCode.invalidParams]: { status: 400, code: "invalid-request" },
 };
 const unknownFailure = { status: 500, code: "internal-error" } as const;

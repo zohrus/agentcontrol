@@ -1,5 +1,6 @@
 import { chmod } from "node:fs/promises";
 import { join } from "node:path";
+import { fakeCodeServerCommand } from "./fake-code-server-command.ts";
 
 const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
 const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
@@ -16,6 +17,8 @@ export interface RelayBinarySpec {
   mockAgentScript: string;
   /** The command that starts Claude Code, when it is not the mock agent by its absolute path. */
   claudeCommand?: string[];
+  /** code-server is installed on the host: the relay is told to use the scripted stand-in. */
+  codeServer?: boolean;
   /** Makes the relay report this version instead of the app's, to look like an older release. */
   version?: string;
 }
@@ -34,6 +37,9 @@ export async function writeRelayBinary(spec: RelayBinarySpec): Promise<void> {
     `export AGENTCONTROL_AGENT_CLAUDE_CODE_CMD=${quoted(spec.claudeCommand ? JSON.stringify(spec.claudeCommand) : mockCommand)}`,
     `export AGENTCONTROL_AGENT_CODEX_CMD=${quoted(mockCommand)}`,
     `export MOCK_AGENT_SCRIPT=${quoted(spec.mockAgentScript)}`,
+    ...(spec.codeServer
+      ? [`export AGENTCONTROL_CODE_SERVER_CMD=${quoted(JSON.stringify(fakeCodeServerCommand()))}`]
+      : []),
     ...(spec.version === undefined
       ? []
       : [`export AGENTCONTROL_RELAY_VERSION=${quoted(spec.version)}`]),

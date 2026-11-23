@@ -60,7 +60,12 @@ async function prepareRemoteSide(folder: string, options: SshHostOptions) {
   const built = join(folder, "build", "agentcontrol-relay");
   const login = options.agentOnLoginPathOnly ? await writeLoginShellWithAgent(folder) : undefined;
   const claudeCommand = login?.claudeCommand;
-  const spec = { path: built, home, mockAgentScript: mockAgent.scriptPath };
+  const spec = {
+    path: built,
+    home,
+    mockAgentScript: mockAgent.scriptPath,
+    codeServer: options.codeServer === true,
+  };
   await writeRelayBinary({ ...spec, ...(claudeCommand && { claudeCommand }) });
   return { home, remoteRoot, mockAgent, built, shell: login?.shell };
 }

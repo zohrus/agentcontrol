@@ -134,6 +134,15 @@ Later:
 ## Console
 - [x] Console access from inside the app (done 23 Nov 2026, `docs/decisions/2026-11-23-console.md`) (phase 5, remote workspaces; also works locally; in progress, 23 Nov 2026, with `@xterm/xterm` and `@xterm/addon-fit` approved and a WebSocket endpoint guarded by the same Host, Origin and token rules): a Terminal tab that opens a shell in the session's worktree on its workspace. Browser side: `@xterm/xterm` (xterm.js, MIT, zero dependencies, the VS Code terminal). Workspace side: the relay starts the shell in a pseudo-terminal with Bun's built-in terminal support (no `node-pty`); verify it works in the compiled Linux relay binary. Input, output and resize go over the existing relay connection as `relay/terminal.*` methods, so no extra port or second SSH login. The ACP `terminal` capability stays off for agents.
 
+## Browser VS Code
+- [x] "Open in browser VS Code" (done 23 Nov 2026, `docs/decisions/2026-11-23-browser-vscode.md`; phase 5, optional): code-server on the session's worktree for local and ssh workspaces, over a unix socket on the workspace and the relay link, served on a second loopback port (another origin) under a ticket path. code-server is the user's tool: detected on the workspace's PATH, an optional checklist line, never installed by us.
+- [ ] Verify with the real code-server: the workbench loading through the tunnel (HTML, assets, WebSockets, extension host, origin check, path prefix), on Linux and on a Mac. Only the flags, the unix socket and `--version` were checked with the real 4.146.0; its workbench could not be built in the test environment.
+- [ ] A relay killed with SIGKILL leaves its code-servers running. Write a pid file per server and sweep at relay start (check the command line before killing).
+- [ ] Cookies code-server sets with `Path=/` are shared with other servers on 127.0.0.1; decide whether the proxy should rewrite them to the ticket path.
+- [ ] Uploads over 16 MiB are refused by the tunnel; stream request bodies if a real workbench needs bigger ones.
+- [ ] Measure the tunnel over a real network (50 to 200 ms) with the real workbench; the 1 MiB window caps one stream at 1 MiB per round trip.
+- [ ] Compiled-app smoke step that starts a code-server stand-in.
+
 ## Modify agent
 - [ ] Codex as the Modify agent: it gets no launch limits, only the relay's permission answers as the fence. Try it for real.
 - [ ] Checks beyond typecheck and build: lint and a browser load test of the new UI (the plan lists them).

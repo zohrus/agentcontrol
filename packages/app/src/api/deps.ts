@@ -13,4 +13,6 @@ export interface ApiDeps {
   modify: Modify;
   /** The tickets that let a previewed page load a session's files. */
   previews: Previews;
+  /** The browser VS Code: its tickets, and where its own origin (another port) listens. */
+  ide: { tickets: Previews; origin: () => string };
 }

@@ -2,6 +2,7 @@ import type { FsEntry } from "@agentcontrol/protocol";
 import type { SessionId } from "@agentcontrol/sdk";
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/index.ts";
+import { OpenInBrowserVSCode } from "../ide/index.ts";
 import { PreviewTab } from "../preview/index.ts";
 import { TerminalTab } from "../terminal/index.ts";
 import { ChangesTab, type ChangesTabProps } from "./changes-tab.tsx";
@@ -67,21 +68,24 @@ function PreviewContent(props: ChangesPanelProps) {
   );
 }
 
-function PanelTabs({ changes, vscode }: { changes: number; vscode: string }) {
+function PanelTabs({ panel }: { panel: ChangesPanelProps }) {
+  const { diff, worktreePath, selectedPath } = panel;
   return (
     <TabsList className="border-b border-line px-2.5 pt-2">
-      <TabsTrigger value="changes">Changes {changes}</TabsTrigger>
+      <TabsTrigger value="changes">Changes {diff.files.length}</TabsTrigger>
       <TabsTrigger value="editor">Editor</TabsTrigger>
       <TabsTrigger value="preview">Preview</TabsTrigger>
       <TabsTrigger value="terminal">Terminal</TabsTrigger>
-      <OpenInVSCode href={vscode} />
+      <div className="ml-auto flex gap-1.5">
+        <OpenInBrowserVSCode id={panel.sessionId} readOnly={panel.readOnly} />
+        <OpenInVSCode href={vscodeUrl(worktreePath, selectedPath)} />
+      </div>
     </TabsList>
   );
 }
 
 /** Right-hand panel: Changes, Editor and Preview tabs plus an "Open in VS Code" link. */
 export function ChangesPanel(props: ChangesPanelProps) {
-  const { diff, selectedPath, worktreePath } = props;
   const [tab, setTab] = useState("changes");
   const onPreview = (path: string): void => {
     props.onSelectPath(path);
@@ -93,7 +97,7 @@ export function ChangesPanel(props: ChangesPanelProps) {
       onValueChange={setTab}
       className="flex h-full min-h-0 min-w-0 flex-col bg-surface"
     >
-      <PanelTabs changes={diff.files.length} vscode={vscodeUrl(worktreePath, selectedPath)} />
+      <PanelTabs panel={props} />
       <TabsContent value="changes">
         <ChangesTab {...props} onPreview={onPreview} />
       </TabsContent>

@@ -1,6 +1,7 @@
 export * from "./config/index.ts";
 export * from "./events/index.ts";
 export * from "./files/index.ts";
+export * from "./ide/index.ts";
 export * from "./ids/index.ts";
 export * from "./jsonrpc/index.ts";
 export * from "./relay/index.ts";

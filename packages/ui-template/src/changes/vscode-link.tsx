@@ -8,7 +8,7 @@ export function vscodeUrl(worktreePath: string, filePath?: string): string {
 
 export function OpenInVSCode({ href }: { href: string }) {
   return (
-    <Button asChild className="mb-1.5 ml-auto px-2 py-0.5 text-[11px]">
+    <Button asChild className="mb-1.5 px-2 py-0.5 text-[11px]">
       <a href={href}>Open in VS Code</a>
     </Button>
   );

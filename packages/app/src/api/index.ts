@@ -4,6 +4,7 @@ import { analyticsRoutes } from "./analytics.ts";
 import { configRoutes } from "./config.ts";
 import { reportFailure } from "./errors.ts";
 import { fileRoutes } from "./files.ts";
+import { ideRoutes } from "./ide.ts";
 import { modifyRoutes } from "./modify.ts";
 import { previewTicketRoutes } from "./preview.ts";
 import {
@@ -18,6 +19,7 @@ import { workspaceRoutes } from "./workspace.ts";
 import { workspacesRoutes } from "./workspaces.ts";
 
 export type { ApiDeps } from "./deps.ts";
+export { ideSource } from "./ide.ts";
 export { previewSource } from "./preview.ts";
 
 /** The HTTP API, mounted under `/api` by the server. Its type feeds the SDK's typed client. */
@@ -31,6 +33,7 @@ export function createApi(deps: ApiDeps) {
     .route("/sessions", fileRoutes(deps))
     .route("/sessions", previewTicketRoutes(deps))
     .route("/sessions", terminalRoutes(deps))
+    .route("/sessions", ideRoutes(deps))
     .route("/analytics", analyticsRoutes(deps))
     .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))

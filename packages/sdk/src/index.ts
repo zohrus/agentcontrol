@@ -4,6 +4,7 @@ import { type AnalyticsFilter, type AnalyticsTableOptions, analyticsApi } from "
 import { configApi } from "./config.ts";
 import { authorizedFetch, tokenFromPage } from "./authorized-fetch.ts";
 import { filesApi } from "./files.ts";
+import { ideApi } from "./ide.ts";
 import { terminalApi } from "./terminal.ts";
 import { modifyApi } from "./modify.ts";
 import { sessionsApi } from "./sessions.ts";
@@ -16,6 +17,7 @@ export type { AnalyticsFilter, AnalyticsTableOptions };
 export type { ConfigTarget } from "./config.ts";
 export type { FileContent, FileRef, WriteFile } from "./files.ts";
 export { isStaleFile } from "./files.ts";
+export type { IdeAvailability } from "./ide.ts";
 export type { StartSession } from "./sessions.ts";
 export type { OpenTerminal, Terminal } from "./terminal.ts";
 export type { Listeners } from "./subscribe.ts";
@@ -51,6 +53,7 @@ export function createClient({ baseUrl, fetch: sender = fetch, ...auth }: Client
     analytics: analyticsApi(api),
     sessions: sessionsApi(api),
     files: filesApi(api, baseUrl),
+    ide: ideApi(api),
     modify: modifyApi(api),
     config: configApi(api),
     repos: reposApi(api),

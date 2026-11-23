@@ -9,6 +9,8 @@ export interface SshHostOptions {
   relayBinaryMissing?: boolean;
   /** Claude Code is only found when the PATH of the user's login shell is used, as on a real host. */
   agentOnLoginPathOnly?: boolean;
+  /** code-server is installed on the host (the scripted stand-in). */
+  codeServer?: boolean;
   /** Install this binary (a compiled relay) instead of the script that runs the checkout's relay. */
   relayBinary?: string;
 }

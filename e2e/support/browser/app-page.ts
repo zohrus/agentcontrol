@@ -3,6 +3,7 @@ import { changesPage } from "./changes-page.ts";
 import { configEditorPage } from "./config-editor-page.ts";
 import { configPage } from "./config-page.ts";
 import { dialogsPage } from "./dialogs-page.ts";
+import { idePage } from "./ide-page.ts";
 import { previewContent, previewPage } from "./preview-page.ts";
 import { terminalPage } from "./terminal-page.ts";
 import { modifyPage } from "./modify-page.ts";
@@ -29,6 +30,7 @@ export function appPageOf(page: Page) {
     ...previewPage(page),
     ...previewContent(page),
     ...terminalPage(page),
+    ...idePage(page),
     ...modifyPage(page),
     /** The connection indicator in the status bar: "Connected", "Reconnecting…" or "Offline". */
     connectionText: async (): Promise<string> => {

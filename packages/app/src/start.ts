@@ -1,11 +1,13 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
+import type { ApiDeps } from "./api/index.ts";
 import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
 import { findResources } from "./resources/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
+import { startIde } from "./start-ide.ts";
 import { createStore, type Store } from "./store/index.ts";
 import { createHub, type Hub } from "./sync/index.ts";
 import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
@@ -36,7 +38,10 @@ export interface AppOptions {
   modify?: ModifyConfig;
   /** The UI to serve besides the API; none by default. */
   ui?: UiSource;
-  /** How long a preview link stays valid after its last use, in milliseconds; an hour by default. */
+  /**
+   * How long a preview link, and a browser VS Code link, stays valid after its last use, in
+   * milliseconds; an hour by default.
+   */
   previewLifetimeMs?: number;
 }
 
@@ -127,6 +132,36 @@ interface Parts {
   opened: { ui?: UiHandler | undefined };
 }
 
+/** Starts the app's server beside the browser VS Code's: they stop together, and a failed start stops it. */
+async function serveWithIde(call: {
+  options: AppOptions;
+  deps: Omit<ApiDeps, "ide">;
+  ui: UiHandler | undefined;
+  token: string;
+}) {
+  const { options, deps, ui, token } = call;
+  const { origin, ide } = startIde({
+    lifetimeMs: options.previewLifetimeMs,
+    parts: deps,
+  });
+  try {
+    const server = startServer({
+      port: options.port,
+      deps: { ...deps, ide },
+      ui,
+      token,
+      dataDir: options.dataDir,
+    });
+    const stop = async (): Promise<void> => {
+      await Promise.all([origin.stop(), server.stop()]);
+    };
+    return { port: server.port, stop };
+  } catch (error) {
+    await origin.stop();
+    throw error;
+  }
+}
+
 async function listen(options: AppOptions, parts: Parts) {
   const { store, hub, workspaces, modify, token, opened } = parts;
   // The live UI folder is made from the default UI first, because the UI may be served from it.
@@ -134,7 +169,7 @@ async function listen(options: AppOptions, parts: Parts) {
   const ui = await startUi(options.ui ?? {}, options.dataDir);
   opened.ui = ui;
   const deps = { store, hub, workspaces, modify, previews: previewsOf(options) };
-  return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
+  return serveWithIde({ options, deps, ui, token });
 }
 
 /**

@@ -7,12 +7,14 @@ import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
 import { type SessionId, VERSION } from "@agentcontrol/protocol";
 import { createEventLog } from "../event-log/index.ts";
+import { Ide } from "../ide/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
 import { createSessions, type Sessions } from "../sessions/index.ts";
 import { createTerminals, type Terminals } from "../terminal/index.ts";
 import { configHandlers } from "./handlers-config.ts";
 import { fileHandlers } from "./handlers-files.ts";
+import { ideHandlers } from "./handlers-ide.ts";
 import { sessionHandlers } from "./handlers-sessions.ts";
 import { terminalHandlers } from "./handlers-terminal.ts";
 import { usageHandlers } from "./handlers-usage.ts";
@@ -62,11 +64,15 @@ async function buildSessions(options: {
   repos: RepoStore;
   hostEnv: HostEnv;
   terminals: Terminals;
+  ide: Ide;
 }): Promise<Sessions> {
-  const { dataDir, repos, hostEnv, terminals } = options;
+  const { dataDir, repos, hostEnv, terminals, ide } = options;
   const log = createEventLog({ dir: join(dataDir, "sessions"), now: () => new Date() });
   const worktreesDir = join(dataDir, "worktrees");
-  const endTerminals = (sessionId: SessionId): Promise<void> => terminals.closeSession(sessionId);
+  // Archiving ends what a person has open on the folder: shells and the session's code-server.
+  const endTerminals = async (sessionId: SessionId): Promise<void> => {
+    await Promise.all([terminals.closeSession(sessionId), ide.stop(sessionId)]);
+  };
   return createSessions({ log, repos, worktreesDir, hostEnv, endTerminals });
 }
 
@@ -128,14 +134,17 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
   handlers: Handlers;
   sessions: Sessions;
   terminals: Terminals;
+  ide: Ide;
 }> {
   const { dataDir, hostEnv } = options;
   const repos = createRepoStore({ dataDir });
   const terminals = createTerminals({ hostEnv });
-  const sessions = await buildSessions({ dataDir, repos, hostEnv, terminals });
+  const ide = new Ide({ dataDir, env: hostEnv });
+  const sessions = await buildSessions({ dataDir, repos, hostEnv, terminals, ide });
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
     ...terminalHandlers({ sessions, terminals }),
+    ...ideHandlers({ sessions, ide }),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
     ...workspaceHandlers({
@@ -147,7 +156,7 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
     }),
     ...configHandlers(configHome(hostEnv)),
   };
-  return { handlers, sessions, terminals };
+  return { handlers, sessions, terminals, ide };
 }
 
 /** The process environment plus `options.env`; adapters are downloaded into the relay's folder. */
@@ -163,7 +172,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const socketPath = socketPathIn(dataDir);
   await claimSocket(socketPath);
   const hostEnv = hostEnvFor(options);
-  const { handlers, sessions, terminals } = await buildHandlers({ ...options, hostEnv });
+  const { handlers, sessions, terminals, ide } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);
   await writeFile(pidFileIn(dataDir), String(process.pid));
@@ -173,6 +182,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
       server.close();
       await sessions.shutdown();
       await terminals.closeAll();
+      await ide.stopAll();
       await closeClients(sockets);
       await rm(socketPath, { force: true });
       await rm(pidFileIn(dataDir), { force: true });

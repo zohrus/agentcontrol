@@ -6,7 +6,7 @@ import type { SyncDeps } from "./deps.ts";
 
 export type { Hub, HubMessage } from "./hub.ts";
 export { createHub } from "./hub.ts";
-export type { Link, TerminalSignal } from "./link.ts";
+export type { IdeSignal, Link, TerminalSignal } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";
 export type { ReplaceRelay } from "./deps.ts";
 
