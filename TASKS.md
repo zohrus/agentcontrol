@@ -81,7 +81,7 @@ Later:
 
 ## Release and packaging
 - [ ] First run of the `build` workflow on a macOS runner: the Swift menu bar app, `make-app.sh`, `sign-and-notarize.sh` (codesign, notarytool, stapler, hdiutil), the entitlements the Bun binaries need under the hardened runtime, and the cross-architecture `swift build` have never run. Expect small fixes. Execute the darwin binaries once.
-- [ ] Owner: Apple Developer ID (99 USD a year) and the repository secrets listed in `docs/releasing.md` (`APPLE_CERT_P12_BASE64`, `APPLE_CERT_PASSWORD`, `APPLE_SIGNING_IDENTITY`, plus one notarisation set).
+- [ ] PARKED by the owner (23 Nov 2026): Apple Developer ID (99 USD a year), signing and notarisation. The first release ships UNSIGNED (ad-hoc signed only, which Apple Silicon needs to run a binary at all). Consequences to handle now: macOS blocks the app on first open, so the README and the release notes must explain how to open it (System Settings > Privacy & Security > Open Anyway, or `xattr -dr com.apple.quarantine /Applications/AgentControl.app`); no Homebrew cask in the official tap style (a cask for an unsigned app needs the same manual step); no in-app updates. To un-park: get the Developer ID, add the repository secrets listed in `docs/releasing.md`, and the release workflow signs and notarises by itself.
 - [ ] App icon (the menu bar uses a system symbol and the app has no icon file).
 - [ ] Automate the Homebrew tap update (`zohrus/homebrew-agentcontrol`); it is manual today.
 - [ ] In-app updates (Sparkle): deferred. The menu item opens GitHub Releases.
@@ -108,6 +108,7 @@ Later:
 - [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead.
 
 ## Decisions made
+- [x] First Mac release is unsigned; Apple Developer ID parked (owner, 23 Nov 2026). See "Release and packaging".
 - [x] Coverage exclusions approved by the owner (22 Nov 2026): the seven thin start-up files proven by the real-process tests, the UI package until browser tests report coverage, the Swift Mac app, and one tooling config file. The list is in `coverage.config.json`; it may only shrink.
 - [x] Laptop platform: macOS only.
 - [x] License: MIT. Add the `LICENSE` file when the repo is created.
