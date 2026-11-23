@@ -9,11 +9,25 @@ export interface GitResult {
   exitCode: number;
 }
 
+const HOOK_VARIABLES = [
+  "GIT_DIR",
+  "GIT_WORK_TREE",
+  "GIT_INDEX_FILE",
+  "GIT_COMMON_DIR",
+  "GIT_PREFIX",
+];
+
+/** The environment without what git sets inside a hook, so `cwd` alone decides the repository. */
+function inheritedEnv(): Record<string, string | undefined> {
+  const entries = Object.entries(process.env).filter(([name]) => !HOOK_VARIABLES.includes(name));
+  return Object.fromEntries(entries);
+}
+
 /** Runs `git` with an argument array and returns its output, whatever the exit code. */
 export async function runGit(args: string[], options: GitOptions): Promise<GitResult> {
   const proc = Bun.spawn(["git", ...args], {
     cwd: options.cwd,
-    env: { ...process.env, ...options.env },
+    env: { ...inheritedEnv(), ...options.env },
     stdout: "pipe",
     stderr: "pipe",
   });
