@@ -46,3 +46,37 @@ export async function triesToReach(
 }
 
 export const NO_SUCH_TERMINAL = ErrorCode.terminalNotFound;
+
+/** What the relay answered to a request for a terminal, when it refused. */
+export interface Refusal {
+  code: number | undefined;
+  message: string;
+}
+
+/** Asks for a terminal and says how the relay refused; undefined when it opened one. */
+export async function triesToOpenATerminal(
+  relay: RunningRelay,
+  session: Session,
+): Promise<Refusal | undefined> {
+  return openTerminalOnRelay(relay, session).then(
+    () => undefined,
+    (error: unknown) => ({
+      code: error instanceof RelayCallError ? error.code : undefined,
+      message: error instanceof Error ? error.message : String(error),
+    }),
+  );
+}
+
+/** Keeps opening terminals until the relay refuses; how many it allowed, and the refusal. */
+export async function opensTerminalsUntilRefused(
+  relay: RunningRelay,
+  session: Session,
+): Promise<{ allowed: number; refusal: Refusal | undefined }> {
+  let allowed = 0;
+  let refusal = await triesToOpenATerminal(relay, session);
+  while (refusal === undefined && allowed < 100) {
+    allowed += 1;
+    refusal = await triesToOpenATerminal(relay, session);
+  }
+  return { allowed, refusal };
+}

@@ -1,5 +1,8 @@
 import { afterEach, test } from "bun:test";
-import { expectRequestRefusedAs } from "../support/expect/security-expectations.ts";
+import {
+  expectRequestRefusedAs,
+  expectSocketClosedAsPolicyViolation,
+} from "../support/expect/security-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithASession } from "../support/setup/start-app-with-shell.ts";
 import { terminalOutsidersOf } from "../support/setup/terminal-outsiders.ts";
@@ -76,4 +79,39 @@ test("the terminal address answers only a WebSocket request", async () => {
   // ** THEN the app says a WebSocket is required
   // ********************************************************************
   expectRequestRefusedAs(answer, "upgrade-required");
+});
+
+test("the terminal of an archived session is refused as archived", async () => {
+  // ********************************************************************
+  // ** GIVEN a session that was archived
+  // ********************************************************************
+  const { app, session } = await startAppWithASession();
+  await app.user.archivesSession(session, { force: true });
+
+  // ********************************************************************
+  // ** WHEN a program that holds the secret asks for its terminal
+  // ********************************************************************
+  const answer = await terminalOutsidersOf(app).aProgramWithTheSecretAsksForTheTerminalOf(session);
+
+  // ********************************************************************
+  // ** THEN the app refuses it because the session was archived
+  // ********************************************************************
+  expectRequestRefusedAs(answer, "session-archived");
+});
+
+test("text that is not a terminal message ends the socket as a policy violation", async () => {
+  // ********************************************************************
+  // ** GIVEN a session of the running app
+  // ********************************************************************
+  const { app, session } = await startAppWithASession();
+
+  // ********************************************************************
+  // ** WHEN a program with the secret sends the socket text that is no message
+  // ********************************************************************
+  const code = await terminalOutsidersOf(app).aProgramWithTheSecretSendsGarbage(session);
+
+  // ********************************************************************
+  // ** THEN the app closes the socket with the policy-violation code 1008
+  // ********************************************************************
+  expectSocketClosedAsPolicyViolation(code);
 });

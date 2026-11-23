@@ -76,3 +76,23 @@ test("a terminal opened after the first one ended starts a fresh shell", async (
   await expectShellToHavePrinted(second, "again");
   second.closes();
 });
+
+test("a shell that ignores the hangup is killed when its terminal is closed", async () => {
+  // ********************************************************************
+  // ** GIVEN a terminal whose shell ignores hangup signals
+  // ********************************************************************
+  const { app, session } = await startAppWithASession();
+  const shell = openShell(app, { session });
+  shell.types("trap '' HUP; echo pid=$$");
+  const pid = await pidOf(shell);
+
+  // ********************************************************************
+  // ** WHEN the user closes the terminal
+  // ********************************************************************
+  shell.closes();
+
+  // ********************************************************************
+  // ** THEN the shell is killed anyway
+  // ********************************************************************
+  await expectProcessToBeGone(pid, "the shell that ignores hangups");
+});

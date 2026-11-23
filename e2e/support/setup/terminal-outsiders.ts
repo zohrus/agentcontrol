@@ -25,6 +25,26 @@ function asksForTerminal(app: AppAccess, call: { session: Session; upgrade: Upgr
   });
 }
 
+/** Opens the terminal socket with the secret, sends `text`, and resolves with the close code. */
+function closeCodeAfterSending(
+  app: AppAccess,
+  call: { session: Session; text: string },
+): Promise<number> {
+  const address = `${app.baseUrl.replace(/^http/, "ws")}/api/sessions/${call.session.id}/terminal`;
+  const socket = new WebSocket(address, [
+    TERMINAL_PROTOCOL,
+    `${TOKEN_PROTOCOL_PREFIX}${app.token}`,
+  ]);
+  return new Promise((resolve) => {
+    socket.addEventListener("open", () => {
+      socket.send(call.text);
+    });
+    socket.addEventListener("close", (event) => {
+      resolve(event.code);
+    });
+  });
+}
+
 const OTHER_SITE = { origin: "https://evil.example", "sec-fetch-site": "cross-site" };
 
 /** Callers that try to open a terminal without being the app's own page. */
@@ -45,6 +65,10 @@ export function terminalOutsidersOf(app: AppAccess) {
     /** The secret in the address (not in a subprotocol) is not accepted. */
     aProgramWithTheSecretInTheAddressTriesToOpenATerminal: (session: Session) =>
       ask(session, { offered: [TERMINAL_PROTOCOL], query: `?token=${app.token}` }),
+    aProgramWithTheSecretAsksForTheTerminalOf: (session: Session) =>
+      ask(session, { offered: withSecret }),
+    aProgramWithTheSecretSendsGarbage: (session: Session): Promise<number> =>
+      closeCodeAfterSending(app, { session, text: "this is not a message" }),
     /** A program with the secret asks with a plain GET, not a WebSocket upgrade. */
     aProgramWithTheSecretAsksWithAPlainRequest: (session: Session): Promise<Answer> =>
       sendRaw(app, {
