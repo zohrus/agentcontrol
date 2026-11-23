@@ -107,3 +107,30 @@ Stop reasons: `end_turn`, `max_tokens`, `max_turn_requests`, `refusal`, `cancell
 - Claude's diff for approval is in the permission request's `content`, not only in `tool_call_update`.
 - Permission option ids differ per adapter; choose by `kind`. Elicitation (`elicitation/create`) is also a possible
   agent-to-client request in this SDK; with empty capabilities we did not see one.
+
+## Real Claude Code through the relay (23 Nov 2026, `bun run smoke:real`)
+
+Seen with claude-agent-acp 0.109.1 driven by the relay, app and SDK (model Haiku 5.5, about $0.01 for a full run).
+Recordings of these runs are in `e2e/fixtures/recordings/claude-code/` (relay event logs, scrubbed).
+
+- **Mode.** The adapter starts in the mode the user's own settings pick (`auto` on this machine), where it never asks.
+  The relay now sends `session/set_mode` `default` ("Manual") after `session/new`; only then do permission requests come.
+- **What asks.** In Manual, `Edit`/`Write` and non-read-only `Bash` ask. Read-only commands (`ls`, `sleep`) and `Read`,
+  `Glob`, `Grep` do not. The first `tool_call` is `pending` with a generic title ("Terminal", "Edit"); the next update
+  carries the real title, `rawInput` and `locations`. Paths are absolute.
+- **Model.** `ANTHROPIC_MODEL=haiku` in the agent's environment works; `session/new` then reports `currentValue: "haiku"`
+  and updates name `claude-haiku-5-5`.
+- **Cancel.** `session/cancel` ends the open prompt with `cancelled` within a second. Its `usage` is all zeros; the real
+  tokens are only in `_meta.quota.model_usage` (the relay reads them from there).
+- **Ordering.** `usage_update` (with cumulative `cost`) comes before the prompt result; the prompt result has `usage` and
+  `_meta.quota`. A turn can produce 20+ `agent_message_chunk`s with one `messageId`.
+- **Left as `other` on purpose:** `_auth/status_update`, `auth/status_update` (sign-in state), `available_commands_update`
+  (slash commands; 40 to 60 entries), `config_option_update` (after `set_mode`), `session_info_update` (the title the
+  agent invented). Nothing else arrived as `other`.
+- **Relay restart.** Agents die with the daemon; the session reads as `idle`, and a new prompt fails with "This session's
+  agent is not running." A new adapter process can `session/load` the old agent session id (cwd = the worktree): it
+  replays about a dozen messages and the next turn remembers the earlier work. Resume is therefore possible; not built.
+- **Modify fence launch settings.** `_meta.claudeCode.options` (`tools`, `disallowedTools`, `allowDangerouslySkipPermissions`,
+  `settingSources: []`) is accepted. The agent never had a Bash tool (asked to "run ls first" it used Glob), and 14 of 62
+  slash commands (the user's own) were gone. Plugin and managed skills are still listed; they cannot run without the
+  `Skill` tool, which `tools` leaves out.

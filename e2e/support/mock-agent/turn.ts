@@ -15,6 +15,8 @@ export interface TurnContext {
   readonly cancelled: Promise<void>;
   /** The `_meta` the client sent with session/new: launch-time settings for the adapter. */
   readonly launchSettings: unknown;
+  /** False when the agent runs in a mode in which it never asks (see `startsInMode`). */
+  readonly asksBeforeActing: boolean;
 }
 
 /** A handler returns a stop reason to end the turn early, or nothing to carry on. */

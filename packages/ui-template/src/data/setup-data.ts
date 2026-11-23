@@ -7,9 +7,11 @@ export async function loadChoices(ctx: Context): Promise<void> {
   ctx.store.update((s) => ({ ...s, repos, agents }));
 }
 
-export async function addRepository(ctx: Context, path: string): Promise<void> {
-  await ctx.client.repos.add(path);
+/** Registers the folder and returns the repository's own path (its top folder). */
+export async function addRepository(ctx: Context, path: string): Promise<string> {
+  const repo = await ctx.client.repos.add(path);
   await loadChoices(ctx);
+  return repo.path;
 }
 
 export async function saveSetup(

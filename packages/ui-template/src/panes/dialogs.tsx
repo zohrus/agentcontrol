@@ -25,7 +25,7 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (id: Session
           if (id !== undefined) onStarted(id);
         });
       }}
-      onAddRepository={(path) => void controller.addRepository(path)}
+      onAddRepository={(path) => controller.addRepository(path)}
     />
   );
 }
