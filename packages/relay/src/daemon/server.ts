@@ -27,6 +27,7 @@ function serve(socket: Socket, handlers: Handlers): void {
     send: (line) => {
       if (socket.writable) socket.write(`${line}\n`);
     },
+    backlog: () => socket.writableLength,
   });
   createInterface({ input: socket }).on("line", (line) => {
     connection.receive(line);

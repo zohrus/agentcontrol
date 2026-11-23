@@ -1,4 +1,5 @@
 import {
+  limitedOutput,
   RelayName as N,
   type SessionId,
   TerminalClientMessage,
@@ -11,6 +12,8 @@ export interface BridgeOptions {
   sessionId: SessionId;
   /** Sends a message to the browser. */
   send(message: TerminalServerMessage): void;
+  /** Bytes sent to the browser that it has not read yet. */
+  unread(): number;
   /** Ends the socket, with a WebSocket close code and a short reason. */
   hangUp(code: number, reason: string): void;
 }
@@ -40,6 +43,13 @@ export class Bridge {
   private early: TerminalSignal[] = [];
   private stopListening: () => void = () => undefined;
   private closed = false;
+  /** Output for the browser, dropped when the browser is too far behind to be given more. */
+  private readonly output = limitedOutput({
+    unread: () => this.options.unread(),
+    send: (data) => {
+      this.options.send({ type: "data", data });
+    },
+  });
   private queue: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: BridgeOptions) {}
@@ -114,7 +124,7 @@ export class Bridge {
     } else if (signal.type === "lost") {
       this.finish({ type: "error", code: "relay-lost", message: LOST });
     } else if (signal.terminalId === this.terminalId) {
-      if (signal.type === "data") this.options.send({ type: "data", data: signal.data });
+      if (signal.type === "data") this.output(signal.data);
       else this.finish({ type: "exit", exitCode: signal.exitCode });
     }
   }

@@ -26,6 +26,7 @@ export const terminalWebsocket: WebSocketHandler<TerminalSocketData> = {
       send: (message) => {
         ws.send(JSON.stringify(message));
       },
+      unread: () => ws.getBufferedAmount(),
       hangUp: (code, reason) => {
         ws.close(code, reason);
       },

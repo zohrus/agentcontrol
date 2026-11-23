@@ -13,6 +13,8 @@ export interface Client {
     method: N,
     params: z.infer<(typeof RelayNotifications)[N]>,
   ): void;
+  /** Bytes already written for this client that it has not read yet; a slow reader makes it grow. */
+  backlog(): number;
   /** Registers something to clean up when this client disconnects. */
   onClose(cleanup: () => void): void;
 }
