@@ -1,4 +1,4 @@
-// `bun run integrate <branch> [--dry-run]`: the local merge queue. There are no pull requests;
+// `bun run integrate <branch> [--dry-run] [--skip-smoke]`: the local merge queue. There are no pull requests;
 // this is the only way work reaches main.
 //
 //   1. fetch origin/main, make a scratch worktree and bring <branch> onto origin/main there:
@@ -9,7 +9,10 @@
 //        included, is checked as it is, and landing fast-forwards main to it (plus the landing
 //        log commit). The merge result is what is checked and what lands;
 //   2. `bun install --frozen-lockfile` and the full `bun run check` in the scratch worktree;
-//   3. only when green: append sha, branch and seconds to docs/landings.log and
+//   3. the compiled-app smoke: `bun run build:linux`, then `bun scripts/smoke-binary.ts --app
+//      dist/release/linux-x64`. A change to docs/ and Markdown files only skips it automatically;
+//      `--skip-smoke` is accepted only for such a change;
+//   4. only when green: append sha, branch and seconds to docs/landings.log and
 //      `git push origin HEAD:main` (a fast-forward; rejected if main moved, so run it again).
 //
 // One landing at a time: a lock file in the git directory. --dry-run does everything except push.
@@ -28,6 +31,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { git, gitLines, runLive } from "./lib/proc.ts";
+import { refuseSkipForCode, smokeTestTheApp } from "./lib/smoke-step.ts";
 
 const NO_HOOKS = { LEFTHOOK: "0" };
 
@@ -122,12 +126,19 @@ function land(scratch: string, dryRun: boolean): void {
   console.log("integrate: pushed to origin/main");
 }
 
-async function integrate(branch: string, dryRun: boolean, scratch: string): Promise<void> {
+interface Flags {
+  dryRun: boolean;
+  skipSmoke: boolean;
+}
+
+async function integrate(branch: string, flags: Flags, scratch: string): Promise<void> {
   const started = performance.now();
   bringOntoMain(scratch, branch);
+  refuseSkipForCode({ scratch, skip: flags.skipSmoke });
   if ((await verify(scratch)) !== 0) fail("check failed; nothing was pushed");
+  await smokeTestTheApp(scratch);
   recordLanding(scratch, branch, (performance.now() - started) / 1000);
-  land(scratch, dryRun);
+  land(scratch, flags.dryRun);
 }
 
 function lockFile(): string {
@@ -139,14 +150,14 @@ function lockFile(): string {
   );
 }
 
-async function inScratchWorktree(branch: string, dryRun: boolean): Promise<void> {
+async function inScratchWorktree(branch: string, flags: Flags): Promise<void> {
   const scratch = mkdtempSync(join(tmpdir(), "ac-integrate-"));
   try {
     const fetch = git(["fetch", "origin", "main"]);
     if (!fetch.ok) fail(`cannot fetch origin main: ${fetch.out}`);
     const added = git(["worktree", "add", "--detach", scratch, "origin/main"]);
     if (!added.ok) fail(`cannot create the scratch worktree: ${added.out}`);
-    await integrate(branch, dryRun, scratch);
+    await integrate(branch, flags, scratch);
   } finally {
     git(["worktree", "remove", "--force", scratch]);
     rmSync(scratch, { recursive: true, force: true });
@@ -156,11 +167,12 @@ async function inScratchWorktree(branch: string, dryRun: boolean): Promise<void>
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const branch = args.find((arg) => !arg.startsWith("--"));
-  if (branch === undefined) fail("usage: bun run integrate <branch> [--dry-run]");
+  if (branch === undefined) fail("usage: bun run integrate <branch> [--dry-run] [--skip-smoke]");
   const lockPath = lockFile();
   takeLock(lockPath);
   try {
-    await inScratchWorktree(branch, args.includes("--dry-run"));
+    const flags = { dryRun: args.includes("--dry-run"), skipSmoke: args.includes("--skip-smoke") };
+    await inScratchWorktree(branch, flags);
   } finally {
     rmSync(lockPath, { force: true });
   }

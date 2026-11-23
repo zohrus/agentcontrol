@@ -37,3 +37,14 @@ export async function expectMainToHold(
     );
   }
 }
+
+/** The script's output has these pieces in this order. */
+export function expectOutputInOrder(ran: Ran, pieces: string[]): void {
+  const positions = pieces.map((piece) => ran.output.indexOf(piece));
+  const inOrder = positions.every((at, index) => at >= 0 && at > (positions[index - 1] ?? -1));
+  if (!inOrder) {
+    throw new Error(
+      `expected the output to hold ${pieces.join(", then ")}, but it is: ${ran.output}`,
+    );
+  }
+}
