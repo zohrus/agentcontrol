@@ -3,19 +3,34 @@ import type { AppAccess, Session } from "../setup/app.ts";
 import { eventually } from "../setup/eventually.ts";
 import type { OpenShell } from "../setup/terminal-user.ts";
 
-/** The end of what the shell printed, for a failure message: escapes made visible. */
+/**
+ * What a person reads in the terminal: the text without its control sequences. Some login shells
+ * wrap every prompt and every command's output in them (Ubuntu's systemd shell integration writes
+ * `ESC ] 3008 ; ... ESC \`), so a line can start right after one.
+ */
+function visibleText(printed: string): string {
+  return printed
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, "")
+    .replace(/\x1b\[[\d;?]*[ -/]*[@-~]/g, "");
+}
+
+/** The end of what the terminal showed, for a failure message: line ends made visible. */
 function screenTail(shell: OpenShell): string {
-  const tail = shell.printed().slice(-400);
+  const tail = visibleText(shell.printed()).slice(-400);
   return tail === "" ? "nothing yet" : JSON.stringify(tail);
 }
 
-/** Waits for a screen; when none matches, the failure says what the terminal did print. */
+/** Waits for a screen; when none matches, the failure says what the terminal did show. */
 async function expectScreen(
   shell: OpenShell,
-  call: { matches: (printed: string) => boolean; expected: string },
+  call: { matches: (shown: string) => boolean; expected: string },
 ): Promise<string> {
   try {
-    return await shell.screens.waitFor(call.matches, call.expected);
+    const printed = await shell.screens.waitFor(
+      (screen) => call.matches(visibleText(screen)),
+      call.expected,
+    );
+    return visibleText(printed);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`${reason}. The terminal showed ${screenTail(shell)}`, { cause: error });
@@ -26,17 +41,8 @@ async function expectScreen(
 export function expectShellToHavePrinted(shell: OpenShell, line: string): Promise<string> {
   const pattern = new RegExp(`(^|\\n|\\r|[#$] )${line}\\r?\\n`);
   return expectScreen(shell, {
-    matches: (printed) => pattern.test(printed),
+    matches: (shown) => pattern.test(shown),
     expected: `expected the terminal to print the line "${line}"`,
-  });
-}
-
-/** The shell is up and waiting for a command: it printed a prompt. */
-export async function expectShellToShowAPrompt(shell: OpenShell): Promise<void> {
-  await expectScreen(shell, {
-    // The prompt is the last thing printed: a banner that happens to hold `$ ` is not one.
-    matches: (printed) => /[#$] (?:\x1b\[[\d;?]*[a-zA-Z])*$/.test(printed),
-    expected: "expected the terminal to show a prompt",
   });
 }
 

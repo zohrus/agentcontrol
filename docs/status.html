@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 18:30 UTC";
+const UPDATED = "23 Nov 2026, 20:45 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -264,8 +264,7 @@ const C = [
 ];
 
 const NOW = [
-  "Fixes from reviews of the Console, Analytics and workspace screens; tests that fail only when the machine is busy",
-  "Agents no longer inherit the app's internal variables; sessions can resume after the relay restarts",
+  "Small follow-ups: a sure test for the relay-unavailable answer, resume rough edges, remaining races in browser test helpers (paused: weekly limit for coding subagents, resets 27 Nov)",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
@@ -297,6 +296,7 @@ const LOG = [
   ["23 Nov 2026 15:20", "Analytics screen landed: tokens, cost, working and waiting time per session, model, workspace and day, rule-based insights that link to the sessions behind them, charts with a table view, 24 new tests. Costs under a cent now show as <$0.01. The Mac build is green on main: unsigned disk images are attached to each build run. Plan, task list and README brought up to date."],
   ["23 Nov 2026 17:30", "Console landed: a Terminal tab with a real shell in the session's folder, local or over SSH, with no extra port. The compiled app passes a tenth smoke step that opens a terminal. Still open: two internal variables reach agent processes (not the terminal). Workspace picker and Config screen are built with 22 browser tests and are being merged with the two screens that landed first."],
   ["23 Nov 2026 18:30", "Workspace picker and Config screen landed with 24 browser tests. Every planned screen of phases 5, 6 and 7 is now on main and the compiled app passes 10 of 10 smoke steps. Not started: the optional AI gateway and browser VS Code. Next: review fixes, and resume after a relay restart."],
+  ["23 Nov 2026 20:45", "Landed: agents are installed once and started without the app's internal variables (real Claude Code and Codex adapters answer through the compiled relay); a session interrupted by a relay restart shows Interrupted with a Resume button; review fixes for Console and Analytics (analytics requests 10 times faster, terminal output limited, three flaky tests fixed); the compiled-app smoke test now runs inside bun run integrate. CI on GitHub had been red since the Console landed and I had only been reading the build result: the cause was a test that did not ignore invisible control sequences from the runner's shell. Fixed and green on main again."],
 ];
 /* ===== END DATA ===== */
 
