@@ -41,13 +41,12 @@ export async function aRelayFolder(): Promise<DaemonFolder> {
       ]);
       return { exitCode, output: out + err };
     },
+    // A child that ended but was not reaped yet is a zombie: `ps` shows it as "Z" and it is gone.
     isRunning: (pid) => {
-      try {
-        process.kill(pid, 0);
-        return true;
-      } catch {
-        return false;
-      }
+      const state = Bun.spawnSync(["ps", "-o", "stat=", "-p", String(pid)])
+        .stdout.toString()
+        .trim();
+      return state !== "" && !state.startsWith("Z");
     },
   };
 }
