@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import type { UiHandler } from "./types.ts";
-import { launch, type Running } from "./vite-process.ts";
+import { launch, type Running, type Where } from "./vite-process.ts";
 
 const RESTART_DELAY_MS = 1000;
 const RESTART_TRIES = 5;
@@ -39,13 +39,10 @@ interface Supervised {
 const isClosing = (state: Supervised): boolean => state.closing;
 
 /** Starts the UI server again, a few tries one second apart; undefined when it keeps failing. */
-async function relaunch(options: {
-  root: string;
-  state: Supervised;
-}): Promise<Running | undefined> {
+async function relaunch(options: Where & { state: Supervised }): Promise<Running | undefined> {
   for (let attempt = 1; attempt <= RESTART_TRIES && !isClosing(options.state); attempt++) {
     await Bun.sleep(RESTART_DELAY_MS);
-    const running = await launch(options.root).catch((error: unknown) => {
+    const running = await launch(options).catch((error: unknown) => {
       console.error(`The UI server did not start again: ${String(error)}`);
       return undefined;
     });
@@ -55,7 +52,7 @@ async function relaunch(options: {
 }
 
 /** When the UI server dies by itself (not because the app closes it), a new one takes its place. */
-function keepRunning(options: { root: string; state: Supervised }): void {
+function keepRunning(options: Where & { state: Supervised }): void {
   const { state } = options;
   void state.current.child.exited.then(async () => {
     if (isClosing(state)) return;
@@ -69,10 +66,13 @@ function keepRunning(options: { root: string; state: Supervised }): void {
 }
 
 /** Serves the UI project in `root` with Vite's dev server, so edits appear without a reload. */
-export async function serveUiWithVite(root: string): Promise<UiHandler> {
-  const folder = resolve(root);
-  const state: Supervised = { current: await launch(folder), closing: false };
-  keepRunning({ root: folder, state });
+export async function serveUiWithVite(options: {
+  root: string;
+  pidFile: string;
+}): Promise<UiHandler> {
+  const launching = { root: resolve(options.root), pidFile: options.pidFile };
+  const state: Supervised = { current: await launch(launching), closing: false };
+  keepRunning({ ...launching, state });
   return {
     fetch: forwardTo(() => state.current.port),
     close: async () => {

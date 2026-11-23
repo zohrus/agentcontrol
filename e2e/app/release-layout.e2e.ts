@@ -38,11 +38,11 @@ test("an app finds its default UI in the resources folder it is given and prepar
 
 test("an app whose release moved finds the dependencies of the new place", async () => {
   // ********************************************************************
-  // ** GIVEN the app ran from one resources folder, and was then updated: the release now lives
-  // ** in another folder
+  // ** GIVEN the app ran from one resources folder
   // ********************************************************************
   const before = await aResourcesFolder("before");
   const app = await startAppWithLocalWorkspace({ modify: readModifyConfig(inFolder(before.path)) });
+  // AND the app was updated: the release now lives in another folder
   const after = await aResourcesFolder("after");
 
   // ********************************************************************
@@ -64,12 +64,13 @@ test("an app without a default UI says where it looked", () => {
 
   // ********************************************************************
   // ** WHEN the app reads where its default UI is
+  // ********************************************************************
+  const read = () => readModifyConfig(inFolder(missing));
+
+  // ********************************************************************
   // ** THEN it fails, naming the place it looked
   // ********************************************************************
-  expectReadingTheDefaultUiToFailSaying(
-    () => readModifyConfig(inFolder(missing)),
-    `${missing}/ui-template`,
-  );
+  expectReadingTheDefaultUiToFailSaying(read, `${missing}/ui-template`);
 });
 
 test("an app started like a release serves the UI of its data folder with Vite", async () => {

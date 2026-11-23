@@ -75,7 +75,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     const modify = modifyOf(options, { store, hub, sync });
     // The live UI folder is made from the default UI first, because the UI may be served from it.
     if (options.modify) await modify.ready();
-    ui = await startUi(options.ui ?? {});
+    ui = await startUi(options.ui ?? {}, options.dataDir);
     const deps = { store, hub, workspace: LOCAL, relay: sync, modify };
     return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
   }).catch(async (error: unknown) => {

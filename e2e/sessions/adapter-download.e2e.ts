@@ -45,7 +45,7 @@ test("without internet the first Claude Code session says to check the connectio
   // ********************************************************************
   await expectSessionToTellTheUser(relay, {
     session,
-    text: "Could not download the Claude Code adapter. Check your internet connection",
+    text: "adapter has not been downloaded yet and could not start. Check your internet connection",
   });
   // AND the relay keeps its downloads in its own folder
   expectAdaptersKeptInTheRelayFolder(relay);

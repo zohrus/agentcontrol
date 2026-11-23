@@ -65,7 +65,7 @@ export async function modifyPromotes(app: SmokeApp): Promise<void> {
 export async function viteServesChange(app: SmokeApp): Promise<void> {
   let last = "nothing yet";
   await waitUntil({
-    what: `the UI server to serve the changed file (last answer: ${last})`,
+    what: "the UI server to serve the changed file",
     seconds: 60,
     read: async () => {
       const page = await pageAt(app, "/src/smoke-note.ts");

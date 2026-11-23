@@ -5,15 +5,17 @@
 // (`bun dev --port 4800`). AGENTCONTROL_OPEN_COMMAND (a JSON array) replaces `open`/`xdg-open`;
 // tests use it.
 import { join } from "node:path";
+import { z } from "zod";
 
 const root = join(import.meta.dir, "..");
+const OpenCommand = z.array(z.string());
 const LISTENING = /listening on (http:\/\/127\.0\.0\.1:\d+)/;
 
 /** The command that opens `url`, or undefined when no browser should open. */
 function openCommand(url: string): string[] | undefined {
   const env = process.env;
   const custom = env["AGENTCONTROL_OPEN_COMMAND"];
-  if (custom) return [...(JSON.parse(custom) as string[]), url];
+  if (custom) return [...OpenCommand.parse(JSON.parse(custom)), url];
   if (!process.stdout.isTTY) return undefined;
   return [process.platform === "darwin" ? "open" : "xdg-open", url];
 }
@@ -23,9 +25,9 @@ function openBrowser(url: string): void {
     console.log("Not opening a browser: AGENTCONTROL_NO_OPEN is set.");
     return;
   }
-  const command = openCommand(url);
-  if (command === undefined) return;
   try {
+    const command = openCommand(url);
+    if (command === undefined) return;
     Bun.spawn(command, { stdin: "ignore", stdout: "ignore", stderr: "ignore" }).unref();
   } catch (error) {
     console.error(`Could not open the browser: ${String(error)}. Open ${url} yourself.`);
@@ -54,7 +56,7 @@ let seen = "";
 const decoder = new TextDecoder();
 for await (const chunk of app.stdout) {
   const text = decoder.decode(chunk, { stream: true });
-  seen += text;
+  if (!opened) seen += text;
   const url = opened ? undefined : LISTENING.exec(seen)?.[1];
   if (url !== undefined) {
     opened = true;

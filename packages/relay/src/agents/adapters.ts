@@ -57,4 +57,4 @@ export const downloading = (adapter: Adapter): string =>
   `Downloading the ${adapter.label} adapter (first use only, needs the internet)...\n`;
 
 export const downloadFailed = (adapter: Adapter): string =>
-  `Could not download the ${adapter.label} adapter. Check your internet connection and start the session again.\n`;
+  `The ${adapter.label} adapter has not been downloaded yet and could not start. Check your internet connection and start the session again.\n`;

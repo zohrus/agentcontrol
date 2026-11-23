@@ -21,9 +21,15 @@ export interface FindOptions {
 
 const SOURCE_TEMPLATE = join(import.meta.dir, "../../../ui-template");
 
-/** The folders that may hold the release's files: next to the binary, or a Mac bundle's Resources. */
-function releaseRoots(execPath: string): string[] {
-  const here = dirname(execPath);
+/**
+ * The folders that may hold the release's files: the parent of AGENTCONTROL_RESOURCES, or else
+ * next to the binary (inside a Mac bundle that is `Contents/Resources`), or `Contents/Resources`
+ * when the binary is in `Contents/MacOS`.
+ */
+function releaseRoots(options: FindOptions): string[] {
+  const given = options.env["AGENTCONTROL_RESOURCES"];
+  if (given !== undefined) return [dirname(given)];
+  const here = dirname(options.execPath);
   return [here, join(here, "..", "Resources")];
 }
 
@@ -34,8 +40,7 @@ function firstExisting(paths: string[]): string | undefined {
 function shippedTemplate(options: FindOptions): string | undefined {
   const given = options.env["AGENTCONTROL_RESOURCES"];
   if (given !== undefined) return join(given, "ui-template");
-  const roots = releaseRoots(options.execPath);
-  return firstExisting(roots.map((root) => join(root, "resources", "ui-template")));
+  return firstExisting(releaseRoots(options).map((root) => join(root, "resources", "ui-template")));
 }
 
 /**
@@ -52,7 +57,7 @@ export function findResources(options: FindOptions): Resources {
       `AgentControl's default UI was not found at ${templateDir}. Reinstall the app, or set AGENTCONTROL_RESOURCES to the resources folder of a release.`,
     );
   }
-  const roots = releaseRoots(options.execPath);
+  const roots = releaseRoots(options);
   const relayBinary = firstExisting(roots.map((root) => join(root, "agentcontrol-relay")));
   const relaysDir = firstExisting(roots.map((root) => join(root, "relays")));
   return { templateDir, shipped: shipped !== undefined, relayBinary, relaysDir };

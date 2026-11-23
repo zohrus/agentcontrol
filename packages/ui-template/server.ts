@@ -79,7 +79,10 @@ if (root === undefined) {
 }
 const server = await startUiDevServer(resolve(root));
 console.log(JSON.stringify({ port: server.port }));
+let stopping = false;
 const stop = (): void => {
+  if (stopping) return;
+  stopping = true;
   void server.close().then(() => process.exit(0));
 };
 process.on("SIGTERM", stop);
