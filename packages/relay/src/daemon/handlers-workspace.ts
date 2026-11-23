@@ -3,8 +3,6 @@ import { availableAgents, type HostEnv } from "../agents/index.ts";
 import { checkWorkspace, type RepoStore } from "../repos/index.ts";
 import type { Handlers } from "../rpc/index.ts";
 
-const RELAY_VERSION = "0.0.0";
-
 type WorkspaceMethods =
   | typeof N.hello
   | typeof N.workspaceCheck
@@ -17,12 +15,13 @@ export function workspaceHandlers(call: {
   repos: RepoStore;
   env: HostEnv;
   normaliserVersion: number;
+  relayVersion: string;
 }): Pick<Handlers, WorkspaceMethods> {
-  const { repos, env, normaliserVersion } = call;
+  const { repos, env, normaliserVersion, relayVersion } = call;
   return {
     [N.hello]: () =>
       Promise.resolve({
-        relayVersion: RELAY_VERSION,
+        relayVersion,
         normaliserVersion,
         agents: availableAgents(env),
       }),

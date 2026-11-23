@@ -9,7 +9,15 @@ export interface WorkspaceInfo {
   id: string;
   label: string;
   kind: "local" | "ssh";
-  connection: "connected" | "disconnected";
+  /** This release's version, which the workspace's relay has to be too. */
+  appVersion: string;
+  /**
+   * "connected": the relay is there and is this version. "needs-relay-update": it is there but is
+   * another version (see `relayVersion`), and works as it is until it is updated.
+   */
+  connection: "connected" | "disconnected" | "needs-relay-update";
+  /** The version the relay reported, while one is connected. */
+  relayVersion?: string | undefined;
 }
 
 /** Repositories the workspace knows, and how new worktrees of each are prepared. */

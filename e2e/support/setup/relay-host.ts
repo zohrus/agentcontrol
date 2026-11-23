@@ -10,6 +10,8 @@ export const inSubprocesses = Bun.env["AGENTCONTROL_E2E_PROCESSES"] === "1";
 export interface RelayHome {
   dataDir: string;
   env: Record<string, string>;
+  /** The version the relay reports (a daemon in the test process only); this release's if left out. */
+  relayVersion?: string;
 }
 
 /** The relay daemon of one test: reachable by wires, and able to be stopped and started again. */

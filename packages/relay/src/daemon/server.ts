@@ -5,6 +5,7 @@ import { createInterface } from "node:readline";
 import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import type { HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
+import { VERSION } from "@agentcontrol/protocol";
 import { createEventLog } from "../event-log/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
@@ -80,6 +81,8 @@ export interface DaemonOptions {
   env?: Record<string, string>;
   /** What `relay/hello` reports as the version of the event translation; the current one if left out. */
   normaliserVersion?: number;
+  /** What `relay/hello` reports as the relay's version; this release's version if left out. */
+  relayVersion?: string;
 }
 
 /** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
@@ -130,6 +133,7 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
       repos,
       env: hostEnv,
       normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
+      relayVersion: options.relayVersion ?? VERSION,
     }),
     ...configHandlers(configHome(hostEnv)),
   };

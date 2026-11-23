@@ -26,7 +26,11 @@ async function oneConnection(options: {
   signal.addEventListener("abort", () => void client.close());
   try {
     const session = await startSyncSession(client, deps);
-    hooks.attach({ client, refreshSessions: session.refreshSessions });
+    hooks.attach({
+      client,
+      refreshSessions: session.refreshSessions,
+      relayVersion: session.hello.relayVersion,
+    });
     await client.closed;
     hooks.detach();
     session.flush();

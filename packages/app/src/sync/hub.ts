@@ -2,13 +2,18 @@ import type { SessionEvent, SessionId } from "@agentcontrol/protocol";
 import type { ModifyState } from "../modify/index.ts";
 import type { StoredSession } from "../store/index.ts";
 
-/** Whether the workspace's relay is reachable right now. */
-export type ConnectionState = "connected" | "disconnected";
+/**
+ * Whether the workspace's relay is reachable right now. "needs-relay-update" means it answers, but
+ * it is another version than the app: it is used as it is until the relay is updated.
+ */
+export type ConnectionState = "connected" | "disconnected" | "needs-relay-update";
 
 /** What the app says about its link to one workspace's relay. */
 export interface WorkspaceConnection {
   workspaceId: string;
   state: ConnectionState;
+  /** The version the relay reported, while one is connected. */
+  relayVersion?: string;
 }
 
 /**

@@ -1,5 +1,6 @@
 import {
   type HelloResult,
+  VERSION,
   RelayName,
   RelayNotifications,
   type SessionEvent,
@@ -12,7 +13,6 @@ import { renormaliseStaleSessions } from "./renormalise.ts";
 import { saveChangedSummaries } from "./summaries.ts";
 
 const EVENT_BATCH_MS = 20;
-const CLIENT_VERSION = "0.0.0";
 
 export interface SyncSession {
   hello: HelloResult;
@@ -88,7 +88,7 @@ export async function startSyncSession(client: RelayClient, deps: SyncDeps): Pro
   const events = receiver(deps, () => normaliserVersion);
   const onSummaries = saveSummaries(deps);
   relayPushes({ client, onEvent: events.add, onSummaries });
-  const hello = await client.call(RelayName.hello, { clientVersion: CLIENT_VERSION });
+  const hello = await client.call(RelayName.hello, { clientVersion: VERSION });
   normaliserVersion = hello.normaliserVersion;
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const refreshSessions = await followAndList({ client, deps, onSummaries });

@@ -99,7 +99,7 @@ async function waitUntilRelayConnected(app: AppProcess): Promise<void> {
   await eventually("expected the started app to connect to the relay", async () => {
     const response = await fetch(`${app.baseUrl}/api/health`);
     const { relay } = (await response.json()) as { relay: string };
-    return relay === "connected" ? undefined : `the relay is ${relay}`;
+    return relay === "disconnected" ? "the relay is still disconnected" : undefined;
   });
 }
 

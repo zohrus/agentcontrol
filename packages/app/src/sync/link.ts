@@ -7,7 +7,7 @@ import {
   type SessionId,
 } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
-import { createConnectionState } from "./connection.ts";
+import { createConnectionState, stateOfRelayVersion } from "./connection.ts";
 import type { Hub, WorkspaceConnection } from "./hub.ts";
 
 /** The relay connection as the rest of the app sees it: there when connected, an error when not. */
@@ -31,6 +31,8 @@ export interface Link {
 export interface Live {
   client: RelayClient;
   refreshSessions: () => Promise<void>;
+  /** The version the relay said it is. */
+  relayVersion: string;
 }
 
 /** Forwards `relay/fs.changed` notifications of this connection to the hub. */
@@ -76,7 +78,7 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
     live = next;
     files.reset();
     forwardFileChanges(next.client, target);
-    state.set("connected");
+    state.set(stateOfRelayVersion(next.relayVersion), next.relayVersion);
   };
   return {
     link,

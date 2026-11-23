@@ -1,5 +1,3 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { SessionSummary } from "@agentcontrol/protocol";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
@@ -8,13 +6,11 @@ import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
-import { createLocalRepo } from "./local-repo.ts";
-import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
 import { sessionsOfRelay } from "./relay-peek.ts";
-import { type RelayHost, startRelayHost } from "./relay-host.ts";
+import type { RelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
+import { prepareWorkspace } from "./workspace-parts.ts";
 
-const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 const STREAM_WAIT_MS = 5000;
 
 /** The app running with one local workspace, driven the way a user's browser drives it. */
@@ -65,13 +61,6 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
   });
 }
 
-function mockAgentEnvironment(mockAgent: MockAgent): Record<string, string> {
-  return {
-    AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify(["bun", mockAgentMain]),
-    MOCK_AGENT_SCRIPT: mockAgent.scriptPath,
-  };
-}
-
 function newHeard(): Heard {
   return {
     streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
@@ -92,6 +81,8 @@ export interface StartOptions {
   relayEnv?: Record<string, string>;
   /** The repo holds this many files besides its readme, so a worktree has plenty. */
   repoFiles?: number;
+  /** The version the relay reports it is (in-process runs only), for a relay that is not this release. */
+  relayVersion?: string;
   /** Stop the relay before the app starts, so the app finds none. */
   relayStopped?: boolean;
 }
@@ -101,22 +92,6 @@ const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
 function uiOf(options: StartOptions): { root?: string; dist?: string } {
   if (options.uiDist !== undefined) return { dist: options.uiDist };
   return options.withUi ? { root: uiRoot } : {};
-}
-
-/** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
-async function prepareWorkspace(options: {
-  relayEnv?: Record<string, string>;
-  repoFiles?: number;
-}) {
-  const relayEnv = options.relayEnv ?? {};
-  const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
-  onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
-  const repoPath = await createLocalRepo({ extraFiles: options.repoFiles ?? 0 });
-  const mockAgent = await createMockAgent();
-  const env = { ...mockAgentEnvironment(mockAgent), ...relayEnv };
-  const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
-  onTestEnd(() => host.stop());
-  return { dataDir, repoPath, mockAgent, env, host };
 }
 
 /** The parts of the access every helper uses, reading the SDK and URL of the app as it is now. */
