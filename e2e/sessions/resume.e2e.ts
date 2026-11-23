@@ -1,11 +1,10 @@
 import { afterEach, test } from "bun:test";
-import { ErrorCode } from "@agentcontrol/protocol";
-import { expectRefusal } from "../support/expect/refusal-expectations.ts";
 import {
   expectAgentTextInLogTimes,
   expectAgentToHaveSaidInLog,
   expectInterruptionToHaveDropped,
   expectNoRequestToBeWaiting,
+  expectOneMessageTakenAndOneRefused,
   expectResumeNote,
 } from "../support/expect/resume-expectations.ts";
 import { expectSessionListedAs } from "../support/expect/session-expectations.ts";
@@ -13,7 +12,6 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { relayIsKilledWhileTheAgentWaitsForApproval } from "../support/setup/relay-crashes.ts";
 import {
   startRelayWithSessionWaitingForReply,
-  startRelayWithSessionWhoseAgentDied,
   startRelayWithSessionWaitingToRunNpmTest,
 } from "../support/setup/relay-sessions.ts";
 import type { RunningRelay } from "../support/setup/start-relay.ts";
@@ -142,54 +140,19 @@ test("sending a message to an interrupted session resumes it first", async () =>
   await expectResumeNote(relay, { session, contextRestored: true, saying: "remembers" });
 });
 
-test("an archived session cannot be resumed", async () => {
+test("two messages sent at once to an interrupted session are not both given to the agent", async () => {
   // ********************************************************************
-  // ** GIVEN an interrupted session that the user archived
+  // ** GIVEN an interrupted session
   // ********************************************************************
   const { relay, session } = await interruptedSessionThatSaid("Earlier answer");
-  await relay.user.archivesSession(session);
 
   // ********************************************************************
-  // ** WHEN the user tries to resume it
+  // ** WHEN the user sends two messages before the session is resumed
   // ********************************************************************
-  const outcome = await relay.user.triesToResumeSession(session);
+  const outcomes = await relay.user.sendsTwoMessagesAtOnce(session);
 
   // ********************************************************************
-  // ** THEN the relay refuses, saying the session was archived
+  // ** THEN one is taken and the other is told the session is being resumed
   // ********************************************************************
-  expectRefusal(outcome, { code: ErrorCode.sessionArchived, saying: "archived" });
-});
-
-test("a session whose agent is running cannot be resumed", async () => {
-  // ********************************************************************
-  // ** GIVEN a session whose agent is running and waiting for a reply
-  // ********************************************************************
-  const { relay, session } = await startRelayWithSessionWaitingForReply("Tests pass");
-
-  // ********************************************************************
-  // ** WHEN the user tries to resume it
-  // ********************************************************************
-  const outcome = await relay.user.triesToResumeSession(session);
-
-  // ********************************************************************
-  // ** THEN the relay refuses, saying the agent is already running
-  // ********************************************************************
-  expectRefusal(outcome, { code: ErrorCode.invalidParams, saying: "already running" });
-});
-
-test("a session whose agent failed on its own cannot be resumed", async () => {
-  // ********************************************************************
-  // ** GIVEN a session whose agent died in the middle of its turn
-  // ********************************************************************
-  const { relay, session } = await startRelayWithSessionWhoseAgentDied();
-
-  // ********************************************************************
-  // ** WHEN the user tries to resume it
-  // ********************************************************************
-  const outcome = await relay.user.triesToResumeSession(session);
-
-  // ********************************************************************
-  // ** THEN the relay refuses, saying the session was not interrupted
-  // ********************************************************************
-  expectRefusal(outcome, { code: ErrorCode.invalidParams, saying: "not interrupted" });
+  expectOneMessageTakenAndOneRefused(outcomes, "being resumed");
 });

@@ -3,7 +3,13 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { type Adapter, adapterFolder, adaptersRoot, downloadFailed } from "./adapters.ts";
+import {
+  type Adapter,
+  adapterFolder,
+  adaptersRoot,
+  downloadFailed,
+  unreadable,
+} from "./adapters.ts";
 import { agentEnvironment } from "./environment.ts";
 import type { HostEnv } from "./types.ts";
 
@@ -82,12 +88,22 @@ async function ensureInstalled(options: {
   env: HostEnv;
 }): Promise<string> {
   const folder = adapterFolder(options);
-  if (!existsSync(folder)) {
-    await mkdir(options.root, { recursive: true });
-    await removeStaleInstalls(options.root);
-    await install(options);
-  }
-  return entryOf({ adapter: options.adapter, folder });
+  if (!existsSync(folder)) await downloadInto(options);
+  return entryOf({ adapter: options.adapter, folder }).catch((error: unknown) => {
+    throw new Error(unreadable({ adapter: options.adapter, folder, reason: reasonOf(error) }));
+  });
+}
+
+const reasonOf = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+/** The install, whose failure is told as a failed download (the network is the usual cause). */
+async function downloadInto(options: { adapter: Adapter; root: string; env: HostEnv }) {
+  await mkdir(options.root, { recursive: true });
+  await removeStaleInstalls(options.root);
+  await install(options).catch((error: unknown) => {
+    throw new Error(downloadFailed({ adapter: options.adapter, reason: reasonOf(error) }));
+  });
 }
 
 /** Installs in progress in this process, so sessions that start together install once. */
@@ -106,12 +122,7 @@ export function installedAdapterEntry(options: {
   const key = adapterFolder({ adapter, root });
   const running = inProgress.get(key);
   if (running !== undefined) return running;
-  const started = ensureInstalled({ adapter, root, env })
-    .catch((error: unknown) => {
-      const reason = error instanceof Error ? error.message : String(error);
-      throw new Error(downloadFailed({ adapter, reason }));
-    })
-    .finally(() => inProgress.delete(key));
+  const started = ensureInstalled({ adapter, root, env }).finally(() => inProgress.delete(key));
   inProgress.set(key, started);
   return started;
 }

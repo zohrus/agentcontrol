@@ -45,6 +45,22 @@ async function installAdapterByHand(adapters: string): Promise<void> {
   await Bun.write(join(packageFolder, "index.js"), MOCK_ADAPTER_SOURCE);
 }
 
+/** The Claude Code adapter's folder exists, but its package.json declares no program to run. */
+export async function startRelayWithADamagedAdapter(): Promise<OfflineRelay> {
+  const adapters = await mkdtemp(join(tmpdir(), "agentcontrol-adapters-"));
+  onTestEnd(() => rm(adapters, { recursive: true, force: true }));
+  const packageFolder = join(
+    adapters,
+    "claude-agent-acp@0.109.1",
+    "node_modules",
+    CLAUDE_ADAPTER.name,
+  );
+  await mkdir(packageFolder, { recursive: true });
+  await Bun.write(join(packageFolder, "package.json"), "{}");
+  const env = { ...NO_INTERNET, AGENTCONTROL_ADAPTER_CACHE: adapters };
+  return offline(await startRelayWithLocalRepo({ env }));
+}
+
 /** The same, but the Claude Code adapter is already in the folder where the relay keeps adapters. */
 export async function startRelayWithoutInternetAfterAdapterDownload(): Promise<OfflineRelay> {
   const adapters = await mkdtemp(join(tmpdir(), "agentcontrol-adapters-"));

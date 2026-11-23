@@ -3,8 +3,8 @@ import type { RelayAccess } from "../setup/relay.ts";
 
 /**
  * The session list has exactly these sessions, every one interrupted (its agent is gone), none with a
- * request nobody can answer, each remembering all of its events and the two the interruption added
- * (the dropped request answered as cancelled, and the interruption).
+ * request nobody can answer, each remembering all of its events and the three the interruption added
+ * (the exit, the dropped request answered as cancelled, and the interruption).
  */
 export async function expectListToHoldRebuiltSessions(
   relay: RelayAccess,
@@ -22,12 +22,12 @@ export async function expectListToHoldRebuiltSessions(
       session.status !== "interrupted" ||
       session.pendingPermissions.length > 0 ||
       session.turnRunning ||
-      session.lastSeq !== call.eventCount + 2,
+      session.lastSeq !== call.eventCount + 3,
   );
   if (wrong) {
     const seen = `${wrong.status}, ${String(wrong.pendingPermissions.length)} requests, last event ${String(wrong.lastSeq)}`;
     throw new Error(
-      `expected session "${wrong.title}" to be interrupted with no request after ${String(call.eventCount + 2)} events, but it is ${seen}`,
+      `expected session "${wrong.title}" to be interrupted with no request after ${String(call.eventCount + 3)} events, but it is ${seen}`,
     );
   }
 }

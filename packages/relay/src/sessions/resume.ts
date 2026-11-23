@@ -36,7 +36,7 @@ const refusals: ((facts: Facts) => RelayError | undefined)[] = [
 ];
 
 /** Throws the plain reason this session cannot be resumed; returns when it can. */
-async function checkResumable(ctx: SessionContext, sessionId: SessionId): Promise<void> {
+async function checkResumable(ctx: SessionContext, sessionId: SessionId): Promise<SessionInfo> {
   const info = await sessionInfo(ctx, sessionId);
   const facts = {
     info,
@@ -45,6 +45,7 @@ async function checkResumable(ctx: SessionContext, sessionId: SessionId): Promis
   };
   const refusal = refusals.map((rule) => rule(facts)).find((found) => found !== undefined);
   if (refusal !== undefined) throw refusal;
+  return info;
 }
 
 /** The id the agent gave the session when it last started, from the log; undefined in old logs. */
@@ -63,12 +64,12 @@ function noteFor(agent: AgentProcess): string {
 }
 
 async function startAgain(ctx: SessionContext, sessionId: SessionId): Promise<AgentProcess> {
-  await checkResumable(ctx, sessionId);
+  const info = await checkResumable(ctx, sessionId);
   const { cwd, env } = await shellTarget(ctx, sessionId);
   const agentSessionId = await agentSessionIdOf(ctx, sessionId);
   const agent = await connectAgent(ctx, {
     sessionId,
-    agent: ctx.summaries.summary(sessionId)?.agent ?? "mock",
+    agent: info.agent,
     cwd,
     env,
     ask: (request) => holdForUser(ctx, { sessionId, request }),
@@ -92,13 +93,23 @@ export function resumeSession(ctx: SessionContext, sessionId: SessionId): Promis
   return started;
 }
 
-/** The agent to send a prompt to: the live one, or a resumed one when the session was interrupted. */
+/**
+ * The agent to send a prompt to: the live one, or a resumed one when the session was interrupted.
+ * While another request is resuming the session, a second message is refused rather than sent
+ * twice to the one agent.
+ */
 export async function agentToPrompt(
   ctx: SessionContext,
   sessionId: SessionId,
 ): Promise<AgentProcess> {
   const live = ctx.live.get(sessionId);
   if (live !== undefined) return live;
-  const interrupted = ctx.summaries.summary(sessionId)?.status === "interrupted";
-  return interrupted ? resumeSession(ctx, sessionId) : liveAgent(ctx, sessionId);
+  if (ctx.summaries.summary(sessionId)?.status !== "interrupted") return liveAgent(ctx, sessionId);
+  if (ctx.resuming.has(sessionId)) {
+    throw refuse(
+      ErrorCode.invalidParams,
+      "This session is being resumed: send the message again in a moment.",
+    );
+  }
+  return resumeSession(ctx, sessionId);
 }

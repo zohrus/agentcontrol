@@ -1,4 +1,4 @@
-import type { SessionId, SessionKind } from "@agentcontrol/protocol";
+import type { AgentKind, SessionId, SessionKind } from "@agentcontrol/protocol";
 import type { AgentProcess, HostEnv } from "../agents/index.ts";
 import type { EventInput, EventLog } from "../event-log/index.ts";
 import type { PendingPermissions } from "../permissions/index.ts";
@@ -33,6 +33,7 @@ export interface SessionContext {
 
 /** Where a session lives, as recorded in its `session-created` event. */
 export interface SessionInfo {
+  agent: AgentKind;
   worktreePath: string;
   baseBranch: string;
   repoPath: string;

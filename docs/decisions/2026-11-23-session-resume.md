@@ -17,7 +17,12 @@ When the relay stopped (crash, reboot, update) the agents died with it. The sess
   stopped and their last messages written) and recovery at the next start, for a relay that died
   (the log's last lifecycle event is `agent-started`). Requests the agent was waiting on are
   answered as cancelled in the log (`permission-answered` with `automatic.reason` "the relay
-  stopped") and counted in the event, so the log says what was dropped. The open turn is closed
+  stopped") and counted in the event, so the log says what was dropped (found from the log's
+  unanswered requests, since an exited agent has already cleared them from the summary). An agent
+  that died with the relay never reported its exit, so recovery records `agent-exited` first: the
+  analytics time tally and the Modify turn wait read that event, so nothing outside the relay had
+  to change. A second message sent while a resume is in progress is refused ("being resumed")
+  rather than reaching the one agent twice. The open turn is closed
   (`turnRunning` false). An agent that had exited by itself before keeps its reading (`failed` or
   `idle`): only live agents are interrupted.
 - **Resume.** `relay/sessions.resume { sessionId }` returns `{ contextRestored }`. It starts a

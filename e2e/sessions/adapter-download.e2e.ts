@@ -8,11 +8,30 @@ import { expectNothingInstalled } from "../support/expect/adapter-launch-expecta
 import { expectTurnToEndWithStopReason } from "../support/expect/turn-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
+  startRelayWithADamagedAdapter,
   startRelayWithoutInternet,
   startRelayWithoutInternetAfterAdapterDownload,
 } from "../support/setup/offline-relay.ts";
 
 afterEach(cleanUpAfterTest);
+
+test("a damaged adapter folder says to delete it, not to check the connection", async () => {
+  // ********************************************************************
+  // ** GIVEN the relay has an adapter folder whose package cannot be read
+  // ********************************************************************
+  const relay = await startRelayWithADamagedAdapter();
+
+  // ********************************************************************
+  // ** WHEN the user starts a Claude Code session
+  // ********************************************************************
+  const session = await relay.startsClaudeCodeSession({ prompt: "Add rate limiting" });
+
+  // ********************************************************************
+  // ** THEN the session says the adapter could not be read and to delete its folder
+  // ********************************************************************
+  await expectSessionToTellTheUser(relay, { session, text: "could not be read" });
+  await expectSessionToTellTheUser(relay, { session, text: "Delete that folder" });
+});
 
 test("a Claude Code session says it is downloading the adapter the first time", async () => {
   // ********************************************************************

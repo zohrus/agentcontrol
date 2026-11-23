@@ -82,14 +82,6 @@ function sessionActions(api: Api) {
     sendPrompt: async (id: SessionId, text: string): Promise<void> => {
       await read(api.sessions[":id"].prompt.$post({ param: { id }, json: { text } }));
     },
-    /**
-     * Starts a new agent for a session whose status is "interrupted" (the relay stopped while its
-     * agent ran). `contextRestored` says whether the agent remembers the earlier work; when it does
-     * not, the session's events say so. Sending a prompt to an interrupted session resumes it first.
-     * Throws ApiError "session-archived" (409) or "invalid-request" (400, not interrupted).
-     */
-    resume: (id: SessionId): Promise<{ contextRestored: boolean }> =>
-      read(api.sessions[":id"].resume.$post({ param: { id } })),
     /** Answers an agent's permission request with one of the offered option ids (a PermissionOption). */
     answerPermission: async (id: SessionId, requestId: string, optionId: string): Promise<void> => {
       const param = { id, requestId };
@@ -97,6 +89,21 @@ function sessionActions(api: Api) {
         api.sessions[":id"].permissions[":requestId"].$post({ param, json: { optionId } }),
       );
     },
+  };
+}
+
+/** Getting a session going again after the relay stopped. */
+function sessionResuming(api: Api) {
+  return {
+    /**
+     * Starts a new agent for a session whose status is "interrupted" (the relay stopped while its
+     * agent ran). `contextRestored` says whether the agent remembers the earlier work; when it does
+     * not, the session's events say so. Sending a prompt to an interrupted session resumes it first.
+     * Throws ApiError "session-archived" (409), or "invalid-request" (400) when the session is not
+     * interrupted, its agent is already running, or it is a Modify session.
+     */
+    resume: (id: SessionId): Promise<{ contextRestored: boolean }> =>
+      read(api.sessions[":id"].resume.$post({ param: { id } })),
   };
 }
 
@@ -123,6 +130,7 @@ export function sessionsApi(api: Api) {
     ...sessionReads(api),
     ...sessionCosts(api),
     ...sessionActions(api),
+    ...sessionResuming(api),
     ...sessionEnding(api),
   };
 }

@@ -55,5 +55,8 @@ export function needsDownload(options: {
 export const downloading = (adapter: Adapter): string =>
   `Downloading the ${adapter.label} adapter (first use only, needs the internet)...\n`;
 
+export const unreadable = (options: { adapter: Adapter; folder: string; reason: string }): string =>
+  `The installed ${options.adapter.label} adapter in ${options.folder} could not be read (${options.reason}). Delete that folder and start the session again to download it afresh.`;
+
 export const downloadFailed = (options: { adapter: Adapter; reason: string }): string =>
   `The ${options.adapter.label} adapter has not been downloaded yet and could not start. Check your internet connection and start the session again.\n${options.reason}`;

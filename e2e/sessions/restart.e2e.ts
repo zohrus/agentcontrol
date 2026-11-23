@@ -3,7 +3,10 @@ import {
   expectSessionHistoryToBeReplayed,
   expectSessionListedAs,
 } from "../support/expect/session-expectations.ts";
-import { expectNoRequestToBeWaiting } from "../support/expect/resume-expectations.ts";
+import {
+  expectInterruptionToHaveDropped,
+  expectNoRequestToBeWaiting,
+} from "../support/expect/resume-expectations.ts";
 import { startRelayWithSessionWaitingToRunNpmTest } from "../support/setup/relay-sessions.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startRelayWithSessionWaitingForReply } from "../support/setup/relay-sessions.ts";
@@ -47,4 +50,6 @@ test("after the relay restarts, a session whose turn was open is listed as inter
   await expectSessionListedAs(relay, { session, status: "interrupted" });
   // AND the request nobody can answer any more is gone
   await expectNoRequestToBeWaiting(relay, session);
+  // AND the log says the request was dropped
+  await expectInterruptionToHaveDropped(relay, { session, requests: 1 });
 });

@@ -1,4 +1,5 @@
 import { RelayName, type SessionEvent } from "@agentcontrol/protocol";
+import type { Outcome } from "../setup/attempt.ts";
 import type { RelayAccess, Session } from "../setup/relay.ts";
 import { eventually } from "../setup/eventually.ts";
 import { updatesOf } from "../setup/updates.ts";
@@ -68,6 +69,21 @@ export async function expectResumeNote(
   if (payload.contextRestored !== contextRestored || !payload.note.includes(saying)) {
     throw new Error(
       `expected the resume note of session "${session.title}" to say "${saying}" (context restored: ${String(contextRestored)}), but it said "${payload.note}" (context restored: ${String(payload.contextRestored)})`,
+    );
+  }
+}
+
+/** One of the two messages was taken, and the other was refused with this reason. */
+export function expectOneMessageTakenAndOneRefused(
+  outcomes: Outcome<unknown>[],
+  saying: string,
+): void {
+  const refused = outcomes.filter((outcome) => !outcome.ok);
+  const taken = outcomes.length - refused.length;
+  const says = refused.every((outcome) => outcome.message.includes(saying));
+  if (taken !== 1 || refused.length !== 1 || !says) {
+    throw new Error(
+      `expected one message taken and one refused saying "${saying}", but ${String(taken)} were taken and ${String(refused.length)} refused`,
     );
   }
 }
