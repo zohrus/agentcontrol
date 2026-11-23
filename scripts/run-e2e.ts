@@ -135,9 +135,15 @@ function forgetOldParts(jobs: Job[], onlyThese: boolean): void {
 }
 
 const coverage = process.argv.includes("--coverage");
+/** True when `file` is `path` itself or lies in the folder `path`, or is that file name without its end. */
+const isUnder = (file: string, path: string): boolean =>
+  file === path ||
+  file.startsWith(`${path.replace(/\/$/, "")}/`) ||
+  file.startsWith(path.replace(".e2e.ts", "") + ".");
+
 const selected = process.argv.slice(2).filter((argument) => !argument.startsWith("--"));
 const files = [...new Bun.Glob("e2e/**/*.e2e.ts").scanSync({ cwd: process.cwd() })]
-  .filter((file) => selected.length === 0 || selected.some((prefix) => file.startsWith(prefix)))
+  .filter((file) => selected.length === 0 || selected.some((path) => isUnder(file, path)))
   .sort();
 
 if (files.length === 0) {
