@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 15:20 UTC";
+const UPDATED = "23 Nov 2026, 17:30 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -250,7 +250,7 @@ const C = [
   // Phase 5
   { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"done", desc:"Add a host, install the relay over ssh, run sessions there; survives dropped connections and the app being offline; relay versions handled; agents found through the login-shell PATH. About 40 tests over real ssh. Not yet tried on a real remote machine.", path:"" },
   { id:"workspace-ui", phase:"p5", name:"Workspace picker in the UI", status:"progress", desc:"Pick a workspace, add an SSH host, see its checklist, restart its relay. The API and SDK are ready.", path:"packages/ui-template/src/workspaces" },
-  { id:"console", phase:"p5", name:"Console in the app", status:"progress", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
+  { id:"console", phase:"p5", name:"Console in the app", status:"done", desc:"A Terminal tab with a real shell in the session's folder, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection. Guarded by the same Host, Origin and token checks. Works in the compiled Linux app; not yet run on macOS.", path:"packages/relay/src/terminal" },
   { id:"gateway", phase:"p5", name:"AI gateway", status:"planned", desc:"Optional LiteLLM proxy per workspace for uniform cost logs.", path:"" },
   { id:"ide", phase:"p5", name:"Browser VS Code", status:"planned", desc:"code-server on the workspace, tunnelled over SSH.", path:"" },
   // Phase 6
@@ -264,8 +264,7 @@ const C = [
 ];
 
 const NOW = [
-  "Workspace picker and Config screen in the UI",
-  "Console: a terminal on the workspace, inside the app",
+  "Workspace picker and Config screen in the UI: built and tested, merging with Analytics and Console before it lands",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
@@ -295,6 +294,7 @@ const LOG = [
   ["23 Nov 2026 12:20", "Landed: 13 follow-up fixes (app starts when the relay is down, relay shutdown keeps the last events, relay stop reports what it did, stale updates re-read, coverage floor raised to 98%) and the Mac build fix. On a real Mac runner the compiled app passed all 9 smoke steps, from the app bundle and from the mounted disk image; unsigned disk images are built for both chip types (about 320 MB each). Three Mac-only bugs found and fixed."],
   ["23 Nov 2026 14:00", "Landed: remote SSH workspaces (Phase 5 core, about 40 tests over real ssh, compiled relay installed over ssh) and UI coverage (the UI now counts toward the coverage rule, about 50 new browser tests). 124 test runs pass, coverage 98.9%. A break in the compiled app caused by the follow-up fixes was caught by GitHub's build and fixed; the compiled-app smoke test now runs before every landing."],
   ["23 Nov 2026 15:20", "Analytics screen landed: tokens, cost, working and waiting time per session, model, workspace and day, rule-based insights that link to the sessions behind them, charts with a table view, 24 new tests. Costs under a cent now show as <$0.01. The Mac build is green on main: unsigned disk images are attached to each build run. Plan, task list and README brought up to date."],
+  ["23 Nov 2026 17:30", "Console landed: a Terminal tab with a real shell in the session's folder, local or over SSH, with no extra port. The compiled app passes a tenth smoke step that opens a terminal. Still open: two internal variables reach agent processes (not the terminal). Workspace picker and Config screen are built with 22 browser tests and are being merged with the two screens that landed first."],
 ];
 /* ===== END DATA ===== */
 
