@@ -111,4 +111,6 @@ export type Insight = {
   text: string;
   /** The sessions behind it, most telling first. */
   sessionIds: string[];
+  /** The same sessions with the workspace each is in and its title, so a link needs no table row. */
+  sessions: { workspaceId: string; sessionId: string; title: string }[];
 };

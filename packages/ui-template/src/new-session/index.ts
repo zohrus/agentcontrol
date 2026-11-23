@@ -1,2 +1,2 @@
 export { NewSessionDialog } from "./new-session-dialog.tsx";
-export type { NewSessionDialogProps, NewSessionRequest } from "./types.ts";
+export type { NewSessionDialogProps, NewSessionRequest, WorkspaceChoice } from "./types.ts";

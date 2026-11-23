@@ -1,5 +1,6 @@
 import type { ModifyState, SessionEvent, UiVersionEntry } from "@agentcontrol/sdk";
 import { useSessionEvents, useData } from "./hooks.ts";
+import { modifySession } from "./modify-data.ts";
 import { useController } from "./provider.tsx";
 
 const nothingYet: ModifyState = { status: "idle", gate: "idle", changedFiles: [] };
@@ -17,6 +18,7 @@ export type ModifyData = {
 export function useModify(): ModifyData {
   const state = useData((s) => s.modify) ?? nothingYet;
   const versions = useData((s) => s.versions);
-  const events = useSessionEvents(state.sessionId);
+  const { sessionId } = state;
+  const events = useSessionEvents(sessionId === undefined ? undefined : modifySession(sessionId));
   return { state, versions, events, actions: useController().modify };
 }

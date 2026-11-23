@@ -4,6 +4,7 @@ import { ArchivedBanner } from "../archive/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { SessionUsage } from "../status/index.ts";
 import { Composer } from "./composer.tsx";
+import { ReadOnlyBanner } from "./read-only-banner.tsx";
 import { buildViewItems, isTurnRunning } from "./reduce-events.ts";
 import { SessionHeader } from "./session-header.tsx";
 import { Stream } from "./stream.tsx";
@@ -20,12 +21,15 @@ export type SessionViewProps = {
   /** Asks to archive; the caller shows the confirmation (see ArchiveDialog). */
   onArchive: () => void;
   onAnswerPermission: (requestId: string, optionId: string) => void;
+  /** Set when the session's workspace cannot take commands: says why, and replaces the composer. */
+  readOnlyNote?: string | undefined;
 };
 
 function Footer(props: SessionViewProps) {
   if (props.summary.status === "archived") {
     return <ArchivedBanner archivedAt={props.summary.archivedAt} />;
   }
+  if (props.readOnlyNote !== undefined) return <ReadOnlyBanner text={props.readOnlyNote} />;
   return (
     <Composer
       running={props.turnRunning ?? isTurnRunning(props.events)}

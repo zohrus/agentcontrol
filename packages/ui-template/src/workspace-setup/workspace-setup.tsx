@@ -49,16 +49,22 @@ export function WorkspaceSetup(props: WorkspaceSetupProps) {
   );
 }
 
-type DialogProps = WorkspaceSetupProps & { open: boolean; onOpenChange: (open: boolean) => void };
+type DialogProps = WorkspaceSetupProps & {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The machine being checked; "this machine" when left out. */
+  workspaceLabel?: string;
+};
 
 /** The workspace setup as a dialog, opened from "Config". */
-export function WorkspaceSetupDialog({ open, onOpenChange, ...setup }: DialogProps) {
+export function WorkspaceSetupDialog(props: DialogProps) {
+  const { open, onOpenChange, workspaceLabel = "this machine", ...setup } = props;
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
       title="Workspace setup"
-      description="Check that this machine is ready to run agents, and repair what is not."
+      description={`Check that ${workspaceLabel} is ready to run agents, and repair what is not.`}
     >
       <WorkspaceSetup {...setup} />
     </Dialog>

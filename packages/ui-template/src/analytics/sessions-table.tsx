@@ -8,7 +8,7 @@ type Props = {
   rows: SessionAnalytics[];
   sorting: Sorting;
   onSort: (sorting: Sorting) => void;
-  onOpen: (sessionId: string) => void;
+  onOpen: (workspaceId: string, sessionId: string) => void;
 };
 
 const ariaSort = (column: Column, sorting: Sorting): "ascending" | "descending" | "none" => {
@@ -57,7 +57,7 @@ function Cell(props: { column: Column; row: SessionAnalytics; onOpen: Props["onO
           className="max-w-64 truncate text-left text-accent underline-offset-2 hover:underline"
           onClick={(event) => {
             event.stopPropagation();
-            onOpen(row.sessionId);
+            onOpen(row.workspaceId, row.sessionId);
           }}
         >
           {column.text(row)}
@@ -75,7 +75,7 @@ function Row({ row, onOpen }: { row: SessionAnalytics; onOpen: Props["onOpen"] }
       className="cursor-pointer border-t border-line hover:bg-code"
       data-testid="analytics-row"
       onClick={() => {
-        onOpen(row.sessionId);
+        onOpen(row.workspaceId, row.sessionId);
       }}
     >
       {COLUMNS.map((column) => (

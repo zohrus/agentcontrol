@@ -1,7 +1,10 @@
 import type { SessionEvent, SessionRow } from "@agentcontrol/sdk";
+import { keyOf, refOf } from "./session-ref.ts";
 
-/** The only workspace there is until remote workspaces exist. */
-export const LOCAL_WORKSPACE = "local";
+const rowKey = (row: SessionRow): string => keyOf(refOf(row));
+
+const newestFirst = (a: SessionRow, b: SessionRow): number =>
+  b.createdAt.localeCompare(a.createdAt);
 
 /** Adds the events newer than the last one held; the same event is never held twice. */
 export function appendEvents(
@@ -18,14 +21,14 @@ export function mergeFetched(
   have: readonly SessionRow[],
   fetched: readonly SessionRow[],
 ): readonly SessionRow[] {
-  const held = new Map(have.map((row) => [row.id, row]));
+  const held = new Map(have.map((row) => [rowKey(row), row]));
   const rows = fetched.map((row) => {
-    const current = held.get(row.id);
+    const current = held.get(rowKey(row));
     return current !== undefined && current.lastSeq > row.lastSeq ? current : row;
   });
-  const fetchedIds = new Set(fetched.map((row) => row.id));
-  const extra = have.filter((row) => !fetchedIds.has(row.id));
-  return [...rows, ...extra].toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const fetchedKeys = new Set(fetched.map(rowKey));
+  const extra = have.filter((row) => !fetchedKeys.has(rowKey(row)));
+  return [...rows, ...extra].toSorted(newestFirst);
 }
 
 /** Adds or replaces sessions from the live stream, newest first. */
@@ -33,7 +36,7 @@ export function upsertSessions(
   have: readonly SessionRow[],
   pushed: readonly SessionRow[],
 ): readonly SessionRow[] {
-  const byId = new Map(have.map((row) => [row.id, row]));
-  for (const row of pushed) byId.set(row.id, row);
-  return [...byId.values()].toSorted((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const byKey = new Map(have.map((row) => [rowKey(row), row]));
+  for (const row of pushed) byKey.set(rowKey(row), row);
+  return [...byKey.values()].toSorted(newestFirst);
 }

@@ -19,12 +19,17 @@ function repoSetupEditor(page: Page) {
   };
 }
 
-/** The "Workspace setup" dialog that Config opens: the checklist and the worktree setup per repo. */
+/** The "Workspace setup" dialog that Check and repair opens in the workspace menu: the checklist and the worktree setup per repo. */
 export function workspacePage(page: Page) {
   const dialog = dialogOf(page);
   return {
     ...repoSetupEditor(page),
-    opensWorkspaceSetup: () => page.getByRole("button", { name: "Config", exact: true }).click(),
+    /** Opens the workspace menu and chooses Check and repair for "This Mac". */
+    opensWorkspaceSetup: async (): Promise<void> => {
+      await page.getByRole("button", { name: "Workspaces", exact: true }).click();
+      const row = dialog.getByRole("listitem", { name: "This Mac" });
+      await row.getByRole("button", { name: "Check and repair" }).click();
+    },
     checksAndRepairs: () => dialog.getByRole("button", { name: "Check and repair" }).click(),
     /** What the dialog says about one checklist step: its state ("Passed") and its text. */
     checklistStep: async (label: string): Promise<{ state: string; text: string } | undefined> => {

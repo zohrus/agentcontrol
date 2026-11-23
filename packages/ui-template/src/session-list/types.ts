@@ -1,4 +1,22 @@
-import type { PermissionOption, SessionSummary } from "@agentcontrol/protocol";
+import type {
+  ConnectionState,
+  PermissionOption,
+  SessionId,
+  SessionSummary,
+} from "@agentcontrol/protocol";
+
+/** A session is identified by its workspace and its id: ids are only unique within a workspace. */
+export type SessionRef = { workspaceId: string; id: SessionId };
+
+/** The workspace a session runs on, with its connection, as the list shows it. */
+export type WorkspaceTag = {
+  id: string;
+  /** The name from the workspace record ("This Mac", or what the user called the host). */
+  label: string;
+  state: ConnectionState;
+  /** Why the workspace is not connected, in plain words. */
+  reason?: string | undefined;
+};
 
 /** The one permission request a waiting session is blocked on. */
 export type PendingPermission = {
@@ -11,8 +29,12 @@ export type PendingPermission = {
 /** One session in the list, with the workspace it runs on and an optional second line. */
 export type SessionListEntry = {
   summary: SessionSummary;
-  /** Display name of the workspace (machine) the session runs on. */
-  workspace: string;
+  /** Which workspace and id the session has. */
+  ref: SessionRef;
+  /** The workspace (machine) the session runs on. */
+  workspace: WorkspaceTag;
+  /** True when the workspace cannot take commands (offline, removed): the session can only be read. */
+  readOnly: boolean;
   /** Second line of the row; defaults to the agent and status. */
   detail?: string;
   /**

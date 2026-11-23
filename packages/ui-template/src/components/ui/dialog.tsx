@@ -3,11 +3,12 @@ import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn.ts";
 
-type Placement = "center" | "right";
+type Placement = "center" | "wide" | "right";
 
 const placements: Record<Placement, string> = {
   center:
     "left-1/2 top-1/2 max-h-[90vh] w-[min(560px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl border",
+  wide: "left-1/2 top-1/2 h-[min(780px,92vh)] w-[min(1000px,94vw)] -translate-x-1/2 -translate-y-1/2 rounded-xl border",
   right: "right-0 top-0 h-full w-[min(520px,100vw)] border-l",
 };
 

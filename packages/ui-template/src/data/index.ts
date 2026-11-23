@@ -2,6 +2,8 @@ export { workspaceLabel, worktreePathOf } from "./derive.ts";
 export { describeError } from "./errors.ts";
 export {
   useChangesError,
+  useChoices,
+  useConfigState,
   useData,
   useDiff,
   useFile,
@@ -14,8 +16,13 @@ export {
   useTree,
   useTurnRunning,
   useUsage,
+  useWorkspace,
+  useWorkspaceCheck,
+  useWorkspaces,
 } from "./hooks.ts";
+export type { ConfigState } from "./model.ts";
 export { useModify } from "./modify-hooks.ts";
+export { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 export type { Controller } from "./controller.ts";
 export { DataProvider, useController } from "./provider.tsx";
 export { createStore, useStoreValue } from "./store.ts";

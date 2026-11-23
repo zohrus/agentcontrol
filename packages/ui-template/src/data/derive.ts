@@ -1,12 +1,26 @@
-import type { SessionEvent, SessionRow, UsageRow } from "@agentcontrol/sdk";
-import type { PendingPermission, SessionListEntry } from "../session-list/index.ts";
+import type { SessionEvent, SessionRow, UsageRow, WorkspaceInfo } from "@agentcontrol/sdk";
+import {
+  agentLabel,
+  type PendingPermission,
+  type SessionListEntry,
+  type WorkspaceTag,
+} from "../session-list/index.ts";
 import { formatCost, type SessionUsage } from "../status/index.ts";
-import { LOCAL_WORKSPACE } from "./merge.ts";
+import { canTakeCommands, connectionName } from "../workspaces/index.ts";
 import type { DataState } from "./model.ts";
+import { LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
 
 /** How the user knows a workspace: the Mac itself is "This Mac", anything else keeps its name. */
 export function workspaceLabel(id: string): string {
   return id === LOCAL_WORKSPACE ? "This Mac" : id;
+}
+
+/** The workspace a session runs on; until the workspace list arrives it is taken to be connected. */
+function tagOf(row: SessionRow, workspaces: readonly WorkspaceInfo[]): WorkspaceTag {
+  const info = workspaces.find((workspace) => workspace.id === row.workspaceId);
+  if (!info)
+    return { id: row.workspaceId, label: workspaceLabel(row.workspaceId), state: "connected" };
+  return { id: info.id, label: info.label, state: info.state, reason: info.reason };
 }
 
 /** The permission request a row offers Approve and Deny for: only when exactly one is pending. */
@@ -16,12 +30,24 @@ function pendingPermissionOf(row: SessionRow): PendingPermission | undefined {
   return { requestId: only.requestId, title: only.toolCall.title, options: only.options };
 }
 
-/** One list entry per session, with its workspace label and its single pending permission. */
-export function toEntries(sessions: readonly SessionRow[]): SessionListEntry[] {
+/** Sessions of a removed workspace say where they came from, since they are listed together. */
+function detailOf(row: SessionRow, workspace: WorkspaceTag): string | undefined {
+  if (workspace.state !== "removed") return undefined;
+  return `${agentLabel(row.agent)} · ${row.status} · read-only · from ${workspace.label}`;
+}
+
+/** One list entry per session, with its workspace and its single pending permission. */
+export function toEntries(
+  sessions: readonly SessionRow[],
+  workspaces: readonly WorkspaceInfo[],
+): SessionListEntry[] {
   return sessions.map((row) => {
-    const entry: SessionListEntry = { summary: row, workspace: workspaceLabel(row.workspaceId) };
-    const pendingPermission = pendingPermissionOf(row);
-    return pendingPermission ? { ...entry, pendingPermission } : entry;
+    const workspace = tagOf(row, workspaces);
+    const readOnly = !canTakeCommands(workspace);
+    const entry: SessionListEntry = { summary: row, ref: refOf(row), workspace, readOnly };
+    const detail = detailOf(row, workspace);
+    const pendingPermission = readOnly ? undefined : pendingPermissionOf(row);
+    return { ...entry, ...(detail && { detail }), ...(pendingPermission && { pendingPermission }) };
   });
 }
 
@@ -53,3 +79,18 @@ export function costToday(usage: DataState["usage"], now: Date): string {
   const today = rows.filter((row) => new Date(row.ts).getTime() >= midnight);
   return formatCost(today.reduce((total, row) => total + (row.costUsd ?? 0), 0));
 }
+
+/** The names of the workspaces that work: before the list arrives, just this Mac. */
+export function connectedLabels(workspaces: readonly WorkspaceInfo[]): string[] {
+  if (workspaces.length === 0) return [workspaceLabel(LOCAL_WORKSPACE)];
+  return workspaces.filter((workspace) => workspace.state === "connected").map((w) => w.label);
+}
+
+/** True for a workspace the user may want to look at: it is down, or its relay is out of date. */
+export function needsAttention(workspace: WorkspaceInfo): boolean {
+  return workspace.state === "offline" || workspace.state === "needs-relay-update";
+}
+
+/** What the status bar says about a workspace that needs a look: "Studio offline". */
+export const attentionText = (workspace: WorkspaceInfo): string =>
+  `${workspace.label} ${connectionName(workspace).toLowerCase()}`;

@@ -1,6 +1,7 @@
 import { afterEach, test } from "bun:test";
 import {
   expectInsightAbout,
+  expectInsightToLinkTo,
   expectNoInsights,
 } from "../support/expect/analytics-insight-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -139,5 +140,26 @@ test("two models that differ tenfold in tokens per turn are compared", async () 
   await expectInsightAbout(app, {
     rule: "models-compared",
     titles: ["Redesign the schema", "Fix a typo"],
+  });
+});
+
+test("an insight links to its session with the workspace the session is in", async () => {
+  // ********************************************************************
+  // ** GIVEN a session on this Mac whose permission request waited ten minutes
+  // ********************************************************************
+  const app = await startAppWithSeededSessions(SESSION_THAT_WAITED_TEN_MINUTES);
+
+  // ********************************************************************
+  // ** WHEN the user reads the insights
+  // ********************************************************************
+  // (read by the check below)
+
+  // ********************************************************************
+  // ** THEN the "long waits" link names the local workspace and the session's title
+  // ********************************************************************
+  await expectInsightToLinkTo(app, {
+    rule: "long-waits",
+    workspaceId: "local",
+    title: "Deploy the preview",
   });
 });

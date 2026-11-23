@@ -1,7 +1,13 @@
 import { SessionId } from "@agentcontrol/protocol";
 import type { Client } from "@agentcontrol/sdk";
 import { AnalyticsView, withAnalytics } from "./analytics/index.ts";
-import { DataProvider, describeError, useOpenSession, useStatusStats } from "./data/index.ts";
+import {
+  DataProvider,
+  describeError,
+  type SessionRef,
+  useOpenSession,
+  useStatusStats,
+} from "./data/index.ts";
 import {
   AppShell,
   defaultStatusBarSlots,
@@ -28,46 +34,53 @@ type Open = (name: DialogName) => () => void;
 
 const topBarSlots = (open: Open) =>
   defaultTopBarSlots({
-    onConfig: open("workspace"),
+    onWorkspaces: open("workspaces"),
+    onConfig: open("config"),
     onAnalytics: open("analytics"),
     onModify: open("modify"),
     onNewSession: open("new-session"),
   });
 
 type PaneOptions = {
-  selectedId: SessionId | undefined;
-  select: (id: SessionId) => void;
+  selected: SessionRef | undefined;
+  select: (ref: SessionRef) => void;
   archive: ReturnType<typeof useArchiveFlow>;
   open: Open;
   /** Set while the Analytics screen is open: how to close it. */
   closeAnalytics: (() => void) | undefined;
 };
 
-function paneSlots({ selectedId, select, archive, open, closeAnalytics }: PaneOptions) {
+function paneSlots({ selected, select, archive, open, closeAnalytics }: PaneOptions) {
   return {
     analytics: closeAnalytics && (
       <AnalyticsView
         onClose={closeAnalytics}
-        onOpenSession={(id) => {
-          select(SessionId.parse(id));
+        onOpenSession={(workspaceId, id) => {
+          select({ workspaceId, id: SessionId.parse(id) });
         }}
       />
     ),
-    sessions: <SessionsPane selectedId={selectedId} onSelect={select} />,
+    sessions: <SessionsPane selected={selected} onSelect={select} />,
     session: (
-      <SessionPane id={selectedId} onNewSession={open("new-session")} onArchive={archive.request} />
+      <SessionPane
+        selected={selected}
+        onNewSession={open("new-session")}
+        onArchive={archive.request}
+      />
     ),
-    changes: <ChangesPane key={selectedId} id={selectedId} />,
+    changes: (
+      <ChangesPane key={selected && `${selected.workspaceId}/${selected.id}`} id={selected} />
+    ),
   };
 }
 
 /** Which session is open and whether the Analytics screen is; opening a session leaves Analytics. */
 function useScreen() {
-  const [selectedId, selectSession] = useSelectedSession();
+  const [selected, selectSession] = useSelectedSession();
   const [dialog, setDialog] = useOpenDialog();
   const analyticsOpen = dialog === "analytics";
-  const select = (id: SessionId): void => {
-    selectSession(id);
+  const select = (ref: SessionRef): void => {
+    selectSession(ref);
     if (analyticsOpen) setDialog(undefined);
   };
   const closeAnalytics = analyticsOpen
@@ -75,26 +88,20 @@ function useScreen() {
         setDialog(undefined);
       }
     : undefined;
-  return { selectedId, select, dialog, setDialog, closeAnalytics };
+  return { selected, select, dialog, setDialog, closeAnalytics };
 }
 
 function Workbench() {
-  const { selectedId, select, dialog, setDialog, closeAnalytics } = useScreen();
+  const { selected, select, dialog, setDialog, closeAnalytics } = useScreen();
   const archive = useArchiveFlow();
   const stats = useStatusStats();
-  useOpenSession(selectedId);
+  useOpenSession(selected);
   const open: Open = (name) => () => {
     setDialog(name);
   };
   const slots = {
     topBar: topBarSlots(open),
-    panes: paneSlots({
-      selectedId,
-      select,
-      archive,
-      open,
-      closeAnalytics,
-    }),
+    panes: paneSlots({ selected, select, archive, open, closeAnalytics }),
     statusBar: defaultStatusBarSlots(stats),
   };
   return (

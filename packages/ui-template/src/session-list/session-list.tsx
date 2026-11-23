@@ -1,50 +1,53 @@
-import type { SessionId } from "@agentcontrol/protocol";
 import type { ComponentType } from "react";
 import { ScrollArea } from "../components/index.ts";
 import { groupByWorkspace, isWaiting } from "./group-entries.ts";
 import { ListFilters, type SessionFilter } from "./list-filters.tsx";
 import { SessionRow } from "./session-row.tsx";
-import type { SessionListEntry, SessionRowProps } from "./types.ts";
+import type { SessionListEntry, SessionRef, SessionRowProps } from "./types.ts";
 import { useListKeys } from "./use-list-keys.ts";
 import { useSessionFilter } from "./use-session-filter.ts";
 import { WorkspaceSection } from "./workspace-group.tsx";
 
 export type SessionListProps = {
   entries: readonly SessionListEntry[];
-  selectedId: SessionId | undefined;
-  onSelect: (id: SessionId) => void;
+  selected: SessionRef | undefined;
+  onSelect: (ref: SessionRef) => void;
   showArchived: boolean;
   onShowArchivedChange: (show: boolean) => void;
   /** Approve or deny from a row that has a single pending permission request. */
-  onAnswerPermission?: (sessionId: SessionId, requestId: string, optionId: string) => void;
+  onAnswerPermission?: (ref: SessionRef, requestId: string, optionId: string) => void;
   /** Slot: replaces the default row. */
   rowComponent?: ComponentType<SessionRowProps>;
 };
 
 type RowsProps = SessionListProps & { filter: SessionFilter };
 
+function isSelected(entry: SessionListEntry, selected: SessionRef | undefined): boolean {
+  return entry.ref.id === selected?.id && entry.ref.workspaceId === selected.workspaceId;
+}
+
 function Rows(props: RowsProps) {
   const Row = props.rowComponent ?? SessionRow;
   const { onAnswerPermission } = props;
   const renderEntry = (entry: SessionListEntry) => (
     <Row
-      key={entry.summary.id}
+      key={`${entry.ref.workspaceId}/${entry.ref.id}`}
       entry={entry}
-      selected={entry.summary.id === props.selectedId}
+      selected={isSelected(entry, props.selected)}
       onSelect={() => {
-        props.onSelect(entry.summary.id);
+        props.onSelect(entry.ref);
       }}
       onAnswerPermission={
         onAnswerPermission &&
         ((requestId, optionId) => {
-          onAnswerPermission(entry.summary.id, requestId, optionId);
+          onAnswerPermission(entry.ref, requestId, optionId);
         })
       }
     />
   );
   const shown = props.filter === "inbox" ? props.entries.filter(isWaiting) : props.entries;
   return groupByWorkspace(shown, props.filter === "archived").map((group) => (
-    <WorkspaceSection key={group.workspace} group={group} renderEntry={renderEntry} />
+    <WorkspaceSection key={group.key} group={group} renderEntry={renderEntry} />
   ));
 }
 

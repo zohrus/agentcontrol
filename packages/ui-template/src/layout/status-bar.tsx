@@ -8,6 +8,8 @@ export type StatusStats = {
   today: string;
   /** Names of the connected workspaces. */
   connected: readonly string[];
+  /** Workspaces that need a look, such as "Studio offline". */
+  attention?: readonly string[];
   /** The app's link to the relay; defaults to "connected". */
   connection?: ConnectionState;
 };
@@ -20,6 +22,10 @@ function Count({ value, label }: { value: string | number; label: string }) {
   );
 }
 
+function connectionsText({ connected, attention = [] }: StatusStats): string {
+  return [...connected.map((name) => `${name} connected`), ...attention].join(" · ");
+}
+
 /** Default status bar slots: waiting, running, cost today and connected workspaces. */
 export function defaultStatusBarSlots(stats: StatusStats): SlotMap {
   return {
@@ -27,6 +33,6 @@ export function defaultStatusBarSlots(stats: StatusStats): SlotMap {
     running: <Count value={stats.running} label="running" />,
     today: <Count value={stats.today} label="today" />,
     connection: <ConnectionIndicator state={stats.connection ?? "connected"} />,
-    connections: <span>{stats.connected.map((name) => `${name} connected`).join(" · ")}</span>,
+    connections: <span>{connectionsText(stats)}</span>,
   };
 }

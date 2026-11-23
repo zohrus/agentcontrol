@@ -1,5 +1,6 @@
 import { SessionId } from "@agentcontrol/protocol";
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
+import { LOCAL_WORKSPACE, type SessionRef } from "../data/index.ts";
 
 const PREFIX = "#/sessions/";
 
@@ -13,26 +14,37 @@ function subscribe(listener: () => void): () => void {
 const currentHash = (): string => window.location.hash;
 
 /** A mistyped address must not break the page: undecodable text means "no session". */
-function decodeOrNothing(text: string): string | undefined {
+function decodeOrNothing(text: string): string {
   try {
     return decodeURIComponent(text);
   } catch {
-    return undefined;
+    return "";
   }
 }
 
-function idFromHash(hash: string): SessionId | undefined {
+/** The workspace and id of `#/sessions/<workspace>/<id>`; the older `<id>` alone is this Mac's. */
+function partsOf(hash: string): { workspaceId: string; id: string } | undefined {
   if (!hash.startsWith(PREFIX)) return undefined;
-  const parsed = SessionId.safeParse(decodeOrNothing(hash.slice(PREFIX.length)));
-  return parsed.success ? parsed.data : undefined;
+  const parts = hash.slice(PREFIX.length).split("/").map(decodeOrNothing);
+  const workspaceId = parts.length === 1 ? LOCAL_WORKSPACE : parts.slice(0, -1).join("");
+  return parts.length > 2 ? undefined : { workspaceId, id: parts.slice(-1).join("") };
 }
 
-function select(id: SessionId): void {
-  window.location.hash = `${PREFIX}${encodeURIComponent(id)}`;
+function refFromHash(hash: string): SessionRef | undefined {
+  const parts = partsOf(hash);
+  const parsed = SessionId.safeParse(parts?.id);
+  return parts?.workspaceId && parsed.success
+    ? { workspaceId: parts.workspaceId, id: parsed.data }
+    : undefined;
 }
 
-/** The session the URL points at (`#/sessions/<id>`), and a function that opens another one. */
-export function useSelectedSession(): [SessionId | undefined, (id: SessionId) => void] {
+function select(ref: SessionRef): void {
+  const workspace = encodeURIComponent(ref.workspaceId);
+  window.location.hash = `${PREFIX}${workspace}/${encodeURIComponent(ref.id)}`;
+}
+
+/** The session the URL points at (`#/sessions/<workspace>/<id>`), and a function that opens another one. */
+export function useSelectedSession(): [SessionRef | undefined, (ref: SessionRef) => void] {
   const hash = useSyncExternalStore(subscribe, currentHash);
-  return [idFromHash(hash), select];
+  return [useMemo(() => refFromHash(hash), [hash]), select];
 }

@@ -14,7 +14,7 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 afterEach(cleanUpAfterTest);
 
 test(
-  "Config lists what the machine needs and says what is missing in plain words",
+  "Check and repair lists what the machine needs and says what is missing in plain words",
   async () => {
     // ********************************************************************
     // ** GIVEN an app on a machine where git has no name and email yet
@@ -23,7 +23,7 @@ test(
     const app = await startAppInBrowser({ relayEnv: git.relayEnv });
 
     // ********************************************************************
-    // ** WHEN the user opens Config
+    // ** WHEN the user opens Check and repair in the workspace menu
     // ********************************************************************
     await app.page.opensWorkspaceSetup();
 
@@ -68,10 +68,10 @@ test(
 );
 
 test(
-  "the worktree setup of a repository can be edited and saved from Config",
+  "the worktree setup of a repository can be edited and saved from Check and repair",
   async () => {
     // ********************************************************************
-    // ** GIVEN a repository the app knows, with the default setup, and Config open
+    // ** GIVEN a repository the app knows, with the default setup, and Check and repair open
     // ********************************************************************
     const app = await startAppInBrowser();
     await app.user.addsTheRepo();

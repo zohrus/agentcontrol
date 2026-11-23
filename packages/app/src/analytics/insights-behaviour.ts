@@ -1,3 +1,4 @@
+import { pointingAt } from "./insight-sessions.ts";
 import type { Insight, SessionAnalytics } from "./types.ts";
 import { count, duration, quoted } from "./wording.ts";
 
@@ -20,7 +21,7 @@ export function longWaits(sessions: SessionAnalytics[]): Insight | undefined {
   const [longest] = waited;
   if (longest === undefined) return undefined;
   const text = `${count(waited.length, "session")} waited ${duration(LONG_WAIT_MS)} or more for your answer to a permission request; the longest was ${quoted(longest.title)} at ${duration(longest.waitingMs)}.`;
-  return { rule: "long-waits", text, sessionIds: waited.map((s) => s.sessionId) };
+  return { rule: "long-waits", text, ...pointingAt(waited) };
 }
 
 /** Sessions where the user refused many requests. */
@@ -31,7 +32,7 @@ export function manyDenied(sessions: SessionAnalytics[]): Insight | undefined {
   const [most] = refused;
   if (most === undefined) return undefined;
   const text = `${count(refused.length, "session")} had ${String(MANY_DENIED)} or more permission requests denied; ${quoted(most.title)} had ${String(most.permissionsDenied)}. The agent keeps asking for things you refuse: a rule in its instructions might help.`;
-  return { rule: "many-denied", text, sessionIds: refused.map((s) => s.sessionId) };
+  return { rule: "many-denied", text, ...pointingAt(refused) };
 }
 
 const cutShortTurns = (s: SessionAnalytics): number =>
@@ -43,5 +44,5 @@ export function cutShortTurnsInsight(sessions: SessionAnalytics[]): Insight | un
   if (affected.length === 0) return undefined;
   const turns = affected.reduce((total, s) => total + cutShortTurns(s), 0);
   const text = `${count(turns, "turn")} in ${count(affected.length, "session")} ended early: they hit a token or step limit, or were cancelled.`;
-  return { rule: "cut-short-turns", text, sessionIds: affected.map((s) => s.sessionId) };
+  return { rule: "cut-short-turns", text, ...pointingAt(affected) };
 }

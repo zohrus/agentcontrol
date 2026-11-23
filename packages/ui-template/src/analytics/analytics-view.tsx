@@ -6,7 +6,10 @@ import { FilterBar } from "./filter-bar.tsx";
 import { optionsOf } from "./filter-options.ts";
 import { type AnalyticsChoice, type AnalyticsLoad, useAnalytics } from "./use-analytics.ts";
 
-type Props = { onClose: () => void; onOpenSession: (sessionId: string) => void };
+type Props = {
+  onClose: () => void;
+  onOpenSession: (workspaceId: string, sessionId: string) => void;
+};
 
 const FIRST: AnalyticsChoice = {
   preset: "all",

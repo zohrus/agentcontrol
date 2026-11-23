@@ -1,5 +1,7 @@
 import { analyticsPage } from "./analytics-page.ts";
 import { changesPage } from "./changes-page.ts";
+import { configEditorPage } from "./config-editor-page.ts";
+import { configPage } from "./config-page.ts";
 import { dialogsPage } from "./dialogs-page.ts";
 import { previewContent, previewPage } from "./preview-page.ts";
 import { terminalPage } from "./terminal-page.ts";
@@ -9,6 +11,7 @@ import { sessionListPage } from "./session-list-page.ts";
 import { sessionPage } from "./session-page.ts";
 import { shellPage } from "./shell-page.ts";
 import { workspacePage } from "./workspace-page.ts";
+import { workspacesPage } from "./workspaces-page.ts";
 
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
@@ -19,6 +22,9 @@ export function appPageOf(page: Page) {
     ...changesPage(page),
     ...dialogsPage(page),
     ...workspacePage(page),
+    ...workspacesPage(page),
+    ...configPage(page),
+    ...configEditorPage(page),
     ...shellPage(page),
     ...previewPage(page),
     ...previewContent(page),

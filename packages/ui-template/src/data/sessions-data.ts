@@ -1,18 +1,19 @@
-import type { Client, SessionEvent, SessionId, SessionRow } from "@agentcontrol/sdk";
+import type { Client, LiveSessionEvent, SessionEvent, SessionRow } from "@agentcontrol/sdk";
 import { type Context, inBackground } from "./context.ts";
 import { appendEvents, mergeFetched, upsertSessions } from "./merge.ts";
 import type { DataState } from "./model.ts";
+import { isRow, keyOf, refOf, type SessionRef } from "./session-ref.ts";
 
 const PAGE = 1000;
 
 /** Every event after `after`, fetched page by page. */
 async function fetchEventsAfter(
   client: Client,
-  call: { id: SessionId; after: number },
+  call: { ref: SessionRef; after: number },
 ): Promise<SessionEvent[]> {
   const all: SessionEvent[] = [];
   for (let from = call.after; ; ) {
-    const page = await client.sessions.events(call.id, { after: from, limit: PAGE });
+    const page = await client.sessions.events(call.ref.id, { after: from, limit: PAGE });
     all.push(...page);
     const last = page.at(-1);
     if (last === undefined || page.length < PAGE) return all;
@@ -20,45 +21,48 @@ async function fetchEventsAfter(
   }
 }
 
-const lastSeqOf = (state: DataState, id: SessionId): number => state.events[id]?.at(-1)?.seq ?? 0;
+const lastSeqOf = (state: DataState, ref: SessionRef): number =>
+  state.events[keyOf(ref)]?.at(-1)?.seq ?? 0;
 
-function holdEvents(ctx: Context, id: SessionId, fresh: readonly SessionEvent[]): void {
+function holdEvents(ctx: Context, ref: SessionRef, fresh: readonly SessionEvent[]): void {
+  const key = keyOf(ref);
   ctx.store.update((s) => ({
     ...s,
-    events: { ...s.events, [id]: appendEvents(s.events[id] ?? [], fresh) },
+    events: { ...s.events, [key]: appendEvents(s.events[key] ?? [], fresh) },
   }));
 }
 
 /** Loads the events after the last one held, and keeps this session's history current from now on. */
-export async function loadEvents(ctx: Context, id: SessionId): Promise<void> {
-  holdEvents(ctx, id, []);
-  const after = lastSeqOf(ctx.store.get(), id);
-  holdEvents(ctx, id, await fetchEventsAfter(ctx.client, { id, after }));
+export async function loadEvents(ctx: Context, ref: SessionRef): Promise<void> {
+  holdEvents(ctx, ref, []);
+  const after = lastSeqOf(ctx.store.get(), ref);
+  holdEvents(ctx, ref, await fetchEventsAfter(ctx.client, { ref, after }));
 }
 
 /** One session's token usage and cost, per finished turn. */
-async function loadUsage(ctx: Context, id: SessionId): Promise<void> {
-  const rows = await ctx.client.sessions.usage(id);
-  ctx.store.update((s) => ({ ...s, usage: { ...s.usage, [id]: rows } }));
+async function loadUsage(ctx: Context, ref: SessionRef): Promise<void> {
+  const rows = await ctx.client.sessions.usage(ref.id);
+  ctx.store.update((s) => ({ ...s, usage: { ...s.usage, [keyOf(ref)]: rows } }));
 }
 
 /** Sessions already opened must be kept current; the row itself carries what the list needs. */
 function needsEvents(state: DataState, row: SessionRow): boolean {
-  return state.events[row.id] !== undefined && lastSeqOf(state, row.id) < row.lastSeq;
+  const ref = refOf(row);
+  return state.events[keyOf(ref)] !== undefined && lastSeqOf(state, ref) < row.lastSeq;
 }
 
 /** Fetches the history of every session that has fallen behind its summary. */
 function catchUp(ctx: Context): void {
   const state = ctx.store.get();
   for (const row of state.sessions) {
-    if (needsEvents(state, row)) inBackground(ctx, loadEvents(ctx, row.id));
+    if (needsEvents(state, row)) inBackground(ctx, loadEvents(ctx, refOf(row)));
   }
 }
 
 /** Usage is read again only for a session never read, or one that has new events since. */
 function usageIsOutOfDate(before: DataState, row: SessionRow): boolean {
-  const known = before.sessions.find((held) => held.id === row.id);
-  return before.usage[row.id] === undefined || known?.lastSeq !== row.lastSeq;
+  const known = before.sessions.find((held) => isRow(held, refOf(row)));
+  return before.usage[keyOf(refOf(row))] === undefined || known?.lastSeq !== row.lastSeq;
 }
 
 /** Takes in the app's session list (never dropping a newer row), and catches up what it shows. */
@@ -67,7 +71,7 @@ export async function loadSessions(ctx: Context): Promise<void> {
   const before = ctx.store.get();
   ctx.store.update((s) => ({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }));
   for (const row of fetched) {
-    if (usageIsOutOfDate(before, row)) inBackground(ctx, loadUsage(ctx, row.id));
+    if (usageIsOutOfDate(before, row)) inBackground(ctx, loadUsage(ctx, refOf(row)));
   }
   catchUp(ctx);
 }
@@ -76,19 +80,19 @@ export async function loadSessions(ctx: Context): Promise<void> {
 export function applySummaries(ctx: Context, summaries: readonly SessionRow[]): void {
   const before = ctx.store.get().sessions;
   ctx.store.update((s) => ({ ...s, sessions: upsertSessions(s.sessions, summaries) }));
-  for (const { id, status } of summaries) {
-    if (before.find((row) => row.id === id)?.status !== status) {
-      inBackground(ctx, loadUsage(ctx, id));
-    }
+  for (const row of summaries) {
+    const known = before.find((held) => isRow(held, refOf(row)));
+    if (known?.status !== row.status) inBackground(ctx, loadUsage(ctx, refOf(row)));
   }
   catchUp(ctx);
 }
 
 /** A live event: appended when it follows the last one held, a refetch when one was missed. */
-export function applyEvent(ctx: Context, event: SessionEvent): void {
-  const { sessionId, seq } = event;
-  const last = lastSeqOf(ctx.store.get(), sessionId);
-  if (ctx.store.get().events[sessionId] === undefined || seq <= last) return;
-  if (seq === last + 1) holdEvents(ctx, sessionId, [event]);
-  else inBackground(ctx, loadEvents(ctx, sessionId));
+export function applyEvent(ctx: Context, event: LiveSessionEvent): void {
+  const ref = { workspaceId: event.workspaceId, id: event.sessionId };
+  const { seq } = event;
+  const last = lastSeqOf(ctx.store.get(), ref);
+  if (ctx.store.get().events[keyOf(ref)] === undefined || seq <= last) return;
+  if (seq === last + 1) holdEvents(ctx, ref, [event]);
+  else inBackground(ctx, loadEvents(ctx, ref));
 }

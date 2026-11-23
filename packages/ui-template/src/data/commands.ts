@@ -2,6 +2,7 @@ import type { SessionId, StartSession } from "@agentcontrol/sdk";
 import { attempt, type Context } from "./context.ts";
 import { uncommittedFilesOf } from "./errors.ts";
 import { loadSessions } from "./sessions-data.ts";
+import { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 
 /** How an archive request ended: done, held back by unsaved changes, or failed (already reported). */
 export type ArchiveOutcome =
@@ -14,12 +15,12 @@ async function refreshList(ctx: Context): Promise<void> {
   await loadSessions(ctx).catch(() => undefined);
 }
 
-/** Starts a session and resolves with its id, so the UI can open it. */
-export function startSession(ctx: Context, request: StartSession): Promise<SessionId | undefined> {
+/** Starts a session and resolves with its reference, so the UI can open it. */
+export function startSession(ctx: Context, request: StartSession): Promise<SessionRef | undefined> {
   return attempt(ctx, async () => {
     const id = await ctx.client.sessions.start(request);
     await refreshList(ctx);
-    return id;
+    return { workspaceId: request.workspaceId ?? LOCAL_WORKSPACE, id };
   });
 }
 

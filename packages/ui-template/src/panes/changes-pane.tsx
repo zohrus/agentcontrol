@@ -1,7 +1,8 @@
-import type { DiffResult, SessionId } from "@agentcontrol/sdk";
+import type { DiffResult } from "@agentcontrol/sdk";
 import { useState } from "react";
 import { ChangesPanel } from "../changes/index.ts";
 import {
+  type SessionRef,
   useChangesError,
   useController,
   useDiff,
@@ -11,8 +12,10 @@ import {
   useSessionEvents,
   useTree,
   useTurnRunning,
+  useWorkspace,
   worktreePathOf,
 } from "../data/index.ts";
+import { canTakeCommands } from "../workspaces/index.ts";
 
 const NO_FILE = { base: "", working: "", notice: undefined };
 
@@ -20,7 +23,14 @@ function Message({ text }: { text: string }) {
   return <p className="m-0 p-4 text-xs text-muted">{text}</p>;
 }
 
-function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
+/** Files cannot be edited while the agent works, or when the session's workspace is not usable. */
+function useFrozen(id: SessionRef): boolean {
+  const workspace = useWorkspace(id.workspaceId);
+  const unusable = workspace !== undefined && !canTakeCommands(workspace);
+  return useTurnRunning(id) || unusable;
+}
+
+function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
   const controller = useController();
   const events = useSessionEvents(id);
   const [picked, setPicked] = useState<string>();
@@ -28,13 +38,13 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
   useOpenFile(id, path);
   const file = useFile(id, path) ?? NO_FILE;
   const tree = useTree(id);
-  const running = useTurnRunning(id);
+  const frozen = useFrozen(id);
   const save = (content: string) => {
     if (path !== undefined) void controller.saveFile(id, path, content);
   };
   return (
     <ChangesPanel
-      sessionId={id}
+      sessionId={id.id}
       diff={diff}
       tree={tree}
       selectedPath={path}
@@ -43,7 +53,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
       workingContent={file.working}
       notice={file.notice}
       worktreePath={worktreePathOf(events) ?? ""}
-      readOnly={running}
+      readOnly={frozen}
       onSave={save}
     />
   );
@@ -58,7 +68,7 @@ function unavailableReason(summary: { status: string } | undefined, error: strin
 }
 
 /** The open session's changes: the diff, and an editor for its files. Remount it per session. */
-export function ChangesPane({ id }: { id: SessionId | undefined }) {
+export function ChangesPane({ id }: { id: SessionRef | undefined }) {
   const summary = useSession(id);
   const reason = unavailableReason(summary, useChangesError(id));
   const diff = useDiff(id);
