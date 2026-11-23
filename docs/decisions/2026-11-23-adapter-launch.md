@@ -36,7 +36,10 @@ help with `bun x`, because `x` itself needs the variable to start the adapter.
    `runtime` is `BUN_BE_BUN=1 exec <relay binary> run launch.js "$@"`; the variable exists only for
    that exec. `launch.js` deletes `BUN_BE_BUN` first thing, then imports the adapter's entry file
    (found from the package's `bin`). Both files are rewritten (atomically) when their text changes,
-   for example after the app moved. From source, the "relay binary" is plain `bun` and the variable
+   for example after the app moved. The script also passes `--no-env-file` and
+   `--config=<adapters>/bunfig.toml` (an empty file): Bun starts in the session's worktree and would
+   otherwise run a repo's `bunfig.toml` preload and load its `.env` into the adapter (shown by a
+   test with both in the repo). From source, the "relay binary" is plain `bun` and the variable
    changes nothing, so source and compiled runs take the same path.
 3. **`process.execPath` is pointed at `runtime`.** Found by trying the real adapters under the
    compiled relay: `codex-acp` starts its `codex.js` with `spawn(process.execPath, [codex.js])` and

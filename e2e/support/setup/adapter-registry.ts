@@ -1,10 +1,29 @@
 import { mkdir, utimes } from "node:fs/promises";
 import { join } from "node:path";
 import { onTestEnd } from "./cleanup.ts";
+import { git } from "./git.ts";
 import { type FakeRegistry, startFakeRegistry } from "./fake-registry.ts";
 import { mockAdapterPackage } from "./mock-adapter-package.ts";
 import type { Session } from "./relay.ts";
 import { type RunningRelay, startRelayWithLocalRepo } from "./start-relay.ts";
+
+/** The repo carries a bunfig.toml that preloads a script, and a .env file: files Bun reads on start. */
+export async function repoHoldsItsOwnBunConfigAndEnvFile(relay: RunningRelay): Promise<void> {
+  await Bun.write(join(relay.repoPath, "bunfig.toml"), 'preload = ["./preload.ts"]\n');
+  await Bun.write(join(relay.repoPath, "preload.ts"), 'await Bun.write("preloaded", "yes");\n');
+  await Bun.write(join(relay.repoPath, ".env"), "LEAKED=1\n");
+  await git(relay.repoPath, "add", ".");
+  await git(
+    relay.repoPath,
+    "-c",
+    "user.name=t",
+    "-c",
+    "user.email=t@example.com",
+    "commit",
+    "-m",
+    "Bun files",
+  );
+}
 
 /** An earlier relay was killed in the middle of an install two hours ago and left its work folder. */
 export async function aKilledRelayLeftAHalfMadeInstall(relay: RunningRelay): Promise<void> {

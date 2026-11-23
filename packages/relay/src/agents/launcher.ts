@@ -21,8 +21,8 @@ for (const name of ["spawn", "spawnSync"]) {
   const original = Bun[name].bind(Bun);
   Bun[name] = (first, second) =>
     Array.isArray(first)
-      ? original(first, { env: process.env, ...second })
-      : original({ env: process.env, ...first });
+      ? original(first, { ...second, env: second?.env ?? process.env })
+      : original({ ...first, env: first.env ?? process.env });
 }
 process.argv.splice(1, 1);
 await import(process.argv[1]);
@@ -30,8 +30,14 @@ await import(process.argv[1]);
 
 const quoted = (text: string): string => `'${text.replaceAll("'", "'\\''")}'`;
 
-function runtimeSource(options: { launcher: string }): string {
-  return `#!/bin/sh\nBUN_BE_BUN=1 exec ${quoted(process.execPath)} run ${quoted(options.launcher)} "$@"\n`;
+/**
+ * Bun reads `bunfig.toml` and `.env` files from the folder it starts in, which is the session's
+ * worktree: a repo could preload code into the adapter or add variables to it. An empty config
+ * file in the adapters folder and `--no-env-file` keep the repo's files out.
+ */
+function runtimeSource(options: { launcher: string; config: string }): string {
+  const flags = `--no-env-file --config=${quoted(options.config)}`;
+  return `#!/bin/sh\nBUN_BE_BUN=1 exec ${quoted(process.execPath)} ${flags} run ${quoted(options.launcher)} "$@"\n`;
 }
 
 /** Writes the file unless it already holds this text; a rename keeps a reader from seeing half. */
@@ -57,6 +63,8 @@ export async function launchAdapter(options: {
   const runtime = join(folder, "runtime");
   await mkdir(folder, { recursive: true });
   await writeWhole({ path: launcher, text: LAUNCHER_SOURCE, mode: 0o644 });
-  await writeWhole({ path: runtime, text: runtimeSource({ launcher }), mode: 0o755 });
+  const config = join(folder, "bunfig.toml");
+  await writeWhole({ path: config, text: "", mode: 0o644 });
+  await writeWhole({ path: runtime, text: runtimeSource({ launcher, config }), mode: 0o755 });
   return { command: [runtime, entry], env: {} };
 }

@@ -33,9 +33,9 @@ async function entryOf(options: { adapter: Adapter; folder: string }): Promise<s
 async function removeStaleInstalls(root: string): Promise<void> {
   const leftovers = (await readdir(root)).filter((name) => name.startsWith(TEMP_PREFIX));
   for (const name of leftovers) {
-    const { mtimeMs } = await stat(join(root, name));
-    if (Date.now() - mtimeMs > STALE_MS)
-      await rm(join(root, name), { recursive: true, force: true });
+    const found = await stat(join(root, name)).catch(() => undefined);
+    const stale = found !== undefined && Date.now() - found.mtimeMs > STALE_MS;
+    if (stale) await rm(join(root, name), { recursive: true, force: true });
   }
 }
 

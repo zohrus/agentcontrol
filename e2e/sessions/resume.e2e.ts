@@ -14,7 +14,11 @@ import {
   startRelayWithSessionWaitingForReply,
   startRelayWithSessionWaitingToRunNpmTest,
 } from "../support/setup/relay-sessions.ts";
-import type { RunningRelay } from "../support/setup/start-relay.ts";
+import {
+  nextAgentCanLoadTheEarlierSessionAndReplies,
+  nextAgentCannotLoadAndReplies,
+  nextAgentFailsToLoadAndReplies,
+} from "../support/setup/next-agent.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -24,18 +28,6 @@ async function interruptedSessionThatSaid(earlier: string) {
   await relay.restartsTheRelay();
   await expectSessionListedAs(relay, { session, status: "interrupted" });
   return { relay, session };
-}
-
-/** The next agent starts from this script; it can load the earlier session when `canLoad` is set. */
-async function nextAgentWill(
-  relay: RunningRelay,
-  plan: { reply: string; canLoad?: string[]; loadFails?: boolean },
-) {
-  relay.mockAgent.startsNewScript();
-  if (plan.canLoad) relay.mockAgent.canLoadEarlierSession(plan.canLoad);
-  if (plan.loadFails) relay.mockAgent.failsToLoadEarlierSession();
-  relay.mockAgent.willReply(plan.reply);
-  await relay.mockAgent.writeScript();
 }
 
 test("after the relay was killed while the agent waited for approval, the session is interrupted and its request is gone", async () => {
@@ -63,7 +55,10 @@ test("resuming an interrupted session continues it with its history restored and
   // ** GIVEN an interrupted session whose agent said "Earlier answer", and an agent that can load it
   // ********************************************************************
   const { relay, session } = await interruptedSessionThatSaid("Earlier answer");
-  await nextAgentWill(relay, { reply: "Carrying on", canLoad: ["Earlier answer"] });
+  await nextAgentCanLoadTheEarlierSessionAndReplies(relay, {
+    history: ["Earlier answer"],
+    reply: "Carrying on",
+  });
 
   // ********************************************************************
   // ** WHEN the user resumes the session and asks it to go on
@@ -86,7 +81,7 @@ test("an agent that cannot load the earlier session is resumed with a note that 
   // ** GIVEN an interrupted session, and an agent that cannot load an earlier session
   // ********************************************************************
   const { relay, session } = await interruptedSessionThatSaid("Earlier answer");
-  await nextAgentWill(relay, { reply: "Starting over" });
+  await nextAgentCannotLoadAndReplies(relay, "Starting over");
 
   // ********************************************************************
   // ** WHEN the user resumes the session and asks it to go on
@@ -107,7 +102,7 @@ test("an agent whose load of the earlier session fails is resumed with a fresh c
   // ** GIVEN an interrupted session, and an agent that offers to load it but fails
   // ********************************************************************
   const { relay, session } = await interruptedSessionThatSaid("Earlier answer");
-  await nextAgentWill(relay, { reply: "Starting over", loadFails: true });
+  await nextAgentFailsToLoadAndReplies(relay, "Starting over");
 
   // ********************************************************************
   // ** WHEN the user resumes the session
@@ -125,7 +120,10 @@ test("sending a message to an interrupted session resumes it first", async () =>
   // ** GIVEN an interrupted session
   // ********************************************************************
   const { relay, session } = await interruptedSessionThatSaid("Earlier answer");
-  await nextAgentWill(relay, { reply: "Carrying on", canLoad: ["Earlier answer"] });
+  await nextAgentCanLoadTheEarlierSessionAndReplies(relay, {
+    history: ["Earlier answer"],
+    reply: "Carrying on",
+  });
 
   // ********************************************************************
   // ** WHEN the user just sends a message, without resuming

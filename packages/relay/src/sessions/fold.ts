@@ -33,9 +33,12 @@ const reducers: Reducers = {
     interrupted: false,
     exitCode: undefined,
   }),
+  // An agent that dies before its first turn after an interruption leaves the session interrupted:
+  // it can be resumed again.
   "agent-exited": (fold, event) => ({
     ...fold,
     exitCode: event.payload.exitCode,
+    interrupted: fold.interrupted || fold.lastStopReason === "interrupted",
     pendingRequests: [],
   }),
   // The turn the agent was in the middle of is over: nobody is left to finish it.

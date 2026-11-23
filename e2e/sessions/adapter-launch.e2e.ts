@@ -7,6 +7,7 @@ import {
 import { expectTurnToEndWithStopReason } from "../support/expect/turn-expectations.ts";
 import {
   aKilledRelayLeftAHalfMadeInstall,
+  repoHoldsItsOwnBunConfigAndEnvFile,
   startRelayWithAdapterRegistry,
 } from "../support/setup/adapter-registry.ts";
 import { HELPER_PROGRAM_ADAPTER_SOURCE } from "../support/setup/mock-adapter-package.ts";
@@ -61,6 +62,27 @@ test("a command run by an agent that the adapter starts as a program of its own 
   // ** THEN the command saw the session's port variables and none of the relay's
   // ********************************************************************
   await expectAgentToHaveSaid(relay, { session, text: ONLY_THE_SESSIONS_PORTS });
+});
+
+test("an adapter does not run the Bun files of the repo it works in", async () => {
+  // ********************************************************************
+  // ** GIVEN a repo with its own bunfig.toml that preloads a script and a .env file
+  // ********************************************************************
+  const relay = await startRelayWithAdapterRegistry();
+  await repoHoldsItsOwnBunConfigAndEnvFile(relay);
+  relay.mockAgent.willRunCommand(
+    'echo "env=${LEAKED-none} preloaded=$(ls preloaded 2>/dev/null || echo no)"',
+  );
+
+  // ********************************************************************
+  // ** WHEN the user starts a Claude Code session on it
+  // ********************************************************************
+  const session = await relay.startsClaudeCodeSession({ prompt: "Print the environment" });
+
+  // ********************************************************************
+  // ** THEN the adapter neither ran the preload nor loaded the .env file
+  // ********************************************************************
+  await expectAgentToHaveSaid(relay, { session, text: ":\nenv=none preloaded=no\n" });
 });
 
 test("a command run by an agent started from a command override sees none of the relay's variables either", async () => {

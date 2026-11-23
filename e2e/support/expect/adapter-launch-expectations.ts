@@ -26,7 +26,7 @@ export async function expectAgentToHaveSaid(
 
 /** The relay's adapter folder holds the adapter, and nothing half installed. */
 export function expectAdapterInstalledWhole(relay: RelayAccess): void {
-  const launchFiles = ["launch.js", "runtime"];
+  const launchFiles = ["launch.js", "runtime", "bunfig.toml"];
   const kept = readdirSync(join(relay.dataDir, "adapters")).filter(
     (name) => !launchFiles.includes(name),
   );
