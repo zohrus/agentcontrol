@@ -77,14 +77,11 @@ test(
     // ** GIVEN the New session dialog is open with "Add repository…" chosen
     // ********************************************************************
     const app = await startAppInBrowser();
-    await app.page.opensNewSession();
-    await app.page.choosesToAddARepository();
 
     // ********************************************************************
     // ** WHEN the user adds a folder that does not exist
     // ********************************************************************
-    await app.page.typesRepositoryFolder("/no/such/folder");
-    await app.page.addsTheRepository();
+    await app.page.triesToAddRepository("/no/such/folder");
 
     // ********************************************************************
     // ** THEN a message in the corner explains that it could not be used

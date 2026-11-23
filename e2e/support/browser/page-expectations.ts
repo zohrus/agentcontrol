@@ -1,17 +1,5 @@
-import { eventually } from "../setup/eventually.ts";
+import { pageEventually, quote } from "./browser-expectations.ts";
 import type { AppInBrowser } from "./start-app-in-browser.ts";
-
-const BROWSER_WAIT_MS = 15_000;
-
-const quote = (text: string): string => JSON.stringify(text);
-
-/** Like `eventually`, with the longer wait a page needs to load and render. */
-function pageEventually(
-  expectation: string,
-  observe: () => Promise<string | undefined>,
-): Promise<void> {
-  return eventually(expectation, observe, BROWSER_WAIT_MS);
-}
 
 const missingFrom = (shown: string, texts: string[]): string[] =>
   texts.filter((text) => !shown.includes(text));

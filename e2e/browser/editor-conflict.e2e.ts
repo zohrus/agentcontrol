@@ -1,6 +1,6 @@
 import { afterEach, test } from "bun:test";
 import { expectEditorToShow } from "../support/browser/browser-expectations.ts";
-import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
+import { opensReadmeInTheEditor } from "../support/browser/more-session-setups.ts";
 import { expectEditorNoticeToSay } from "../support/browser/page-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -17,10 +17,7 @@ test(
     // ** GIVEN README.md open in the editor, and the page not yet told about newer file contents
     // ********************************************************************
     const app = await startAppInBrowser();
-    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
-    await app.page.opensEditorTab();
-    await app.page.opensFileInEditor("README.md");
-    await expectEditorToShow(app, "// after");
+    const session = await opensReadmeInTheEditor(app);
     const letsFilesArrive = await app.page.holdsBackFileContents();
 
     // ********************************************************************

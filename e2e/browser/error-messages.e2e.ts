@@ -41,10 +41,7 @@ test(
     // ** GIVEN a message in the corner, in a browser whose clock can be moved forward
     // ********************************************************************
     const app = await startAppInBrowser({ controllableClock: true });
-    await app.page.opensNewSession();
-    await app.page.choosesToAddARepository();
-    await app.page.typesRepositoryFolder("/no/such/folder");
-    await app.page.addsTheRepository();
+    await app.page.triesToAddRepository("/no/such/folder");
     await expectToastToShow(app, "Something went wrong inside AgentControl.");
 
     // ********************************************************************

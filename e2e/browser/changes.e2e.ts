@@ -2,9 +2,9 @@ import { afterEach, test } from "bun:test";
 import {
   expectChangesTabToList,
   expectDiffToShow,
-  expectEditorToShow,
   expectFileToBeSaved,
 } from "../support/browser/browser-expectations.ts";
+import { opensReadmeInTheEditor } from "../support/browser/more-session-setups.ts";
 import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -45,11 +45,7 @@ test(
     // ** GIVEN a session whose agent finished its turn after editing README.md, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
-    // AND the user has opened README.md in the editor
-    await app.page.opensEditorTab();
-    await app.page.opensFileInEditor("README.md");
-    await expectEditorToShow(app, "// after");
+    const session = await opensReadmeInTheEditor(app);
 
     // ********************************************************************
     // ** WHEN the user replaces the text and saves

@@ -1,5 +1,6 @@
 import { afterEach, test } from "bun:test";
 import { expectStreamToShow } from "../support/browser/browser-expectations.ts";
+import { opensSessionThatAnswersTwice } from "../support/browser/more-session-setups.ts";
 import { expectStreamToShowAll } from "../support/browser/page-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -40,12 +41,7 @@ test(
     // ** GIVEN a session open in the browser whose agent answered "First answer"
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willReply("First answer");
-    app.mockAgent.onNextPrompt();
-    app.mockAgent.willReply("Second answer");
-    const session = await app.user.startsSession({ prompt: "Say hello" });
-    await app.page.opensSession(session.title);
-    await expectStreamToShow(app, "First answer");
+    await opensSessionThatAnswersTwice(app);
 
     // ********************************************************************
     // ** WHEN the user presses Ctrl+Enter in the empty box, then types a message and presses Ctrl+Enter

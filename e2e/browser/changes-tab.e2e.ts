@@ -12,7 +12,7 @@ import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
-import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
+import { opensSessionWithEditedAndNewFile } from "../support/browser/more-session-setups.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
@@ -24,11 +24,7 @@ test(
     // ** GIVEN a session whose agent edited README.md and created NOTES.md, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    app.mockAgent.willEditFile("NOTES.md");
-    const session = await app.user.startsSession({ prompt: "Write some notes" });
-    await expectSessionWaitingForReply(app, session);
-    await app.page.opensSession(session.title);
+    await opensSessionWithEditedAndNewFile(app);
 
     // ********************************************************************
     // ** WHEN the user picks the new file in the Changes tab
@@ -53,11 +49,7 @@ test(
     // ** GIVEN a session whose agent edited README.md and created NOTES.md, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willEditFile("README.md");
-    app.mockAgent.willEditFile("NOTES.md");
-    const session = await app.user.startsSession({ prompt: "Write some notes" });
-    await expectSessionWaitingForReply(app, session);
-    await app.page.opensSession(session.title);
+    await opensSessionWithEditedAndNewFile(app);
     await app.page.opensEditorTab();
 
     // ********************************************************************

@@ -8,6 +8,7 @@ import {
   expectListedSessions,
   expectPageToShow,
 } from "../support/browser/page-expectations.ts";
+import { opensSessionWaitingToRunNpmTest } from "../support/browser/more-session-setups.ts";
 import { walksDownUpAndDownTheList } from "../support/browser/list-walks.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -88,11 +89,8 @@ test(
     // ** GIVEN a session waiting for approval to run `npm test`, then replying "All tests pass"
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willAskToRunCommand("npm test");
     app.mockAgent.willReply("All tests pass");
-    const session = await app.user.startsSession({ prompt: "Add rate limiting" });
-    await expectSessionWaitingForApproval(app, session);
-    await app.page.opensSession(session.title);
+    const session = await opensSessionWaitingToRunNpmTest(app);
 
     // ********************************************************************
     // ** WHEN the user presses Approve on the session's row
@@ -115,10 +113,7 @@ test(
     // ** GIVEN a session waiting for approval to run `npm test`, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willAskToRunCommand("npm test");
-    const session = await app.user.startsSession({ prompt: "Add rate limiting" });
-    await expectSessionWaitingForApproval(app, session);
-    await app.page.opensSession(session.title);
+    const session = await opensSessionWaitingToRunNpmTest(app);
 
     // ********************************************************************
     // ** WHEN the user presses Deny on the session's row
