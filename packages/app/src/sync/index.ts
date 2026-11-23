@@ -2,13 +2,13 @@ import type { ConnectionStatus } from "@agentcontrol/protocol";
 import { createLink, type Link } from "./link.ts";
 import { wakeablePause } from "./pause.ts";
 import { type ConnectionSettings, runConnections } from "./reconnect.ts";
-import type { SyncDeps } from "./session.ts";
+import type { SyncDeps } from "./deps.ts";
 
 export type { Hub, HubMessage } from "./hub.ts";
 export { createHub } from "./hub.ts";
 export type { Link } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";
-export type { ReplaceRelay } from "./reconnect.ts";
+export type { ReplaceRelay } from "./deps.ts";
 
 const DEFAULT_BACKOFF_MAX_MS = 3000;
 
@@ -26,8 +26,6 @@ export interface Sync extends Link {
 export interface SyncOptions extends SyncDeps {
   /** Opens a fresh relay connection; called again after every drop. */
   connect: ConnectionSettings["connect"];
-  /** What to do when the relay has another version than the app: replace it, or say why not. */
-  replaceRelay?: ConnectionSettings["replaceRelay"];
   /** Called every time the connection state changes. */
   onStatus?: (status: ConnectionStatus) => void;
   /** The longest pause between connection attempts, in ms (3000 by default). */
@@ -72,7 +70,6 @@ export function startSync(options: SyncOptions): Sync {
   const { pause, wake } = wakeablePause();
   const settings = {
     connect: options.connect,
-    replaceRelay: options.replaceRelay,
     backoffMaxMs: options.backoffMaxMs ?? DEFAULT_BACKOFF_MAX_MS,
   };
   const hooks = {

@@ -10,6 +10,8 @@ export const inSubprocesses = Bun.env["AGENTCONTROL_E2E_PROCESSES"] === "1";
 export interface RelayHome {
   dataDir: string;
   env: Record<string, string>;
+  /** The version the relay reports (a daemon in the test process only); this release's if left out. */
+  relayVersion?: string;
 }
 
 /** The relay daemon of one test: reachable by wires, and able to be stopped and started again. */
@@ -18,11 +20,14 @@ export interface RelayHost {
   wire(): Wire;
   /** Stops the daemon, its agents with it. */
   stop(): Promise<void>;
-  /** Starts the daemon again on the same data folder (a bridge also does it when connected). */
-  start(): Promise<void>;
+  /**
+   * Starts the daemon again on the same data folder (a bridge also does it when connected). A
+   * daemon running in the test process can start with another event translation version.
+   */
+  start(options?: { normaliserVersion?: number }): Promise<void>;
 }
 
-async function stopDaemonProcess(dataDir: string): Promise<void> {
+export async function stopDaemonProcess(dataDir: string): Promise<void> {
   const stop = Bun.spawn(["bun", relayMain, "stop", "--data-dir", dataDir], {
     stdout: "inherit",
     stderr: "inherit",
@@ -45,8 +50,8 @@ async function relayInProcess(home: RelayHome): Promise<RelayHost> {
   return {
     wire: () => socketWire(daemon.socketPath),
     stop: () => daemon.stop(),
-    start: async () => {
-      daemon = await startRelayDaemon(home);
+    start: async (options = {}) => {
+      daemon = await startRelayDaemon({ ...home, ...options });
     },
   };
 }

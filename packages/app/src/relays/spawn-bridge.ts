@@ -45,19 +45,26 @@ export function spawnBridge(options: BridgeOptions): RelayTransport {
     closed: Promise.all([bridge.exited, errors?.done]),
     failure: () => (capture && errors ? capture.explain(errors.text()) : undefined),
     send: (line) => {
-      void bridge.stdin.write(line);
-      void bridge.stdin.flush();
+      // The bridge may already have exited: `closed` says so, a failed write needs no other answer.
+      void Promise.try(async () => {
+        void bridge.stdin.write(line);
+        await bridge.stdin.flush();
+      }).catch(() => undefined);
     },
-    close: async () => {
-      void bridge.stdin.end();
-      // A dead network can leave ssh waiting; it is killed if it has not ended soon.
-      const timer = setTimeout(() => {
-        bridge.kill();
-      }, KILL_AFTER_MS);
-      await bridge.exited;
-      clearTimeout(timer);
-    },
+    close: () => endBridge(bridge),
   };
+}
+
+/** Ends the bridge's input and waits for it; a dead network can leave ssh waiting, so it is killed after a while. */
+async function endBridge(
+  bridge: Bun.Subprocess<"pipe", "pipe", "pipe" | "inherit">,
+): Promise<void> {
+  await Promise.try(() => bridge.stdin.end()).catch(() => undefined);
+  const timer = setTimeout(() => {
+    bridge.kill();
+  }, KILL_AFTER_MS);
+  await bridge.exited;
+  clearTimeout(timer);
 }
 
 /** The local relay bridge (`<command> --stdio --data-dir <dir>`). */

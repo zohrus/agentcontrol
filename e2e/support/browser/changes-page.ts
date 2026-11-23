@@ -42,6 +42,11 @@ function editing(page: Page) {
     /** The names of the changed files, as the Changes tab lists them. */
     changedFiles: (): Promise<string[]> =>
       page.locator('[data-testid="changed-files"] li').allInnerTexts(),
+    /** The note under the file list saying not all files are listed, or "" when it lists them all. */
+    fileListNotice: async (): Promise<string> => {
+      const notice = page.locator('[data-testid="file-tree-notice"]');
+      return (await notice.count()) === 0 ? "" : notice.innerText();
+    },
     diffText: (): Promise<string> => plainText(diffOf(page)),
     editorText: (): Promise<string> => plainText(editorOf(page)),
     /** The plain-language note above the editor, or "" when there is none. */

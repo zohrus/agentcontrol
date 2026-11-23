@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { expectUiChangeReadyToKeep } from "../expect/modify-expectations.ts";
 import { sessionTableWith, sessionTableWithTypeError } from "./fixture-ui.ts";
 import type { RunningApp } from "./start-app.ts";
@@ -21,6 +22,22 @@ export function userKeptTableColumns(app: RunningApp, columns: string[]): Promis
     path: "src/session-table.ts",
     content,
   });
+}
+
+/**
+ * The user asked for a table change and pressed Keep, but the app died before it had forgotten that
+ * the change was waiting: the note of the waiting change is still there when the app starts again.
+ */
+export async function userKeptButTheAppDiedBeforeForgettingTheWaitingChange(
+  app: RunningApp,
+): Promise<void> {
+  const note = join(app.dataDir, "modify-waiting.json");
+  app.mockAgent.willWriteFile("src/session-table.ts", sessionTableWith("Title", "Cost"));
+  await app.user.asksToModifyTheUi("add a cost column");
+  await expectUiChangeReadyToKeep(app);
+  const waiting = await Bun.file(note).text();
+  await app.user.keepsTheChange();
+  await Bun.write(note, waiting);
 }
 
 /** The Modify agent writes a type error in its first turn and again in each of `fixes` fix turns. */

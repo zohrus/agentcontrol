@@ -3,6 +3,7 @@ import {
   expectChangesTabToList,
   expectDiffToShow,
   expectEditorToShow,
+  expectFileListToSay,
   expectFileToBeSaved,
 } from "../support/browser/browser-expectations.ts";
 import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
@@ -60,6 +61,28 @@ test(
     // ** THEN the file in the worktree holds the new text
     // ********************************************************************
     await expectFileToBeSaved(app, { session, path: "README.md", content: "edited by the user" });
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "a worktree with more files than the list shows says how many it lists",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a repo of 252 files and a session on it, open in the browser
+    // ********************************************************************
+    const app = await startAppInBrowser({ repoFiles: 250 });
+    await opensSessionWithUncommittedEdit(app, "Reword the readme");
+
+    // ********************************************************************
+    // ** WHEN the user opens the Editor tab and its file list
+    // ********************************************************************
+    await app.page.opensEditorTab();
+
+    // ********************************************************************
+    // ** THEN the file list says it shows 200 of the 252 files
+    // ********************************************************************
+    await expectFileListToSay(app, "Showing 200 of 252 files");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

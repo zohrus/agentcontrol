@@ -1,4 +1,4 @@
-import type { ConnectionStatus, WorkspaceInfo } from "@agentcontrol/protocol";
+import { type ConnectionStatus, VERSION, type WorkspaceInfo } from "@agentcontrol/protocol";
 import type { Store, Workspace } from "../store/index.ts";
 import { type Hub, startSync, type Sync, type SyncOptions } from "../sync/index.ts";
 import { type StatusWaiter, statusWaiter } from "./status-waiter.ts";
@@ -18,6 +18,7 @@ export function infoOf(workspace: Workspace, status: ConnectionStatus): Workspac
     id,
     label,
     kind,
+    appVersion: VERSION,
     ...(sshHost === undefined ? {} : { sshHost }),
     ...(lastSeenAt === undefined ? {} : { lastSeenAt }),
     ...shown,

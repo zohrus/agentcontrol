@@ -37,6 +37,8 @@ async function promote(ctx: Ctx, generation: number): Promise<void> {
     return;
   }
   await ctx.workspace.promote();
+  const [newest] = await ctx.versions.history();
+  if (newest) ctx.change.baseCommit = newest.commit;
   show(ctx, "ready", { changedFiles: changed, summary: summaryOf(ctx, changed) });
 }
 

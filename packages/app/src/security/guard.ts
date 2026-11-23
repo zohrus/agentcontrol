@@ -49,10 +49,12 @@ function markAnswerSafe(c: Context): void {
 
 /**
  * Documents the app serves itself get the secret; nothing under `/api` ever does, and neither does
- * a preview: that is a page an agent wrote, and it must never see the secret.
+ * a preview: that is a page an agent wrote, and it must never see the secret. An answer with no
+ * body (a 304 or a HEAD, even with an HTML content type) has no page to put it in.
  */
 async function addTokenToDocument(c: Context, token: string): Promise<void> {
-  if (isApiPath(c.req.path) || isPreviewPath(c.req.path) || !isHtml(c.res)) return;
+  if (isApiPath(c.req.path) || isPreviewPath(c.req.path)) return;
+  if (!isHtml(c.res) || c.res.body === null) return;
   const page = await withTokenInPage({ response: c.res, token });
   // Hono copies the old headers over a new response; clear it first so the headers we dropped
   // (etag, content-length) and the no-store we set stay as they are.

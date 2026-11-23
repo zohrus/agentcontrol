@@ -19,7 +19,7 @@ export interface SessionContext {
   hostEnv: HostEnv;
   /** Agents that are running right now. */
   live: Map<SessionId, AgentProcess>;
-  /** After this, `record` drops events: what an agent says while it is being stopped is not kept. */
+  /** After this, `record` drops events: only what is still starting up when the relay stops. */
   stopRecording(): void;
   /** Appends an event without waiting; a failed write is reported on stderr. */
   record(sessionId: SessionId, input: EventInput): void;

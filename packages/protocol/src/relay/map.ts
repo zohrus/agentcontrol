@@ -13,6 +13,7 @@ export const RelayMethods = {
   [N.sessionsList]: { params: s.SessionsListParams, result: s.SessionsListResult },
   [N.sessionsCreate]: { params: s.SessionsCreateParams, result: s.SessionsCreateResult },
   [N.eventsSubscribe]: { params: s.EventsSubscribeParams, result: s.EventsSubscribeResult },
+  [N.eventsRead]: { params: s.EventsReadParams, result: s.EventsReadResult },
   [N.prompt]: { params: s.PromptParams, result: s.AckResult },
   [N.permissionRespond]: { params: s.PermissionRespondParams, result: s.AckResult },
   [N.cancel]: { params: s.CancelParams, result: s.AckResult },

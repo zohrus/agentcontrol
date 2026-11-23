@@ -1,4 +1,11 @@
-import type { AgentKind, CheckStep, RepoId, RepoInfo, RepoSetup } from "@agentcontrol/protocol";
+import type {
+  AgentKind,
+  CheckStep,
+  RepoId,
+  RepoInfo,
+  RepoSetup,
+  WorkspaceInfo,
+} from "@agentcontrol/protocol";
 import { read } from "./api-error.ts";
 import type { Api } from "./client-type.ts";
 
@@ -35,6 +42,12 @@ export function reposApi(api: Api) {
 /** The workspace's health checklist. */
 export function workspaceApi(api: Api) {
   return {
+    /**
+     * One workspace (this Mac by default) with its connection state and relay version. The same
+     * record `workspaces.list()` returns; it answers even while the relay is down.
+     */
+    get: (options: InWorkspace = {}): Promise<WorkspaceInfo> =>
+      read(api.workspace.$get({ query: queryFor(options) })),
     /** Setup steps (git, agents, login) with ok / failed / skipped. */
     check: async (options: InWorkspace = {}): Promise<CheckStep[]> => {
       const { steps } = await read(api.workspace.check.$get({ query: queryFor(options) }));

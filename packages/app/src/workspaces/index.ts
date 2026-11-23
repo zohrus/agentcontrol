@@ -1,4 +1,3 @@
-import { VERSION } from "@agentcontrol/protocol";
 import { type RelayClient, sshConfigHosts } from "../relays/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
 import type { Hub, Link } from "../sync/index.ts";
@@ -23,25 +22,24 @@ export interface WorkspacesOptions {
   ssh: SshSettings;
 }
 
-const connectedLink = (entry: Entry | undefined): Link | undefined =>
-  entry?.sync.status().state === "connected" ? entry.sync : undefined;
+const USABLE = new Set(["connected", "needs-relay-update"]);
+
+/** The link of a workspace whose relay answers; an outdated one is used as it is. */
+const usableLink = (entry: Entry | undefined): Link | undefined =>
+  entry && USABLE.has(entry.sync.status().state) ? entry.sync : undefined;
 
 function startLocal(registry: ReturnType<typeof createRegistry>, options: WorkspacesOptions) {
   const { stopLocalRelay } = options;
   const replaceRelay = stopLocalRelay && replaceOldRelay({ stopRelay: stopLocalRelay });
   return registry.start({
     workspace: LOCAL,
-    sync: {
-      version: VERSION,
-      connect: options.connectLocal,
-      ...(replaceRelay && { replaceRelay }),
-    },
+    sync: { connect: options.connectLocal, ...(replaceRelay && { replaceRelay }) },
   });
 }
 
 /**
- * Starts the local workspace and reconnects every ssh workspace saved earlier. Only the local one is
- * waited for (`ready`): an unreachable host never holds the app back.
+ * Starts the local workspace and reconnects every ssh workspace saved earlier. All
+ * connections happen in the background: an unreachable relay or host never holds the app back.
  */
 export function createWorkspaces(options: WorkspacesOptions): Workspaces {
   const { store, ssh } = options;
@@ -59,10 +57,9 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
     localLink: local.sync,
     list: registry.list,
     info: (id) => registry.list().find((known) => known.id === id),
-    link: (id) => connectedLink(registry.entries.get(id)),
+    link: (id) => usableLink(registry.entries.get(id)),
     check: (id) => (id === LOCAL.id ? checkThroughRelay(local.sync) : remote.operations.check(id)),
     hosts: () => sshConfigHosts(ssh.configFile),
-    ready: () => Promise.race([local.sync.ready, local.waiter.needsUpdate]),
     stop: async () => {
       await Promise.all([...registry.entries.values()].map((entry) => entry.sync.stop()));
     },

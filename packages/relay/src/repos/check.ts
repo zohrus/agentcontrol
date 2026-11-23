@@ -16,19 +16,16 @@ function osStep(): CheckStep {
   return { id: "os", label: "Operating system", status: "ok", detail };
 }
 
-async function diskStep(): Promise<CheckStep> {
+/** Free space where the home folder of the relay's environment lives. */
+async function diskStep(env: HostEnv): Promise<CheckStep> {
   const label = "Free disk space";
   try {
-    const stats = await statfs(homedir());
+    const stats = await statfs(env["HOME"] ?? homedir());
     const freeGb = (stats.bavail * stats.bsize) / 1024 ** 3;
-    const detail = `${freeGb.toFixed(1)} GB free`;
-    if (freeGb >= MIN_FREE_GB) return { id: "disk", label, status: "ok", detail };
-    return {
-      id: "disk",
-      label,
-      status: "failed",
-      detail: `${detail}; at least ${String(MIN_FREE_GB)} GB is needed.`,
-    };
+    const enough = freeGb >= MIN_FREE_GB;
+    const needed = enough ? "" : `; at least ${String(MIN_FREE_GB)} GB is needed.`;
+    const detail = `${freeGb.toFixed(1)} GB free${needed}`;
+    return { id: "disk", label, status: enough ? "ok" : "failed", detail };
   } catch {
     return { id: "disk", label, status: "failed", detail: "Could not read the free disk space." };
   }
@@ -48,13 +45,9 @@ async function gitStep(env: HostEnv): Promise<CheckStep> {
     return { id: "git", label, status: "failed", detail: "Git is not installed." };
   }
   const detail = result.stdout.trim();
-  if (versionAtLeast(detail)) return { id: "git", label, status: "ok", detail };
-  return {
-    id: "git",
-    label,
-    status: "failed",
-    detail: `${detail} is too old; version ${MIN_GIT.join(".")} or newer is needed.`,
-  };
+  const current = versionAtLeast(detail);
+  const tooOld = `${detail} is too old; version ${MIN_GIT.join(".")} or newer is needed.`;
+  return { id: "git", label, status: current ? "ok" : "failed", detail: current ? detail : tooOld };
 }
 
 async function identityStep(gitStatus: CheckStep["status"], env: HostEnv): Promise<CheckStep> {
@@ -85,6 +78,6 @@ export async function checkWorkspace(
   options: { withAgents?: boolean | undefined } = {},
 ): Promise<{ steps: CheckStep[] }> {
   const git = await gitStep(env);
-  const machine = [osStep(), await diskStep(), git, await identityStep(git.status, env)];
+  const machine = [osStep(), await diskStep(env), git, await identityStep(git.status, env)];
   return { steps: [...machine, ...(options.withAgents ? await checkAgents(env) : [])] };
 }

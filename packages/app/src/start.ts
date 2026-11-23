@@ -1,9 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
+import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import { createPreviews } from "./preview/index.ts";
-import { findResources } from "./resources/index.ts";
 import type { RelayClient } from "./relays/index.ts";
+import { findResources } from "./resources/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
 import { createStore, type Store } from "./store/index.ts";
@@ -26,7 +26,7 @@ export interface AppOptions {
   stopLocalRelay?: () => Promise<void>;
   /**
    * How ssh workspaces are reached. By default the system's ssh config is used and relay binaries
-   * are looked for in the `dist/` folder of a source checkout.
+   * come from the release's `relays/` folder (or `dist/` in a source checkout).
    */
   ssh?: Partial<SshSettings>;
   /**
@@ -104,48 +104,54 @@ function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): W
   });
 }
 
+/** Ends what a started app holds, in order: the Modify agent's session first, the database last. */
+async function closeParts(parts: {
+  modify: Modify;
+  ui: UiHandler | undefined;
+  workspaces: Workspaces;
+  store: Store;
+}): Promise<void> {
+  await parts.modify.stop();
+  await parts.ui?.close();
+  await parts.workspaces.stop();
+  parts.store.close();
+}
+
 interface Parts {
   store: Store;
   hub: Hub;
   workspaces: Workspaces;
+  modify: Modify;
   token: ReturnType<typeof createToken>;
   /** Filled in once the UI is up, so a failure after that can close it. */
   opened: { ui?: UiHandler | undefined };
 }
 
 async function listen(options: AppOptions, parts: Parts) {
-  const { store, hub, workspaces, token } = parts;
-  await workspaces.ready();
-  const modify = modifyOf(options, parts);
+  const { store, hub, workspaces, modify, token, opened } = parts;
   // The live UI folder is made from the default UI first, because the UI may be served from it.
   if (options.modify) await modify.ready();
   const ui = await startUi(options.ui ?? {}, options.dataDir);
-  parts.opened.ui = ui;
+  opened.ui = ui;
   const deps = { store, hub, workspaces, modify, previews: previewsOf(options) };
   return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
 }
 
-async function closeParts(parts: {
-  ui: UiHandler | undefined;
-  workspaces: Workspaces;
-  store: Store;
-}): Promise<void> {
-  await parts.ui?.close();
-  await parts.workspaces.stop();
-  parts.store.close();
-}
-
-/** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the local relay is synced. */
+/**
+ * Starts the app on 127.0.0.1 with its own database under `dataDir`. It does not wait for any
+ * relay: each workspace keeps trying in the background, and reads as disconnected until it is up.
+ */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
   const token = createToken();
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
   const workspaces = workspacesOf(options, { store, hub });
+  const modify = modifyOf(options, { store, hub, workspaces });
   const opened: Parts["opened"] = {};
-  const server = await listen(options, { store, hub, workspaces, token, opened }).catch(
+  const server = await listen(options, { store, hub, workspaces, modify, token, opened }).catch(
     async (error: unknown) => {
-      await closeParts({ ui: opened.ui, workspaces, store });
+      await closeParts({ modify, ui: opened.ui, workspaces, store });
       throw explainStartFailure(error, options.port);
     },
   );
@@ -153,7 +159,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
-      await closeParts({ ui: opened.ui, workspaces, store });
+      await closeParts({ modify, ui: opened.ui, workspaces, store });
     },
   };
 }

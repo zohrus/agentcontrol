@@ -52,7 +52,6 @@ function start(context: Context, workspace: Workspace): Entry {
   return context.registry.start({
     workspace,
     sync: {
-      version: VERSION,
       connect: sshConnector({ target, relayBinaryFor: settings.relayBinaryFor }),
       replaceRelay: replaceOldRelay(target),
       backoffMaxMs: settings.backoffMaxMs ?? SSH_BACKOFF_MAX_MS,

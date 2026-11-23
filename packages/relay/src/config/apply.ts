@@ -1,6 +1,6 @@
 import { rm } from "node:fs/promises";
 import type { ApplyResult, ConfigFileChange } from "@agentcontrol/protocol";
-import { createBackup, rollbackConfig } from "./backup.ts";
+import { createBackup, recordApplied, rollbackConfig } from "./backup.ts";
 import { readText, writeAtomic } from "./fs.ts";
 import { manifestPath, serializeManifest } from "./manifest.ts";
 import { type StoredPlan, StalePlanError, takePlan } from "./plan.ts";
@@ -36,9 +36,11 @@ async function backUpAndWrite(plan: StoredPlan): Promise<string> {
   try {
     await writeAll(plan);
   } catch (error) {
-    await rollbackConfig({ backupId, homeDir });
+    await rollbackConfig({ backupId, homeDir, force: true });
     throw error;
   }
+  // Best effort: without the note a later rollback just cannot tell which files changed since.
+  await recordApplied({ homeDir, backupId }).catch(() => undefined);
   return backupId;
 }
 

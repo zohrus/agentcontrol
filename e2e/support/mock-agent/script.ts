@@ -21,6 +21,7 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("echoLaunchSettings") }),
   z.object({ kind: z.literal("exitUnexpectedly") }),
   z.object({ kind: z.literal("compactContext") }),
+  z.object({ kind: z.literal("sendUpdate"), update: z.record(z.string(), z.unknown()) }),
   z.object({ kind: z.literal("finish"), stopReason }),
   z.object({ kind: z.literal("waitUntilCancelled") }),
   z.object({ kind: z.literal("waitForFile"), path: z.string() }),

@@ -1,4 +1,4 @@
-import { RelayName } from "@agentcontrol/protocol";
+import { RelayName, VERSION } from "@agentcontrol/protocol";
 import {
   type HostInfo,
   type RelayClient,
@@ -45,16 +45,17 @@ export function sshConnector(options: {
 
 /**
  * What to do when the host's relay has another version than the app: stop it if none of its
- * sessions is working, so that the next connection starts the app's version; otherwise leave it.
+ * sessions is working, so that the next connection starts the app's version; otherwise leave it
+ * running and used as it is (the user can restart it).
  */
 export function replaceOldRelay(target: Pick<WorkspaceTarget, "stopRelay">): ReplaceRelay {
-  return async ({ client, mismatch }) => {
+  return async ({ client, relayVersion }) => {
     const { sessions } = await client.call(RelayName.sessionsList, {});
     const busy = sessions.filter(
       (session) => session.turnRunning || session.pendingPermissions.length > 0,
     );
     if (busy.length > 0) {
-      const reason = `${mismatch.message} ${String(busy.length)} session(s) are still working on it; it is replaced when they finish.`;
+      const reason = `The relay is version ${relayVersion}, but this app is version ${VERSION}. ${String(busy.length)} session(s) are still working on it, so it was left running; restart it when they are done.`;
       return { replaced: false, reason };
     }
     await target.stopRelay();

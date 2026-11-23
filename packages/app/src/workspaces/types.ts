@@ -38,8 +38,6 @@ export interface Workspaces {
   restartRelay(id: string): Promise<WorkspaceInfo>;
   /** Host aliases from the user's ssh config, without patterns. */
   hosts(): Promise<string[]>;
-  /** Resolves once the local relay is connected and synced. */
-  ready(): Promise<void>;
   /** Stops every connection; relays keep running on their machines. */
   stop(): Promise<void>;
 }

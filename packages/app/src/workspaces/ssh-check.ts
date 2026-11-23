@@ -23,7 +23,8 @@ const skipped = (...ids: Array<keyof typeof LABELS>): CheckStep[] =>
 /** The relay's connection once it has had a chance to come up, asking for another try if it was down. */
 async function connectionOf(entry: Entry) {
   const { sync, waiter } = entry;
-  if (sync.status().state === "connected") return sync.status();
+  const { state } = sync.status();
+  if (state === "connected" || state === "needs-relay-update") return sync.status();
   sync.retryNow();
   return (await waiter.next(CONNECT_WAIT_MS)) ?? sync.status();
 }

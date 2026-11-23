@@ -2,8 +2,10 @@ import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
+import { VERSION } from "@agentcontrol/protocol";
 import { createEventLog } from "../event-log/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
@@ -65,7 +67,11 @@ async function buildSessions(options: {
 export interface Daemon {
   /** The unix socket clients connect to. */
   readonly socketPath: string;
-  /** Stops the agents, closes the socket and removes the files that say the relay is running. */
+  /**
+   * Stops accepting clients, stops the agents and records their last events, then ends the
+   * clients' connections (they have been sent those events) and removes the files that say the
+   * relay is running.
+   */
   stop(): Promise<void>;
 }
 
@@ -73,6 +79,10 @@ export interface DaemonOptions {
   dataDir: string;
   /** Added to the process environment for agent commands and what agents inherit. */
   env?: Record<string, string>;
+  /** What `relay/hello` reports as the version of the event translation; the current one if left out. */
+  normaliserVersion?: number;
+  /** What `relay/hello` reports as the relay's version; this release's version if left out. */
+  relayVersion?: string;
 }
 
 /** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
@@ -88,6 +98,26 @@ function createClientServer(handlers: Handlers): { server: Server; sockets: Set<
   return { server, sockets };
 }
 
+const CLIENT_CLOSE_MS = 1000;
+
+/** Ends every client connection after what was queued for it is sent; a stuck one is destroyed. */
+async function closeClients(sockets: Set<Socket>): Promise<void> {
+  const closed = [...sockets].map(
+    (socket) =>
+      new Promise<void>((resolve) => {
+        socket.once("close", () => {
+          resolve();
+        });
+        socket.end();
+      }),
+  );
+  const giveUp = setTimeout(() => {
+    sockets.forEach((socket) => socket.destroy());
+  }, CLIENT_CLOSE_MS);
+  await Promise.all(closed);
+  clearTimeout(giveUp);
+}
+
 async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Promise<{
   handlers: Handlers;
   sessions: Sessions;
@@ -99,7 +129,13 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
     ...sessionHandlers(sessions),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
-    ...workspaceHandlers(repos, hostEnv),
+    ...workspaceHandlers({
+      repos,
+      env: hostEnv,
+      normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
+      // AGENTCONTROL_RELAY_VERSION is only set by tests, to look like another release.
+      relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
+    }),
     ...configHandlers(configHome(hostEnv)),
   };
   return { handlers, sessions };
@@ -118,7 +154,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const socketPath = socketPathIn(dataDir);
   await claimSocket(socketPath);
   const hostEnv = hostEnvFor(options);
-  const { handlers, sessions } = await buildHandlers({ dataDir, hostEnv });
+  const { handlers, sessions } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);
   await writeFile(pidFileIn(dataDir), String(process.pid));
@@ -126,8 +162,8 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
     socketPath,
     stop: async () => {
       server.close();
-      sockets.forEach((socket) => socket.destroy());
       await sessions.shutdown();
+      await closeClients(sockets);
       await rm(socketPath, { force: true });
       await rm(pidFileIn(dataDir), { force: true });
     },

@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 10:10 UTC";
+const UPDATED = "23 Nov 2026, 11:00 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -200,12 +200,12 @@ const C = [
   // Phase 0
   { id:"repo", phase:"p0", name:"Repository and workspace", status:"done", desc:"Bun workspace, packages layout, bun dev and bun test from a fresh clone, MIT license.", path:"package.json" },
   { id:"plan-docs", phase:"p0", name:"Plan, TASKS.md, AGENTS.md", status:"done", desc:"Final plan, deferred tasks, and the coding rules every agent follows (CLAUDE.md imports AGENTS.md).", path:"AGENTS.md" },
-  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"done", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, zero duplicated blocks, no raw ACP outside the relay, formatting, audit. 24 gate proofs, now also run in CI.", path:".github/workflows/" },
+  { id:"ci", phase:"p0", name:"Quality gates and CI", status:"done", desc:"bun run check: strict types, complexity and size limits, dependency rules, dead code, zero duplicated blocks, no raw ACP outside the relay, formatting, audit. 25 gate proofs, also run in CI.", path:".github/workflows/" },
   { id:"protocol", phase:"p0", name:"Shared protocol types", status:"done", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
   { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"done", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
   { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
   { id:"coverage", phase:"p0", name:"Coverage gate", status:"done", desc:"End-to-end line coverage must be at least 95%, in total and on changed lines; now 97.95%. Deterministic: five identical runs. Enforced in the check, before every push and in CI. The UI package is not counted yet.", path:"scripts/coverage.ts" },
-  { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"progress", desc:"Done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages. In progress: workdir seam (worktree or plain folder), single client in the UI.", path:"docs/abstractions-review.md" },
+  { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"done", desc:"All five done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages, the workdir seam (worktree or plain folder), and a single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
   { id:"server-security", phase:"p2", name:"Local server lock-down", status:"done", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app. The token is sent as a header, never as a cookie. 12 tests.", path:"packages/app/src/security" },
   { id:"real-agent", phase:"p0s", name:"Real Claude Code through the app", status:"done", desc:"Nine real scenarios pass through relay, app and UI: edit with approval, reject, cancel, second prompt, usage, restarts, archive, Modify. Three bugs found and fixed. Codex still unverified (no working key).", path:"scripts/real-agent-smoke.ts" },
@@ -245,7 +245,8 @@ const C = [
   // Release
   { id:"modify-ui", phase:"p4", name:"Modify panel in the UI", status:"done", desc:"Connects the Modify this UI panel to the backend: request, check status, Keep, Undo, history, default-UI updates, with browser tests.", path:"packages/ui-template/src/modify" },
   { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"progress", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
-  { id:"packaging", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
+  { id:"packaging", phase:"rel", name:"Compiled app and release folder", status:"done", desc:"The compiled app runs end to end with no source tree and no Bun installed: 9 of 9 smoke steps on Linux, also run in CI. Ships the default UI with its tools; about 700 MB.", path:"scripts/build.ts" },
+  { id:"mac-bundle", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
   // Phase 5
   { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"progress", desc:"SSH connection manager, relay deployment and version handshake, Linux builds, sessions that survive SSH drops and sleep.", path:"" },
   { id:"console", phase:"p5", name:"Console in the app", status:"planned", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
@@ -262,7 +263,7 @@ const C = [
 ];
 
 const NOW = [
-  "Compiled app working end to end with no source tree (needed for the Mac release)",
+  "Mac build on GitHub: make the job green with the new release folder (signing nested files, smoke test, dmg)",
   "Follow-up fixes: app start when the relay is down, relay shutdown order, weak coverage spots, version numbers",
   "UI under the coverage rule: browser coverage and the missing browser tests",
   "Paused until the machine has room: remote SSH workspaces",
@@ -295,6 +296,7 @@ const LOG = [
   ["23 Nov 2026 00:45", "Local server lock-down landed: every route, the live stream and /_safe now refuse requests from other websites or without the app's secret token. A working local copy runs from source with bun dev (checked on Linux; not yet run on a Mac)."],
   ["23 Nov 2026 08:35", "CI on GitHub is green on main for the first time. The Swift menu bar app builds on a real Mac for both chip types and the app bundle is assembled and ad-hoc signed there. Modify panel in the UI landed with 10 browser tests. Fixed: tests run from a git hook were changing this repository's own git settings. Decision: first Mac release is unsigned; Apple Developer ID parked."],
   ["23 Nov 2026 10:10", "Landed: real Claude Code working through the whole app (it never asked for permission before; fixed), README and first-run fixes, and the Preview tab with sandboxed HTML and Markdown. 82 test runs pass, coverage 98.4%."],
+  ["23 Nov 2026 11:00", "Compiled app landed: it runs end to end with no source tree and no Bun installed (9 of 9 smoke steps on Linux, now in CI). bun dev opens the browser. Plan page brought up to date with everything since yesterday. 13 follow-up fixes are done on their branch and merging."],
 ];
 /* ===== END DATA ===== */
 

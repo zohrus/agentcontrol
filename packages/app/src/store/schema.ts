@@ -48,6 +48,20 @@ export const events = sqliteTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.sessionId, t.seq] })],
 );
 
+/**
+ * The version of the relay's event translation that a session's oldest saved events were made
+ * with. Newer than this on the relay means the saved `updates` and `tool` are stale.
+ */
+export const sessionNormalisation = sqliteTable(
+  "session_normalisation",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    sessionId: text("session_id").notNull(),
+    version: integer("version").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.sessionId] })],
+);
+
 /** A canonical harness-config item (MCP server, instructions, skill, hook, ...) as JSON. */
 export const configItems = sqliteTable("config_items", {
   id: text("id").primaryKey(),

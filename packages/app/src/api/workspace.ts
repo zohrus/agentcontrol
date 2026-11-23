@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Link } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
+import { ApiFailure } from "./errors.ts";
 import { routeRequest, WorkspaceQuery } from "./routing.ts";
 import { validate } from "./validate.ts";
 
@@ -35,12 +36,22 @@ function repoRoutes(relay: (workspace: string | undefined) => Link) {
     );
 }
 
+/** One workspace with its connection state: answers even while its relay is down. */
+function describe(deps: ApiDeps, workspace: string | undefined) {
+  const id = workspace ?? deps.workspaces.localId;
+  const info = deps.workspaces.info(id);
+  if (!info)
+    throw new ApiFailure(404, { code: "workspace-not-found", message: `No workspace ${id}.` });
+  return info;
+}
+
 /** Repos, their worktree setup, and the workspace's health, per `?workspace=<id>`. */
 export function workspaceRoutes(deps: ApiDeps) {
   const relay = (workspace: string | undefined): Link =>
     routeRequest(deps, { workspaceId: workspace }).link;
   return new Hono()
     .route("/", repoRoutes(relay))
+    .get("/workspace", query, (c) => c.json(describe(deps, c.req.valid("query").workspace)))
     .get("/workspace/check", query, async (c) =>
       c.json(await relay(c.req.valid("query").workspace).call(N.workspaceCheck, {})),
     )
@@ -49,5 +60,9 @@ export function workspaceRoutes(deps: ApiDeps) {
       const { agents } = await link.call(N.hello, { clientVersion: VERSION });
       return c.json({ agents });
     })
-    .get("/health", (c) => c.json({ ok: true }));
+    .get("/health", query, (c) => {
+      const { state } = describe(deps, c.req.valid("query").workspace);
+      const answers = state === "connected" || state === "needs-relay-update";
+      return c.json({ ok: true, relay: answers ? "connected" : "disconnected" });
+    });
 }

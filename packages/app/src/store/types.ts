@@ -25,8 +25,20 @@ export interface Store {
   upsertWorkspace(workspace: Workspace): void;
   /** Every workspace ever added, removed ones included, oldest first. */
   listWorkspaces(): Workspace[];
-  /** Idempotent: an event already stored (same workspace, session, seq) is ignored. */
-  saveEvents(workspaceId: string, events: SessionEvent[]): void;
+  /**
+   * Idempotent: an event already stored (same workspace, session, seq) is ignored. The events were
+   * made with this version of the relay's event translation, which the store notes per session.
+   */
+  saveEvents(call: { workspaceId: string; list: SessionEvent[]; normaliserVersion: number }): void;
+  /** Replaces a session's stored events (same seqs, new payloads) in one transaction. */
+  replaceSessionEvents(call: {
+    workspaceId: string;
+    sessionId: SessionId;
+    list: SessionEvent[];
+    version: number;
+  }): void;
+  /** Sessions whose stored events were made with an older translation version than this. */
+  sessionsNormalisedBefore(call: { workspaceId: string; version: number }): SessionId[];
   /** Highest stored seq per session of a workspace, to resume a relay subscription. */
   lastSeqs(workspaceId: string): Record<string, number>;
   /** Events of a session with seq > afterSeq, in order, at most `limit` (default 1000). */

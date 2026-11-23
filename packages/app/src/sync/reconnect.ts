@@ -1,9 +1,8 @@
 import type { ConnectionStatus } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
+import type { SyncDeps } from "./deps.ts";
 import type { Live } from "./link.ts";
-import { startSyncSession } from "./session.ts";
-import type { SyncDeps } from "./session.ts";
-import { RelayVersionMismatch } from "./version.ts";
+import { RelayReplaced, startSyncSession } from "./session.ts";
 
 const BACKOFF_START_MS = 100;
 
@@ -13,17 +12,9 @@ export interface Hooks {
   status: (status: ConnectionStatus) => void;
 }
 
-/** What to do about a relay of the wrong version; the answer says whether it was replaced. */
-export type ReplaceRelay = (options: {
-  client: RelayClient;
-  mismatch: RelayVersionMismatch;
-}) => Promise<{ replaced: boolean; reason: string }>;
-
 export interface ConnectionSettings {
   /** Opens a relay connection; rejecting means the machine could not be reached. */
   connect: () => Promise<RelayClient> | RelayClient;
-  /** Called when the relay on the machine has another version than the app. */
-  replaceRelay?: ReplaceRelay | undefined;
   /** The longest pause between attempts, which double from 100 ms up to this. */
   backoffMaxMs: number;
 }
@@ -33,35 +24,17 @@ type Outcome = "synced" | "replaced" | "failed";
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-async function onMismatch(options: {
-  error: RelayVersionMismatch;
-  client: RelayClient;
-  settings: ConnectionSettings;
-  hooks: Hooks;
-}): Promise<Outcome> {
-  const { error, client, settings, hooks } = options;
-  const fallback = { replaced: false, reason: error.message };
-  const answer =
-    (await settings.replaceRelay?.({ client, mismatch: error }).catch(() => fallback)) ?? fallback;
-  hooks.status(
-    answer.replaced
-      ? { state: "reconnecting" }
-      : { state: "needs-relay-update", reason: answer.reason },
-  );
-  return answer.replaced ? "replaced" : "failed";
-}
-
 /** Reports why a connection could not be used and says whether to retry at once. */
-async function afterFailure(options: {
+function afterFailure(options: {
   error: unknown;
   client: RelayClient | undefined;
-  settings: ConnectionSettings;
   hooks: Hooks;
-}): Promise<Outcome> {
-  const { error, client, settings, hooks } = options;
+}): Outcome {
+  const { error, client, hooks } = options;
   hooks.detach();
-  if (client && error instanceof RelayVersionMismatch) {
-    return onMismatch({ error, client, settings, hooks });
+  if (error instanceof RelayReplaced) {
+    hooks.status({ state: "reconnecting" });
+    return "replaced";
   }
   hooks.status({ state: "offline", reason: client?.failure() ?? messageOf(error) });
   return "failed";
@@ -77,7 +50,12 @@ async function syncUntilClosed(options: {
   const { client, deps, hooks, aborted } = options;
   const session = await startSyncSession(client, deps);
   hooks.attach({ client, refreshSessions: session.refreshSessions });
-  hooks.status({ state: "connected" });
+  const { relayVersion } = session.hello;
+  hooks.status(
+    session.outdated === undefined
+      ? { state: "connected", relayVersion }
+      : { state: "needs-relay-update", reason: session.outdated, relayVersion },
+  );
   await client.closed;
   hooks.detach();
   session.flush();
@@ -105,7 +83,7 @@ async function oneConnection(options: {
     await syncUntilClosed({ client, deps, hooks, aborted: () => signal.aborted });
     return "synced";
   } catch (error) {
-    const outcome = await afterFailure({ error, client, settings, hooks });
+    const outcome = afterFailure({ error, client, hooks });
     await client?.close();
     return outcome;
   }

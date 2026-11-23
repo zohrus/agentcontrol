@@ -24,7 +24,7 @@ export function localTarget(options: { command: string[]; dataDir: string }): Wo
       Promise.resolve({ localPort: remotePort, close: () => Promise.resolve() }),
     stopRelay: async () => {
       const stop = Bun.spawn([...command, "stop", "--data-dir", dataDir], { stdout: "ignore" });
-      await stop.exited;
+      if ((await stop.exited) !== 0) throw new Error("The relay could not be stopped.");
     },
     explainFailure: () => undefined,
   };

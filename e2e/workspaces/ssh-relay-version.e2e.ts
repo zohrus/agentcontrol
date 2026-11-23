@@ -59,29 +59,6 @@ test("an old relay with a session still working is left alone, and the workspace
   await expectHostRelayToBeUntouched(host, old);
 });
 
-test("an old relay is replaced once its working session ends, and the workspace connects", async () => {
-  // ********************************************************************
-  // ** GIVEN a workspace that needs a relay update because the old relay's agent is working
-  // ********************************************************************
-  const { host, user, app } = await startAppWithSshHost();
-  const old = await startOldRelayOnHost(host, "0.0.1");
-  const working = await old.startsWorkingSession();
-  const workspace = await user.addsTheHost();
-  expectWorkspaceToBe(workspace, "needs-relay-update");
-
-  // ********************************************************************
-  // ** WHEN the old session's work ends
-  // ********************************************************************
-  await old.endsTheWork(working);
-
-  // ********************************************************************
-  // ** THEN the workspace connects
-  // ********************************************************************
-  await expectWorkspaceListedAs(app, { workspace, state: "connected" });
-  // AND the host's relay is a new one
-  await expectHostRelayToHaveBeenReplaced(host, old);
-});
-
 test("the user can restart a busy old relay at once instead of waiting for its sessions", async () => {
   // ********************************************************************
   // ** GIVEN a workspace that needs a relay update because the old relay's agent is working

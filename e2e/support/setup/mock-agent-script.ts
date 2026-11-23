@@ -22,6 +22,8 @@ export interface MockAgent {
   startsNewScript(): void;
   /** The agent reports compacting its context: an ACP update kind the relay does not interpret. */
   willCompactContext(): void;
+  /** The agent sends this `session/update` as it is, for update kinds the other steps do not cover. */
+  willSendUpdate(update: Record<string, unknown>): void;
   willFinishWith(stopReason: StopReason): void;
   /** The turn stays open until the user cancels it, then ends with stop reason `cancelled`. */
   willWaitUntilCancelled(): void;
@@ -58,7 +60,11 @@ function turnEndingSteps(
   add: (step: Step) => void,
 ): Pick<
   MockAgent,
-  "willCompactContext" | "willFinishWith" | "willWaitUntilCancelled" | "willWaitForFile"
+  | "willCompactContext"
+  | "willSendUpdate"
+  | "willFinishWith"
+  | "willWaitUntilCancelled"
+  | "willWaitForFile"
 > {
   return {
     willWaitForFile: (path) => {
@@ -66,6 +72,9 @@ function turnEndingSteps(
     },
     willCompactContext: () => {
       add({ kind: "compactContext" });
+    },
+    willSendUpdate: (update) => {
+      add({ kind: "sendUpdate", update });
     },
     willFinishWith: (stopReason) => {
       add({ kind: "finish", stopReason });
