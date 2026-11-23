@@ -39,7 +39,7 @@
       "name": "@agentcontrol/app",
       "version": "0.0.0",
       "bin": {
-        "agentcontrol": "./src/main.ts",
+        "agentcontrol": "./bin/agentcontrol.ts",
       },
       "dependencies": {
         "@agentcontrol/protocol": "workspace:*",
@@ -67,7 +67,7 @@
       "name": "@agentcontrol/relay",
       "version": "0.0.0",
       "bin": {
-        "agentcontrol-relay": "./src/main.ts",
+        "agentcontrol-relay": "./bin/agentcontrol-relay.ts",
       },
       "dependencies": {
         "@agentclientprotocol/sdk": "2.9.1",
