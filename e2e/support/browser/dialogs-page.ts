@@ -56,9 +56,6 @@ export function dialogsPage(page: Page) {
       await form.startsTheSession();
     },
     archivesAnyway: () => dialogOf(page).getByRole("button", { name: "Archive anyway" }).click(),
-    /** Closes the "coming soon" notice. */
-    dismissesTheNotice: () =>
-      dialogOf(page).getByRole("button", { name: "OK", exact: true }).click(),
     /** The text of the open dialog, or "" when none is open. */
     dialogText: async (): Promise<string> =>
       (await dialogOf(page).count()) === 0 ? "" : dialogOf(page).innerText(),

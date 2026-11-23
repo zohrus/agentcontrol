@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 14:00 UTC";
+const UPDATED = "23 Nov 2026, 15:20 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -230,7 +230,7 @@ const C = [
   { id:"archive", phase:"p1", name:"Archive", status:"done", desc:"Stops the agent, removes the worktree after a warning, keeps the branch and event log.", path:"packages/relay/src/archive" },
   // Phase 3
   { id:"sdk", phase:"p3", name:"@agentcontrol/sdk", status:"done", desc:"Typed functions over the API with doc comments the Modify agent reads.", path:"packages/sdk" },
-  { id:"ui-shell", phase:"p3", name:"Default UI", status:"done", desc:"Runs on live data through the SDK: start a session, prompt, cancel, approve, archive, diff, editor, workspace setup. 10 browser tests. Not yet connected: the Modify panel and Analytics.", path:"packages/ui-template" },
+  { id:"ui-shell", phase:"p3", name:"Default UI", status:"done", desc:"Runs on live data through the SDK: start a session, prompt, cancel, approve, archive, diff, editor, workspace setup. 10 browser tests. Modify panel, Preview tab and Analytics are connected.", path:"packages/ui-template" },
   { id:"ui-server", phase:"p3", name:"UI server", status:"done", desc:"Vite in middleware mode with hot reload, served by the app.", path:"packages/app/src/ui" },
   { id:"session-list", phase:"p3", name:"Session list", status:"done", desc:"All sessions with waiting-on-you badges and an Archived filter.", path:"" },
   { id:"session-view", phase:"p3", name:"Session view", status:"done", desc:"Streaming messages, thinking, plan, tool cards and permission prompts.", path:"" },
@@ -244,9 +244,9 @@ const C = [
   { id:"safe", phase:"p4", name:"/_safe recovery page", status:"done", desc:"Served by the app itself so a broken UI can always be rolled back.", path:"" },
   // Release
   { id:"modify-ui", phase:"p4", name:"Modify panel in the UI", status:"done", desc:"Connects the Modify this UI panel to the backend: request, check status, Keep, Undo, history, default-UI updates, with browser tests.", path:"packages/ui-template/src/modify" },
-  { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"progress", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
+  { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"progress", desc:"Starts the server, opens the UI, shows how many sessions are waiting. Compiles on a Mac runner for both chip types; never launched yet.", path:"packages/mac" },
   { id:"packaging", phase:"rel", name:"Compiled app and release folder", status:"done", desc:"The compiled app runs end to end with no source tree and no Bun installed: 9 of 9 smoke steps on Linux, also run in CI. Ships the default UI with its tools; about 700 MB.", path:"scripts/build.ts" },
-  { id:"mac-bundle", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
+  { id:"mac-bundle", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"Unsigned disk images for both chip types are built on every push to main and smoke-tested on a Mac runner, from the app bundle and from the mounted image. Not yet opened by a person on a Mac. Signing, notarisation and the cask wait for an Apple Developer ID (parked).", path:"scripts/" },
   // Phase 5
   { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"done", desc:"Add a host, install the relay over ssh, run sessions there; survives dropped connections and the app being offline; relay versions handled; agents found through the login-shell PATH. About 40 tests over real ssh. Not yet tried on a real remote machine.", path:"" },
   { id:"workspace-ui", phase:"p5", name:"Workspace picker in the UI", status:"progress", desc:"Pick a workspace, add an SSH host, see its checklist, restart its relay. The API and SDK are ready.", path:"packages/ui-template/src/workspaces" },
@@ -256,7 +256,7 @@ const C = [
   // Phase 6
   { id:"config-deploy", phase:"p6", name:"Harness config", status:"progress", desc:"Backend done and verified against real Claude Code and Codex: one config, preview of file changes, apply, rollback, drift, import. 38 tests. Still to do: the Config screen in the UI.", path:"" },
   // Phase 7
-  { id:"usage", phase:"p7", name:"Usage and analytics", status:"progress", desc:"Reads agent logs for tokens and cost per session, model and workspace.", path:"" },
+  { id:"usage", phase:"p7", name:"Usage and analytics", status:"done", desc:"Analytics screen: tokens, cost, working and waiting time per session, model, workspace and day, with rule-based insights. Usage is kept in the app's database, so it works with a workspace offline. Not yet: usage against plan limits for subscription logins.", path:"packages/app/src/analytics" },
   // External (diagram only)
   { id:"claude", phase:null, name:"Claude Code", status:"external", desc:"via claude-agent-acp" },
   { id:"codex", phase:null, name:"Codex", status:"external", desc:"via codex-acp" },
@@ -266,10 +266,6 @@ const C = [
 const NOW = [
   "Workspace picker and Config screen in the UI",
   "Console: a terminal on the workspace, inside the app",
-  "Analytics screen: tokens and cost per session, model and workspace",
-  "UI connected to live data, served by the app, with browser tests (Phase 3)",
-  "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
-  "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
@@ -298,6 +294,7 @@ const LOG = [
   ["23 Nov 2026 11:00", "Compiled app landed: it runs end to end with no source tree and no Bun installed (9 of 9 smoke steps on Linux, now in CI). bun dev opens the browser. Plan page brought up to date with everything since yesterday. 13 follow-up fixes are done on their branch and merging."],
   ["23 Nov 2026 12:20", "Landed: 13 follow-up fixes (app starts when the relay is down, relay shutdown keeps the last events, relay stop reports what it did, stale updates re-read, coverage floor raised to 98%) and the Mac build fix. On a real Mac runner the compiled app passed all 9 smoke steps, from the app bundle and from the mounted disk image; unsigned disk images are built for both chip types (about 320 MB each). Three Mac-only bugs found and fixed."],
   ["23 Nov 2026 14:00", "Landed: remote SSH workspaces (Phase 5 core, about 40 tests over real ssh, compiled relay installed over ssh) and UI coverage (the UI now counts toward the coverage rule, about 50 new browser tests). 124 test runs pass, coverage 98.9%. A break in the compiled app caused by the follow-up fixes was caught by GitHub's build and fixed; the compiled-app smoke test now runs before every landing."],
+  ["23 Nov 2026 15:20", "Analytics screen landed: tokens, cost, working and waiting time per session, model, workspace and day, rule-based insights that link to the sessions behind them, charts with a table view, 24 new tests. Costs under a cent now show as <$0.01. The Mac build is green on main: unsigned disk images are attached to each build run. Plan, task list and README brought up to date."],
 ];
 /* ===== END DATA ===== */
 

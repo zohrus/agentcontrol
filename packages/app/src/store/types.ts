@@ -1,4 +1,11 @@
-import type { ScopedItem, SessionEvent, SessionId, SessionSummary } from "@agentcontrol/protocol";
+import type {
+  ScopedItem,
+  SessionEvent,
+  SessionId,
+  SessionSummary,
+  UsageRow,
+} from "@agentcontrol/protocol";
+import type { StoredUsage } from "./usage.ts";
 
 export interface Workspace {
   id: string;
@@ -54,6 +61,13 @@ export interface Store {
   getSession(key: { workspaceId: string; sessionId: SessionId }): StoredSession | undefined;
   /** The sessions with this id in any workspace (ids are only unique per workspace). */
   findSessions(sessionId: SessionId): StoredSession[];
+  /**
+   * Replaces the saved usage rows of these sessions with the relay's current lists (one row per
+   * finished turn, oldest first), so reading the same list again changes nothing.
+   */
+  replaceUsage(call: { workspaceId: string; sessionIds: string[]; rows: UsageRow[] }): void;
+  /** Every saved usage row of every workspace; analytics read these when a workspace is offline. */
+  listUsage(): StoredUsage[];
   /** Replaces every harness-config item with the given ones. */
   replaceConfigItems(items: ScopedItem[]): void;
   /** The harness-config items, one entry per item and scope. */

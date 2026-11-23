@@ -1,4 +1,4 @@
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const workspaces = sqliteTable("workspaces", {
   id: text("id").primaryKey(),
@@ -79,4 +79,27 @@ export const configScopes = sqliteTable(
     enabled: integer("enabled", { mode: "boolean" }).notNull(),
   },
   (t) => [primaryKey({ columns: [t.itemId, t.scope, t.repoPath] })],
+);
+
+/**
+ * One finished turn's usage, saved as the relay reported it, so analytics work while a workspace
+ * is offline. `idx` is the row's place in the session's list from the relay (oldest first). Reading
+ * the list again replaces the session's rows, so nothing is counted twice.
+ */
+export const usage = sqliteTable(
+  "usage",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    sessionId: text("session_id").notNull(),
+    idx: integer("idx").notNull(),
+    ts: text("ts").notNull(),
+    model: text("model"),
+    inputTokens: integer("input_tokens").notNull(),
+    outputTokens: integer("output_tokens").notNull(),
+    cacheReadTokens: integer("cache_read_tokens").notNull(),
+    cacheWriteTokens: integer("cache_write_tokens").notNull(),
+    /** Null when the agent reported no cost (a subscription login): never a made-up zero. */
+    costUsd: real("cost_usd"),
+  },
+  (t) => [primaryKey({ columns: [t.workspaceId, t.sessionId, t.idx] })],
 );

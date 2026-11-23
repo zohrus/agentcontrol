@@ -9,6 +9,7 @@ import {
 } from "./events.ts";
 import { findSessions, getSession, listSessions, saveSessionSummaries } from "./sessions.ts";
 import type { Store, StoreOptions } from "./types.ts";
+import { listUsage, replaceUsage } from "./usage.ts";
 import { listWorkspaces, upsertWorkspace } from "./workspaces.ts";
 
 export type { Store, StoreOptions, StoredSession, Workspace } from "./types.ts";
@@ -21,6 +22,16 @@ function normalisation(db: Db) {
     },
     sessionsNormalisedBefore: (call: Parameters<Store["sessionsNormalisedBefore"]>[0]) =>
       sessionsNormalisedBefore(db, call),
+  };
+}
+
+/** The usage rows analytics read: saved as the relay reports them, readable while it is offline. */
+function usageStore(db: Db) {
+  return {
+    replaceUsage: (call: Parameters<Store["replaceUsage"]>[0]): void => {
+      replaceUsage(db, call);
+    },
+    listUsage: () => listUsage(db),
   };
 }
 
@@ -43,6 +54,7 @@ export function createStore({ path }: StoreOptions): Store {
     listSessions: (filter) => listSessions(db, filter),
     getSession: (key) => getSession(db, key),
     findSessions: (sessionId) => findSessions(db, sessionId),
+    ...usageStore(db),
     replaceConfigItems: (items) => {
       replaceConfigItems(db, items);
     },

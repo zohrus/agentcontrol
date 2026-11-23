@@ -1,6 +1,7 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import { hc } from "hono/client";
 import type { AppType } from "@agentcontrol/app";
+import { type AnalyticsFilter, type AnalyticsTableOptions, analyticsApi } from "./analytics.ts";
 import { configApi } from "./config.ts";
 import { authorizedFetch, tokenFromPage } from "./authorized-fetch.ts";
 import { filesApi } from "./files.ts";
@@ -12,6 +13,7 @@ import { agentsApi, reposApi, workspaceApi } from "./workspace.ts";
 import { workspacesApi } from "./workspaces.ts";
 
 export { ApiError } from "./api-error.ts";
+export type { AnalyticsFilter, AnalyticsTableOptions };
 export type { ConfigTarget } from "./config.ts";
 export type { FileContent, FileRef, WriteFile } from "./files.ts";
 export { isStaleFile } from "./files.ts";
@@ -47,6 +49,7 @@ export function createClient({ baseUrl, fetch: sender = fetch, ...auth }: Client
   const send = authorizedFetch(sender, auth);
   const api = hc<AppType>(`${baseUrl}/api`, { fetch: send });
   return {
+    analytics: analyticsApi(api),
     sessions: sessionsApi(api),
     files: filesApi(api, baseUrl),
     modify: modifyApi(api),

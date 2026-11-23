@@ -24,4 +24,8 @@ export const EMBEDDED_MIGRATIONS = [
     when: 1795470000000,
     sql: "ALTER TABLE `workspaces` ADD `removed_at` text;",
   },
+  {
+    when: 1795480000000,
+    sql: "CREATE TABLE `usage` (\n\t`workspace_id` text NOT NULL,\n\t`session_id` text NOT NULL,\n\t`idx` integer NOT NULL,\n\t`ts` text NOT NULL,\n\t`model` text,\n\t`input_tokens` integer NOT NULL,\n\t`output_tokens` integer NOT NULL,\n\t`cache_read_tokens` integer NOT NULL,\n\t`cache_write_tokens` integer NOT NULL,\n\t`cost_usd` real,\n\tPRIMARY KEY(`workspace_id`, `session_id`, `idx`)\n);\n",
+  },
 ] as const;

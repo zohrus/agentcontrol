@@ -14,7 +14,7 @@ export type StatusStats = {
 
 function Count({ value, label }: { value: string | number; label: string }) {
   return (
-    <span>
+    <span data-testid={`status-${label}`}>
       <b className="font-medium text-fg">{value}</b> {label}
     </span>
   );

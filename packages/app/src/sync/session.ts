@@ -11,6 +11,7 @@ import { createBatcher } from "./batcher.ts";
 import type { SyncDeps } from "./deps.ts";
 import { renormaliseStaleSessions } from "./renormalise.ts";
 import { saveChangedSummaries } from "./summaries.ts";
+import { saveAllUsage, usageAfterTurns } from "./usage.ts";
 
 const EVENT_BATCH_MS = 20;
 
@@ -41,7 +42,9 @@ function saveSummaries(deps: SyncDeps) {
 }
 
 /** Batches the relay's events; `version` is the relay's translation version once it has said it. */
-function receiver(deps: SyncDeps, version: () => number) {
+function receiver(call: { client: RelayClient; deps: SyncDeps; version: () => number }) {
+  const { deps, version } = call;
+  const afterSave = usageAfterTurns(call);
   return createBatcher<SessionEvent>({
     delayMs: EVENT_BATCH_MS,
     handle: (events) => {
@@ -50,6 +53,7 @@ function receiver(deps: SyncDeps, version: () => number) {
       events.forEach((event) => {
         deps.hub.publish({ type: "event", workspaceId, event });
       });
+      afterSave(events);
     },
   });
 }
@@ -83,6 +87,7 @@ async function followAndList(call: {
     onSummaries((await client.call(RelayName.sessionsList, {})).sessions);
   };
   await refreshSessions();
+  saveAllUsage({ client, deps });
   return refreshSessions;
 }
 
@@ -117,7 +122,7 @@ async function checkVersion(call: {
  */
 export async function startSyncSession(client: RelayClient, deps: SyncDeps): Promise<SyncSession> {
   let normaliserVersion = 0;
-  const events = receiver(deps, () => normaliserVersion);
+  const events = receiver({ client, deps, version: () => normaliserVersion });
   const onSummaries = saveSummaries(deps);
   relayPushes({ client, onEvent: events.add, onSummaries });
   const hello = await client.call(RelayName.hello, { clientVersion: VERSION });
