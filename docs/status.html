@@ -243,7 +243,7 @@ const C = [
   // Release
   { id:"modify-ui", phase:"p4", name:"Modify panel in the UI", status:"progress", desc:"Connects the Modify this UI panel to the backend: request, check status, Keep, Undo, history, default-UI updates, with browser tests.", path:"packages/ui-template/src/modify" },
   { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"progress", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
-  { id:"packaging", phase:"rel", name:"Signed .dmg and Homebrew", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
+  { id:"packaging", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
   // Phase 5
   { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"progress", desc:"SSH connection manager, relay deployment and version handshake, Linux builds, sessions that survive SSH drops and sleep.", path:"" },
   { id:"console", phase:"p5", name:"Console in the app", status:"planned", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
@@ -269,6 +269,8 @@ const NOW = [
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
 ];
 const BLOCKED = [
+  "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
+  "CI on GitHub is red on main (gate-proof job, check job, Mac build script permission): being fixed now",
   "Codex in the spike: needs an OpenAI API key and api.openai.com allowed in this environment, or your Mac attached",
 ];
 const LOG = [
