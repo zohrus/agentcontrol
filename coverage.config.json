@@ -39,12 +39,12 @@
       "reason": "drizzle-kit tooling config (db:generate), not product code at run time."
     },
     {
-      "path": "packages/ui-template/**",
-      "reason": "TODO: the browser tests (e2e/browser/) run the UI in Chromium, which bun cannot see. Counting them needs Chromium V8 coverage (page.coverage) mapped through Vite source maps to source lines and written as an lcov part, and enough browser tests to reach 95% of the UI (modify panel, workspace setup, new session errors, editor conflicts are untested). Remove this entry then."
-    },
-    {
       "path": "packages/mac/**",
       "reason": "Swift/menu bar shell and installer glue; not exercised by the TypeScript e2e suite."
+    },
+    {
+      "path": "packages/ui-template/src/index.ts",
+      "reason": "The package's public entry (package.json exports; knip counts the components it re-exports as used because of it): re-exports only, no logic. The browser loads main.tsx and never this file."
     }
   ],
   "pending": []

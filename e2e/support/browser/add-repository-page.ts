@@ -1,7 +1,7 @@
 import type { Page } from "./playwright.ts";
 
 /** Opens New session, chooses "Add repository…", types the folder and presses Add. */
-export async function typesRepositoryFolder(page: Page, folder: string): Promise<void> {
+async function typesRepositoryFolder(page: Page, folder: string): Promise<void> {
   await page.getByRole("button", { name: "New session", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog

@@ -1,8 +1,10 @@
-const transpiler = new Bun.Transpiler({ loader: "ts" });
+const typescript = new Bun.Transpiler({ loader: "ts" });
+const tsx = new Bun.Transpiler({ loader: "tsx" });
 const COMMENT_START = /^(\/\/|\/\*|\*)/;
 
 /** True when the file compiles to nothing (types only), so it has no lines to run. */
-function isTypeOnly(source: string): boolean {
+function isTypeOnly(file: string, source: string): boolean {
+  const transpiler = file.endsWith(".tsx") ? tsx : typescript;
   return (
     transpiler
       .transformSync(source)
@@ -17,7 +19,7 @@ function isTypeOnly(source: string): boolean {
  */
 export async function guessExecutableLines(file: string): Promise<number[]> {
   const source = await Bun.file(file).text();
-  if (isTypeOnly(source)) return [];
+  if (isTypeOnly(file, source)) return [];
   return source
     .split("\n")
     .map((text, index) => ({ text: text.trim(), line: index + 1 }))

@@ -2,20 +2,42 @@ import type { Page } from "./playwright.ts";
 
 const streamOf = (page: Page) => page.getByRole("log");
 
-/** The open session: its conversation stream, the permission card and the composer. */
-export function sessionPage(page: Page) {
+/** Buttons and keys of the composer under the conversation. */
+function composer(page: Page) {
   return {
-    allowsTheCommandInTheStream: () =>
-      streamOf(page).getByRole("button", { name: "Allow", exact: true }).click(),
     sendsMessage: async (text: string): Promise<void> => {
       await page.locator("textarea").fill(text);
       await page.getByRole("button", { name: "Send", exact: true }).click();
     },
+    /** Types a message and sends it with Ctrl+Enter (Cmd+Enter on a Mac), without the Send button. */
+    sendsMessageWithTheKeyboard: async (text: string): Promise<void> => {
+      await page.locator("textarea").fill(text);
+      await page.keyboard.press("ControlOrMeta+Enter");
+    },
+    /** Presses Enter alone in the message box: that is a new line, not a send. */
+    pressesEnterInTheMessageBox: () => page.locator("textarea").press("Enter"),
+    cancelsTheTurn: () => page.getByRole("button", { name: "Cancel", exact: true }).click(),
+    /** Whether the Send button can be pressed. */
+    sendIsEnabled: () => page.getByRole("button", { name: "Send", exact: true }).isEnabled(),
     /** Presses Archive and confirms in the dialog that opens. */
     archives: async (): Promise<void> => {
       await page.getByRole("button", { name: "Archive", exact: true }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Archive", exact: true }).click();
     },
+  };
+}
+
+/** The open session: its conversation stream, the permission card and the composer. */
+export function sessionPage(page: Page) {
+  return {
+    ...composer(page),
+    allowsTheCommandInTheStream: () =>
+      streamOf(page).getByRole("button", { name: "Allow", exact: true }).click(),
+    /** Opens the one-line summary of collapsed lookups ("Read 2 files, searched 1 time"). */
+    opensTheCollapsedLookups: () =>
+      streamOf(page)
+        .locator("summary", { hasText: /^(Read|Searched) / })
+        .click(),
     /** Everything the conversation stream shows, or "" while no session is open. */
     streamText: async (): Promise<string> => {
       const stream = streamOf(page);
@@ -26,6 +48,8 @@ export function sessionPage(page: Page) {
       const chip = page.locator('[data-testid="usage-chip"]');
       return (await chip.count()) === 0 ? "" : chip.innerText();
     },
+    /** How long the header says the session has been going ("45s", "3h 05m", "2d 4h"). */
+    elapsedTimeText: () => page.locator('[title^="Started "]').innerText(),
     /** How many times the stream shows this text. */
     timesTheStreamShows: async (text: string): Promise<number> => {
       const found = await streamOf(page).getByText(text).count();

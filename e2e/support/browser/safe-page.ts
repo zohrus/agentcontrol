@@ -1,6 +1,6 @@
 import type { RunningApp } from "../setup/start-app.ts";
-import { onTestEnd } from "../setup/cleanup.ts";
-import { launchChromium, type Page } from "./playwright.ts";
+import { openTab } from "./open-tab.ts";
+import type { Page } from "./playwright.ts";
 
 const CALL_WAIT_MS = 15_000;
 
@@ -33,9 +33,7 @@ async function nextCall(tab: Page, app: RunningApp): Promise<SafePageCall> {
 
 /** Opens `/_safe` in a headless browser, as a user whose UI is broken would. */
 export async function opensTheSafePageInABrowser(app: RunningApp): Promise<SafePageInABrowser> {
-  const browser = await launchChromium();
-  onTestEnd(() => browser.close());
-  const tab = await browser.newPage();
+  const tab = await openTab();
   await tab.goto(`${app.baseUrl}/_safe`);
   return { nextCallWithTheCurrentSecret: () => nextCall(tab, app) };
 }

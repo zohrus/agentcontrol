@@ -4,10 +4,10 @@ import type { AppInBrowser } from "./start-app-in-browser.ts";
 
 const BROWSER_WAIT_MS = 15_000;
 
-const quote = (text: string): string => JSON.stringify(text);
+export const quote = (text: string): string => JSON.stringify(text);
 
 /** Like `eventually`, with the longer wait a page needs to load and render. */
-function pageEventually(
+export function pageEventually(
   expectation: string,
   observe: () => Promise<string | undefined>,
 ): Promise<void> {

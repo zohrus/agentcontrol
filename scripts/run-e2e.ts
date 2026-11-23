@@ -6,12 +6,16 @@
 // second time against real subprocesses, to prove the shipped wiring: the app's `main.ts`, the
 // relay bridge and the detached daemon.
 //
-// `--coverage` makes every in-process run write `coverage/parts/<name>/lcov.info`.
-import { rmSync } from "node:fs";
+// `--coverage` makes every in-process run write `coverage/parts/<name>/lcov.info`; browser tests add
+// `coverage/parts/<name>-browser-<n>/lcov.info` for the UI code the browser ran.
+// Arguments that are not flags select files by path prefix (`bun scripts/run-e2e.ts e2e/browser`);
+// a selective coverage run keeps the parts of the files it does not run.
+import { mkdirSync, rmSync } from "node:fs";
 import { availableParallelism } from "node:os";
 
 const TEST_TIMEOUT_MS = 20_000;
 const PARALLEL_FILES = 4;
+const MAX_BROWSER_FILES = 2;
 /** Where scripts/coverage.ts reads the per-file reports from. */
 const PARTS_DIR = "coverage/parts";
 
@@ -36,6 +40,10 @@ interface JobRun {
 
 const partName = (file: string): string => file.replace(/^e2e\//, "").replace(/\.e2e\.ts$/, "");
 
+/** Where this job's browser tests write their parts; the test adds `-<n>`. */
+const browserPartsPrefix = (job: Job): string =>
+  `${PARTS_DIR}/${partName(job.file).replaceAll("/", "-")}${job.inSubprocesses ? "-sub" : ""}-browser`;
+
 function commandFor(job: Job, coverage: boolean): string[] {
   const command = ["bun", "test", "--timeout", String(TEST_TIMEOUT_MS)];
   if (coverage && !job.inSubprocesses) {
@@ -55,10 +63,12 @@ function withoutGitHookEnv(): Record<string, string | undefined> {
 }
 
 async function runJob(job: Job, coverage: boolean): Promise<JobRun> {
-  const env = {
+  const env: Record<string, string | undefined> = {
     ...withoutGitHookEnv(),
     AGENTCONTROL_E2E_PROCESSES: job.inSubprocesses ? "1" : "0",
   };
+  // Browser tests write what the UI ran as one more lcov part (e2e/support/browser/ui-coverage).
+  if (coverage) env["AGENTCONTROL_BROWSER_COVERAGE_PARTS"] = browserPartsPrefix(job);
   const run = Bun.spawn(commandFor(job, coverage), { stdout: "pipe", stderr: "pipe", env });
   const [out, err, exitCode] = await Promise.all([
     run.stdout.text(),
@@ -68,24 +78,41 @@ async function runJob(job: Job, coverage: boolean): Promise<JobRun> {
   return { name: job.name, exitCode, output: out + err };
 }
 
-async function runAll(jobs: Job[], coverage: boolean): Promise<JobRun[]> {
-  const results: JobRun[] = [];
-  const queue = [...jobs];
+/** Runs the jobs of one group, `workers` at a time, adding each result to `results`. */
+async function drain(
+  group: { jobs: Job[]; workers: number },
+  options: { coverage: boolean; results: JobRun[] },
+): Promise<void> {
+  const queue = [...group.jobs];
   const worker = async (): Promise<void> => {
     for (let job = queue.shift(); job !== undefined; job = queue.shift()) {
-      const finished = await runJob(job, coverage);
-      results.push(finished);
+      const finished = await runJob(job, options.coverage);
+      options.results.push(finished);
       console.log(`${finished.exitCode === 0 ? "pass" : "FAIL"} ${finished.name}`);
     }
   };
-  const workers = Math.min(PARALLEL_FILES, availableParallelism());
-  await Promise.all(Array.from({ length: workers }, worker));
+  await Promise.all(Array.from({ length: group.workers }, worker));
+}
+
+/** Browser files run at most two at a time (each starts Chromium); the rest fill the other workers. */
+async function runAll(jobs: Job[], coverage: boolean): Promise<JobRun[]> {
+  const results: JobRun[] = [];
+  const isBrowser = (job: Job): boolean => job.file.startsWith("e2e/browser/");
+  const total = Math.min(PARALLEL_FILES, availableParallelism());
+  const browserWorkers = Math.min(MAX_BROWSER_FILES, total);
+  await Promise.all([
+    drain({ jobs: jobs.filter(isBrowser), workers: browserWorkers }, { coverage, results }),
+    drain(
+      { jobs: jobs.filter((job) => !isBrowser(job)), workers: total - browserWorkers || 1 },
+      { coverage, results },
+    ),
+  ]);
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function jobsFor(files: string[]): Job[] {
   const inProcess = files.map((file) => ({ name: file, file, inSubprocesses: false }));
-  const asProcesses = SUBPROCESS_FILES.map((file) => ({
+  const asProcesses = SUBPROCESS_FILES.filter((file) => files.includes(file)).map((file) => ({
     name: `${file} (subprocesses)`,
     file,
     inSubprocesses: true,
@@ -93,14 +120,38 @@ function jobsFor(files: string[]): Job[] {
   return [...asProcesses, ...inProcess];
 }
 
+/** Deletes the reports of the last run: all of them, or only those of the files about to run again. */
+function forgetOldParts(jobs: Job[], onlyThese: boolean): void {
+  if (!onlyThese) {
+    rmSync("coverage", { recursive: true, force: true });
+    return;
+  }
+  mkdirSync(PARTS_DIR, { recursive: true });
+  const names = jobs.map((job) => partName(job.file).replaceAll("/", "-"));
+  for (const name of names) {
+    const old = new Bun.Glob(`${name}{,-browser-*}`).scanSync({ cwd: PARTS_DIR, onlyFiles: false });
+    for (const part of old) rmSync(`${PARTS_DIR}/${part}`, { recursive: true, force: true });
+  }
+}
+
 const coverage = process.argv.includes("--coverage");
-const files = [...new Bun.Glob("e2e/**/*.e2e.ts").scanSync({ cwd: process.cwd() })].sort();
+/** True when `file` is `path` itself or lies in the folder `path`, or is that file name without its end. */
+const isUnder = (file: string, path: string): boolean =>
+  file === path ||
+  file.startsWith(`${path.replace(/\/$/, "")}/`) ||
+  file.startsWith(path.replace(".e2e.ts", "") + ".");
+
+const selected = process.argv.slice(2).filter((argument) => !argument.startsWith("--"));
+const files = [...new Bun.Glob("e2e/**/*.e2e.ts").scanSync({ cwd: process.cwd() })]
+  .filter((file) => selected.length === 0 || selected.some((path) => isUnder(file, path)))
+  .sort();
 
 if (files.length === 0) {
   console.log("no *.e2e.ts files yet");
 } else {
-  if (coverage) rmSync("coverage", { recursive: true, force: true });
-  const results = await runAll(jobsFor(files), coverage);
+  const jobs = jobsFor(files);
+  if (coverage) forgetOldParts(jobs, selected.length > 0);
+  const results = await runAll(jobs, coverage);
   const failed = results.filter((result) => result.exitCode !== 0);
   for (const result of failed) console.log(`\n${result.name}\n${result.output}`);
   console.log(`${String(results.length - failed.length)} of ${String(results.length)} runs passed`);

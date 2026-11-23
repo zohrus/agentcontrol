@@ -2,10 +2,10 @@ import { afterEach, test } from "bun:test";
 import {
   expectChangesTabToList,
   expectDiffToShow,
-  expectEditorToShow,
   expectFileListToSay,
   expectFileToBeSaved,
 } from "../support/browser/browser-expectations.ts";
+import { opensReadmeInTheEditor } from "../support/browser/more-session-setups.ts";
 import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -46,11 +46,7 @@ test(
     // ** GIVEN a session whose agent finished its turn after editing README.md, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
-    // AND the user has opened README.md in the editor
-    await app.page.opensEditorTab();
-    await app.page.opensFileInEditor("README.md");
-    await expectEditorToShow(app, "// after");
+    const session = await opensReadmeInTheEditor(app);
 
     // ********************************************************************
     // ** WHEN the user replaces the text and saves
@@ -61,6 +57,9 @@ test(
     // ** THEN the file in the worktree holds the new text
     // ********************************************************************
     await expectFileToBeSaved(app, { session, path: "README.md", content: "edited by the user" });
+    // AND the page has taken the save in: the Changes tab shows the new text
+    await app.page.opensChangesTab();
+    await expectDiffToShow(app, "edited by the user");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
