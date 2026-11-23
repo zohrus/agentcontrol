@@ -1,4 +1,5 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
+import { eventually } from "../setup/eventually.ts";
 import type { RecordedSession } from "../setup/real-recordings.ts";
 import type { RelayAccess } from "../setup/relay.ts";
 import { allUpdates } from "../setup/updates.ts";
@@ -16,12 +17,22 @@ const LEFT_ALONE_ON_PURPOSE = [
   "session_info_update",
 ];
 
+/** Five logs of a few dozen events each, read on a machine that may be busy with a whole test run. */
+const SERVE_TIMEOUT_MS = 15_000;
+
 async function eventsOf(relay: RelayAccess, session: RecordedSession): Promise<SessionEvent[]> {
-  const last = await relay.events.waitFor(
-    (event) => event.sessionId === session.id && event.seq === session.lastSeq,
+  const served = (): SessionEvent[] =>
+    relay.events.entries.filter((event) => event.sessionId === session.id);
+  await eventually(
     `expected the relay to serve all ${String(session.lastSeq)} events of the recording "${session.name}"`,
+    () => {
+      // The relay also records that the recorded agent is gone, after the recording's last event.
+      const reached = served().some((event) => event.seq === session.lastSeq);
+      return Promise.resolve(reached ? undefined : `it served ${String(served().length)}`);
+    },
+    SERVE_TIMEOUT_MS,
   );
-  return relay.events.entries.filter((event) => event.sessionId === last.sessionId);
+  return served();
 }
 
 function uninterpretedNames(events: SessionEvent[]): string[] {

@@ -4,7 +4,7 @@ import { forSession } from "../setup/session-events.ts";
 
 type SetupOutput = Extract<SessionEvent, { kind: "setup-output" }>;
 
-function setupOutputOf(relay: RelayAccess, session: Session): string {
+export function setupOutputOf(relay: RelayAccess, session: Session): string {
   return relay.events.entries
     .filter((event): event is SetupOutput => event.kind === "setup-output")
     .filter((event) => event.sessionId === session.id)

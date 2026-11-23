@@ -11,7 +11,7 @@ export type ViewState = {
 export function relativePath(state: ViewState, path: string): string;
 export function relativePath(state: ViewState, path: string | undefined): string | undefined;
 export function relativePath(state: ViewState, path: string | undefined): string | undefined {
-  const prefix = state.root === undefined ? undefined : `${state.root}/`;
+  const prefix = state.root === undefined ? undefined : `${state.root.replace(/\/+$/, "")}/`;
   return prefix !== undefined && path?.startsWith(prefix) ? path.slice(prefix.length) : path;
 }
 

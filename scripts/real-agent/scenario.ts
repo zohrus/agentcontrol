@@ -2,7 +2,7 @@ import type { SessionId } from "../../packages/sdk/src/index.ts";
 import type { World } from "./world.ts";
 
 /** What the scenarios of one run share: the world they run in and the session they build up. */
-export interface Flow {
+interface Flow {
   sessionId?: SessionId;
 }
 

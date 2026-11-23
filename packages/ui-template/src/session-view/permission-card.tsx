@@ -26,8 +26,8 @@ function Request({ item }: { item: ItemOf<"permission"> }) {
           $ {item.command}
         </code>
       )}
-      {item.files.map((change) => (
-        <FileDiff key={change.path} change={change} />
+      {item.files.map((change, index) => (
+        <FileDiff key={`${change.path}-${String(index)}`} change={change} />
       ))}
     </>
   );

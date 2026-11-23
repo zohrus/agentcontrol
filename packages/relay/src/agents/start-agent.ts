@@ -37,6 +37,17 @@ function connectTo(spawned: SpawnedAgent, options: StartAgentOptions) {
 
 type Connection = ReturnType<typeof connectTo>;
 
+/** Puts the agent in the mode that makes it ask; failing is loud, since it would otherwise never ask. */
+async function switchMode(
+  connection: Connection,
+  change: { sessionId: string; modeId: string },
+): Promise<void> {
+  await connection.agent.request(methods.agent.session.setMode, change).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`the agent would not switch to its "${change.modeId}" mode (${reason})`);
+  });
+}
+
 async function handshake(connection: Connection, options: StartAgentOptions): Promise<string> {
   await connection.agent.request(methods.agent.initialize, {
     protocolVersion: PROTOCOL_VERSION,
@@ -48,9 +59,7 @@ async function handshake(connection: Connection, options: StartAgentOptions): Pr
     ...(options.sessionMeta ? { _meta: options.sessionMeta } : {}),
   });
   const modeId = modeToSwitchTo(options.kind, modes);
-  if (modeId !== undefined) {
-    await connection.agent.request(methods.agent.session.setMode, { sessionId, modeId });
-  }
+  if (modeId !== undefined) await switchMode(connection, { sessionId, modeId });
   return sessionId;
 }
 

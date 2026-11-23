@@ -23,13 +23,21 @@ function withoutAccountKeys(value: unknown): unknown {
   return Object.fromEntries(entries) as unknown;
 }
 
+/** The home folder, unless it is too short to replace safely (an empty or root HOME). */
+function homeToHide(): string | undefined {
+  const home = homedir();
+  return home.length > 1 ? home : undefined;
+}
+
 function scrubLine(line: string): string {
   const text = JSON.stringify(withoutAccountKeys(JSON.parse(line)));
-  return text.replaceAll(TEMP_FOLDER, "/tmp/ac-$1").replaceAll(homedir(), "/home/user");
+  const named = text.replaceAll(TEMP_FOLDER, "/tmp/ac-$1");
+  const home = homeToHide();
+  return home === undefined ? named : named.replaceAll(home, "/home/user");
 }
 
 /** Keeps the machine out of a recording: temp folders get stable names, and the account's rate limits go. */
-export function scrub(log: string): string {
+function scrub(log: string): string {
   const lines = log.split("\n").filter((line) => line.trim() !== "");
   return `${lines.map(scrubLine).join("\n")}\n`;
 }

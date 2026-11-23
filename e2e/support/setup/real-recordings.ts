@@ -37,7 +37,7 @@ async function placeInRelay(relay: RunningRelay, file: string): Promise<Recorded
 
 /**
  * Puts every recording of a real Claude Code run (`e2e/fixtures/recordings/claude-code`) into the
- * relay's data folder, restarts the relay so it reads them, and follows each from its start.
+ * relay's data folder and restarts the relay so it reads them.
  */
 export async function relayHoldsTheRealClaudeCodeRecordings(
   relay: RunningRelay,
@@ -45,6 +45,13 @@ export async function relayHoldsTheRealClaudeCodeRecordings(
   const files = (await readdir(recordingsDir)).filter((file) => file.endsWith(".jsonl")).sort();
   const sessions = await Promise.all(files.map((file) => placeInRelay(relay, file)));
   await relay.restartsTheRelay();
-  await Promise.all(sessions.map((session) => relay.followsSessionAfter(session, 0)));
   return sessions;
+}
+
+/** The app follows each recorded session from its first event, as it does when it opens. */
+export async function theAppFollowsTheRecordedSessions(
+  relay: RunningRelay,
+  sessions: RecordedSession[],
+): Promise<void> {
+  await Promise.all(sessions.map((session) => relay.followsSessionAfter(session, 0)));
 }

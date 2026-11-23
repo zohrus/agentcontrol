@@ -2,8 +2,10 @@ import type { FileChange } from "@agentcontrol/protocol";
 
 const MAX_LINES = 30;
 
+/** The lines of a text; the newline that ends the last line does not start another. */
 function linesOf(text: string | undefined): string[] {
-  return text === undefined || text === "" ? [] : text.split("\n");
+  if (text === undefined || text === "") return [];
+  return text.endsWith("\n") ? text.slice(0, -1).split("\n") : text.split("\n");
 }
 
 type LinesProps = { lines: string[]; sign: "+" | "−" };

@@ -52,23 +52,26 @@ function whenCancelled(): { cancelled: Promise<void>; cancel: () => void } {
   return { cancelled, cancel };
 }
 
+const INITIALIZED = {
+  protocolVersion: PROTOCOL_VERSION,
+  agentCapabilities: {},
+  agentInfo: { name: "mock-agent", version: "0.0.0" },
+};
+
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
   const session: Session = { cwd: process.cwd(), launchSettings: undefined };
   const modes = createModes(script.startsInMode);
   const { cancelled, cancel } = whenCancelled();
   return agent({ name: "mock-agent" })
-    .onRequest(methods.agent.initialize, () => ({
-      protocolVersion: PROTOCOL_VERSION,
-      agentCapabilities: {},
-      agentInfo: { name: "mock-agent", version: "0.0.0" },
-    }))
+    .onRequest(methods.agent.initialize, () => INITIALIZED)
     .onRequest(methods.agent.session.new, ({ params }) => {
       session.cwd = params.cwd;
       session.launchSettings = params._meta;
       return { sessionId: "mock-session-1", ...modes.offered() };
     })
     .onRequest(methods.agent.session.setMode, ({ params }) => {
+      if (script.refusesModeChange) throw new Error("Changing the mode is not allowed here");
       modes.switchTo(params.modeId);
       return {};
     })

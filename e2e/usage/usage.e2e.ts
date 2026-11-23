@@ -50,7 +50,7 @@ test("a cancelled turn still reports the tokens it used, which the agent lists o
   const relay = await startRelayWithLocalRepo();
   relay.mockAgent.willReportUsage(reported);
   relay.mockAgent.willWaitUntilCancelled();
-  const session = await relay.user.startsSession({ prompt: "Refactor everything" });
+  const session = await relay.user.startsSession({ prompt: "Tidy up the imports" });
 
   // ********************************************************************
   // ** WHEN the user cancels the turn

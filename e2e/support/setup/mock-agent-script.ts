@@ -32,6 +32,8 @@ export interface MockAgent {
    * this one, and asks before running a command only in "default" (Manual).
    */
   startsInMode(modeId: string): void;
+  /** The request to change the mode is refused, as when the user's Claude Code policy forbids it. */
+  refusesToChangeMode(): void;
   /** Steps added after this call run on the next prompt instead of the current one. */
   onNextPrompt(): void;
   writeScript(): Promise<void>;
@@ -41,7 +43,13 @@ type ReportedUsage = Omit<Extract<Step, { kind: "reportUsage" }>, "kind">;
 
 type ScriptedSteps = Omit<
   MockAgent,
-  "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript" | "startsNewScript" | "startsInMode"
+  | "dataFolder"
+  | "scriptPath"
+  | "onNextPrompt"
+  | "writeScript"
+  | "startsNewScript"
+  | "startsInMode"
+  | "refusesToChangeMode"
 >;
 
 function turnEndingSteps(
@@ -117,6 +125,9 @@ export async function createMockAgent(): Promise<MockAgent> {
     }),
     startsInMode: (modeId) => {
       script.startsInMode = modeId;
+    },
+    refusesToChangeMode: () => {
+      script.refusesModeChange = true;
     },
     onNextPrompt: () => script.turns.push([]),
     startsNewScript: () => {

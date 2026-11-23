@@ -62,9 +62,24 @@ type TurnTokens = Omit<Extract<AgentUpdate, { type: "turn-usage" }>, "type" | "m
 
 const isEmpty = (spent: TurnTokens): boolean => Object.values(spent).every((count) => count === 0);
 
+/** What every model of the turn used, from `_meta.quota`; the adapter counts the cache apart from the input. */
+function quotaTokens(meta: Meta): TurnTokens | undefined {
+  const entries = (meta?.quota.model_usage ?? []).map((entry) => entry.token_count);
+  if (entries.length === 0) return undefined;
+  const sum = (count: (usage: (typeof entries)[number]) => number): number =>
+    entries.reduce((total, usage) => total + count(usage), 0);
+  return {
+    inputTokens: sum((usage) => usage.inputTokens),
+    outputTokens: sum((usage) => usage.outputTokens),
+    cacheReadTokens: sum((usage) => usage.cachedInputTokens),
+    cacheWriteTokens: sum((usage) => usage.cachedWriteTokens),
+  };
+}
+
 /**
  * The tokens of the turn. A cancelled Claude turn reports `usage` as all zeros although it spent
- * tokens; its `_meta.quota` still has them, so that is the fallback when `usage` is empty.
+ * tokens; its `_meta.quota` (per turn, not cumulative) still has them, so that is the fallback when
+ * `usage` is empty.
  */
 function tokensOfTurn(parsed: {
   usage: NonNullable<z.infer<typeof PromptResult>["usage"]>;
@@ -77,14 +92,7 @@ function tokensOfTurn(parsed: {
     cacheReadTokens: usage.cachedReadTokens,
     cacheWriteTokens: usage.cachedWriteTokens,
   };
-  const quota = mainModelUsage(meta)?.token_count;
-  if (!isEmpty(reported) || !quota) return reported;
-  return {
-    inputTokens: quota.inputTokens,
-    outputTokens: quota.outputTokens,
-    cacheReadTokens: quota.cachedInputTokens,
-    cacheWriteTokens: quota.cachedWriteTokens,
-  };
+  return isEmpty(reported) ? (quotaTokens(meta) ?? reported) : reported;
 }
 
 function sessionUpdate(params: unknown): AgentUpdate[] {

@@ -7,9 +7,9 @@ export type Block =
 
 type Read = (lines: string[], at: number) => { block: Block; next: number } | undefined;
 
-const FENCE = /^```(\S*)\s*$/;
+const FENCE = /^\s*```(\S*)\s*$/;
 const HEADING = /^(#{1,6})\s+(.*)$/;
-const BULLET = /^\s*[-*]\s+(.*)$/;
+const BULLET = /^\s*(?:[-*]|\d+[.)])\s+(.*)$/;
 
 const fence: Read = (lines, at) => {
   const open = FENCE.exec(lines[at] ?? "");

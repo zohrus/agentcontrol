@@ -4,7 +4,10 @@ import {
   expectRecordingsToCoverTheSupportedKinds,
 } from "../support/expect/recording-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { relayHoldsTheRealClaudeCodeRecordings } from "../support/setup/real-recordings.ts";
+import {
+  relayHoldsTheRealClaudeCodeRecordings,
+  theAppFollowsTheRecordedSessions,
+} from "../support/setup/real-recordings.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
 afterEach(cleanUpAfterTest);
@@ -17,9 +20,9 @@ test("sessions recorded from the real Claude Code adapter are served without uni
   const sessions = await relayHoldsTheRealClaudeCodeRecordings(relay);
 
   // ********************************************************************
-  // ** WHEN the app has been given every recorded event
+  // ** WHEN the app follows every recorded session from its start
   // ********************************************************************
-  // AND each recording is read back through the relay
+  await theAppFollowsTheRecordedSessions(relay, sessions);
 
   // ********************************************************************
   // ** THEN no message arrives as "other" except those left alone on purpose

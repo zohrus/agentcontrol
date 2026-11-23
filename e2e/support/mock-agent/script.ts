@@ -42,6 +42,8 @@ const scriptSchema = z.object({
    * mode but "default" (shown as "Manual") the agent never asks before it runs a command.
    */
   startsInMode: z.string().optional(),
+  /** `session/set_mode` fails, as when the user's Claude Code policy forbids changing the mode. */
+  refusesModeChange: z.boolean().optional(),
 });
 
 export type Step = z.infer<typeof stepSchema>;
