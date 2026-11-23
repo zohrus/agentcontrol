@@ -2,6 +2,7 @@
 import { Database } from "bun:sqlite";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { adapterRunsWithACleanEnvironment } from "./adapter-step.ts";
 import { callApi } from "./api.ts";
 import type { SmokeApp } from "./app-process.ts";
 import { expect, type Step, pageAt } from "./check.ts";
@@ -53,6 +54,10 @@ export const steps: Step[] = [
   { name: "a UI script and the hot-reload client load", run: uiAsset },
   { name: "the database was migrated", run: databaseMigrated },
   { name: "a session with the mock agent runs a turn", run: sessionRuns },
+  {
+    name: "an adapter is installed with the app's own runtime and its agent sees no internal variables",
+    run: adapterRunsWithACleanEnvironment,
+  },
   { name: "a terminal runs a command in a pseudo-terminal", run: terminalRuns },
   {
     name: "a Modify request fails typecheck, is fixed, builds and is promoted",

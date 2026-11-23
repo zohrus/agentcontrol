@@ -19,6 +19,7 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("askToRunCommand"), command: z.string() }),
   z.object({ kind: z.literal("writeFile"), path: z.string(), content: z.string() }),
   z.object({ kind: z.literal("echoLaunchSettings") }),
+  z.object({ kind: z.literal("runCommand"), command: z.string() }),
   z.object({ kind: z.literal("exitUnexpectedly") }),
   z.object({ kind: z.literal("compactContext") }),
   z.object({ kind: z.literal("readFile"), path: z.string() }),

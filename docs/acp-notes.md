@@ -86,7 +86,10 @@ Stop reasons: `end_turn`, `max_tokens`, `max_turn_requests`, `refusal`, `cancell
 - Codex: `@agentclientprotocol/codex-acp`, bin `codex-acp`. It depends on `@openai/codex`, which includes the Codex binary
   (`codex-linux-x64`), so no separate `codex` install is needed. `CODEX_PATH` overrides it.
 - Launch: `bunx --bun <pkg>@<exact version>` works for both (first start downloads, 3 to 10 s). The spike spawns
-  that; set `ACP_CLAUDE_CMD` or `ACP_CODEX_CMD` to use a different command.
+  that; set `ACP_CLAUDE_CMD` or `ACP_CODEX_CMD` to use a different command. The relay no longer uses `bun x`: it
+  installs the package once into its own folder and starts the entry file through a launcher
+  (`docs/decisions/2026-11-23-adapter-launch.md`). `codex-acp` starts its `codex.js` with `process.execPath`, so
+  it needs a JavaScript runtime there; the launcher points `process.execPath` at a script that provides one.
 - Claude auth: the adapter and the bundled Claude Code read `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN`, or an
   existing subscription login in `~/.claude` (`CLAUDE_CODE_OAUTH_TOKEN` also). `ANTHROPIC_BASE_URL` points at a gateway.
   `CLAUDE_CONFIG_DIR` moves the config folder. No `authenticate` call was needed.

@@ -1,16 +1,8 @@
 import type { AgentKind } from "@agentcontrol/protocol";
-import {
-  ADAPTERS,
-  type Adapter,
-  adapterCommand,
-  adapterEnv,
-  downloadFailed,
-  downloading,
-  needsDownload,
-} from "./adapters.ts";
-
-/** The environment the relay reads its agent settings from (the process env, unless injected). */
-export type HostEnv = Record<string, string | undefined>;
+import { ADAPTERS, adaptersRoot, downloading, needsDownload } from "./adapters.ts";
+import { installedAdapterEntry } from "./install.ts";
+import { launchAdapter } from "./launcher.ts";
+import type { HostEnv } from "./types.ts";
 
 const OVERRIDE_VARIABLES: Record<AgentKind, string> = {
   "claude-code": "AGENTCONTROL_AGENT_CLAUDE_CODE_CMD",
@@ -32,38 +24,35 @@ function parseArgv(variable: string, text: string): string[] {
   return parsed;
 }
 
-/** How to start an agent: the argv, and the variables to add to the agent's environment. */
+/** How to start an agent: the argv, and the variables to add to its environment. */
 export interface Launch {
   command: string[];
   env: Record<string, string>;
-  /** Set when the command is the default one, which downloads this adapter on first use. */
-  adapter?: Adapter;
 }
 
 /**
- * How this agent kind is launched, or undefined when it is not configured. An override variable
- * gives the whole command. Otherwise the pinned adapter runs through this binary acting as `bun`.
+ * How to start this agent kind, or undefined when it is not configured. An override variable gives
+ * the whole command. Otherwise the pinned adapter is installed in the relay's own folder (first
+ * use only) and started through the launcher by the relay's own program.
  */
-export function launchFor(kind: AgentKind, env: HostEnv): Launch | undefined {
+export async function launchFor(kind: AgentKind, env: HostEnv): Promise<Launch | undefined> {
   const variable = OVERRIDE_VARIABLES[kind];
   const override = env[variable];
   if (override) return { command: parseArgv(variable, override), env: {} };
   const adapter = ADAPTERS[kind];
   if (adapter === undefined) return undefined;
-  return { command: adapterCommand(adapter), env: adapterEnv(env), adapter };
+  const entry = await installedAdapterEntry({ adapter, env });
+  return launchAdapter({ entry, folder: adaptersRoot(env) });
 }
 
 /** Agent kinds that can be launched on this machine. */
 export function availableAgents(env: HostEnv): AgentKind[] {
-  return KINDS.filter((kind) => launchFor(kind, env) !== undefined);
+  return KINDS.filter((kind) => env[OVERRIDE_VARIABLES[kind]] || ADAPTERS[kind] !== undefined);
 }
 
 /** What to tell the user while an agent's adapter is downloaded for the first time, if it is. */
-export function firstUseDownload(
-  kind: AgentKind,
-  env: HostEnv,
-): { started: string; failed: string } | undefined {
-  const adapter = launchFor(kind, env)?.adapter;
+export function firstUseDownload(kind: AgentKind, env: HostEnv): string | undefined {
+  const adapter = env[OVERRIDE_VARIABLES[kind]] ? undefined : ADAPTERS[kind];
   if (adapter === undefined || !needsDownload({ adapter, env })) return undefined;
-  return { started: downloading(adapter), failed: downloadFailed(adapter) };
+  return downloading(adapter);
 }

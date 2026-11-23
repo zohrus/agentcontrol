@@ -1,40 +1,24 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { RelayName } from "@agentcontrol/protocol";
 import { onTestEnd } from "./cleanup.ts";
+import { CLAUDE_ADAPTER, MOCK_ADAPTER_SOURCE } from "./mock-adapter-package.ts";
 import type { Session } from "./relay.ts";
 import { type RunningRelay, startRelayWithLocalRepo } from "./start-relay.ts";
 
-/** The version of the Claude Code adapter the relay pins (packages/relay/src/agents/adapters.ts). */
-const CLAUDE_ADAPTER_FOLDER = "@agentclientprotocol/claude-agent-acp@0.109.1@@@1";
-
-/** A relay that is running on a machine with no internet, whose agents start the real adapters. */
+/** A relay that is running on a machine with no internet. */
 export interface OfflineRelay extends RunningRelay {
-  /** Starts a Claude Code session; the adapter is not replaced by the mock agent. */
+  /** Starts a Claude Code session; the adapter is not replaced by the mock agent unless installed. */
   startsClaudeCodeSession(options: { prompt: string }): Promise<Session>;
 }
 
-/** The environment that makes `bun x` fail at once, as it does with no internet. */
+/** The environment that makes an install fail at once, as it does with no internet. */
 const NO_INTERNET = { NPM_CONFIG_REGISTRY: "http://127.0.0.1:9/" };
-
-async function startsClaudeCodeSession(
-  relay: RunningRelay,
-  options: { prompt: string },
-): Promise<Session> {
-  const { sessionId } = await relay.call(RelayName.sessionsCreate, {
-    agent: "claude-code",
-    repoPath: relay.repoPath,
-    baseBranch: "main",
-    prompt: options.prompt,
-  });
-  return { id: sessionId, title: options.prompt };
-}
 
 function offline(relay: RunningRelay): OfflineRelay {
   return Object.assign(relay, {
     startsClaudeCodeSession: (options: { prompt: string }) =>
-      startsClaudeCodeSession(relay, options),
+      relay.user.startsSession({ ...options, agent: "claude-code" }),
   });
 }
 
@@ -43,11 +27,29 @@ export async function startRelayWithoutInternet(): Promise<OfflineRelay> {
   return offline(await startRelayWithLocalRepo({ env: NO_INTERNET }));
 }
 
+/** Writes the folder an install leaves: the adapter's package, whose program is the mock agent. */
+async function installAdapterByHand(adapters: string): Promise<void> {
+  const packageFolder = join(
+    adapters,
+    "claude-agent-acp@0.109.1",
+    "node_modules",
+    CLAUDE_ADAPTER.name,
+  );
+  await mkdir(packageFolder, { recursive: true });
+  const manifest = {
+    name: CLAUDE_ADAPTER.name,
+    type: "module",
+    bin: { [CLAUDE_ADAPTER.bin]: "index.js" },
+  };
+  await Bun.write(join(packageFolder, "package.json"), JSON.stringify(manifest));
+  await Bun.write(join(packageFolder, "index.js"), MOCK_ADAPTER_SOURCE);
+}
+
 /** The same, but the Claude Code adapter is already in the folder where the relay keeps adapters. */
 export async function startRelayWithoutInternetAfterAdapterDownload(): Promise<OfflineRelay> {
-  const cache = await mkdtemp(join(tmpdir(), "agentcontrol-adapters-"));
-  onTestEnd(() => rm(cache, { recursive: true, force: true }));
-  await mkdir(join(cache, CLAUDE_ADAPTER_FOLDER), { recursive: true });
-  const env = { ...NO_INTERNET, AGENTCONTROL_ADAPTER_CACHE: cache };
+  const adapters = await mkdtemp(join(tmpdir(), "agentcontrol-adapters-"));
+  onTestEnd(() => rm(adapters, { recursive: true, force: true }));
+  await installAdapterByHand(adapters);
+  const env = { ...NO_INTERNET, AGENTCONTROL_ADAPTER_CACHE: adapters };
   return offline(await startRelayWithLocalRepo({ env }));
 }

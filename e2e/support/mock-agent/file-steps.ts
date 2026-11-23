@@ -49,4 +49,18 @@ const exitUnexpectedly: Handler<"exitUnexpectedly"> = () => {
   process.exit(3);
 };
 
-export const processSteps = { echoLaunchSettings, exitUnexpectedly };
+/** Runs a shell command in the working folder, as an agent's shell tool does, and tells what it printed. */
+const runCommand: Handler<"runCommand"> = async (step, turn) => {
+  const ran = Bun.spawn(["sh", "-c", step.command], {
+    cwd: turn.cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const out = await new Response(ran.stdout).text();
+  const err = await new Response(ran.stderr).text();
+  const text = `ran \`${step.command}\`:\n${out}${err}`;
+  await send(turn, { sessionUpdate: "agent_message_chunk", content: { type: "text", text } });
+  return undefined;
+};
+
+export const processSteps = { echoLaunchSettings, exitUnexpectedly, runCommand };

@@ -95,19 +95,10 @@ async function connectAgent(ctx: SessionContext, launch: Launch): Promise<AgentP
 
 /** Tells the user that the agent's adapter is being downloaded, when it is (first use only). */
 function announceDownload(ctx: SessionContext, launch: Launch): void {
-  const download = firstUseDownload(launch.agent, ctx.hostEnv);
-  if (download === undefined) return;
-  const payload = { stream: "stdout" as const, text: download.started };
+  const text = firstUseDownload(launch.agent, ctx.hostEnv);
+  if (text === undefined) return;
+  const payload = { stream: "stdout" as const, text };
   ctx.record(launch.sessionId, { kind: "setup-output", payload });
-}
-
-/**
- * Why the agent did not start. When the adapter is still not downloaded, the download failed, and
- * the user is told to check the internet connection; otherwise the failure is something else.
- */
-function startFailure(ctx: SessionContext, options: { launch: Launch; error: unknown }): string {
-  const notDownloaded = firstUseDownload(options.launch.agent, ctx.hostEnv)?.failed ?? "";
-  return `${notDownloaded}${reasonOf(options.error)}\n`;
 }
 
 /** `agent-started` is recorded once the ACP handshake is done, so it means the agent is up. */
@@ -120,7 +111,7 @@ export async function launchAgent(
   try {
     return await connectAgent(ctx, launch);
   } catch (error) {
-    const text = startFailure(ctx, { launch, error });
+    const text = `${reasonOf(error)}\n`;
     await ctx.log.append(sessionId, { kind: "setup-output", payload: { stream: "stderr", text } });
     await ctx.log.append(sessionId, { kind: "agent-exited", payload: { exitCode: 1 } });
     return undefined;

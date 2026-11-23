@@ -16,6 +16,8 @@ export interface MockAgent {
   willWriteFile(path: string, content: string): void;
   /** The agent says which launch-time settings (`_meta` of session/new) it was started with. */
   willEchoLaunchSettings(): void;
+  /** The agent runs this shell command in its folder, as its shell tool would, and says what it printed. */
+  willRunCommand(command: string): void;
   /** The agent process dies in the middle of the turn. */
   willExitUnexpectedly(): void;
   /** The agent reads this file: a one-line read tool call. */
@@ -120,7 +122,11 @@ function fileSteps(
   add: (step: Step) => void,
 ): Pick<
   MockAgent,
-  "willEditFile" | "willWriteFile" | "willEchoLaunchSettings" | "willExitUnexpectedly"
+  | "willEditFile"
+  | "willWriteFile"
+  | "willEchoLaunchSettings"
+  | "willExitUnexpectedly"
+  | "willRunCommand"
 > {
   return {
     willEditFile: (path) => {
@@ -134,6 +140,9 @@ function fileSteps(
     },
     willExitUnexpectedly: () => {
       add({ kind: "exitUnexpectedly" });
+    },
+    willRunCommand: (command) => {
+      add({ kind: "runCommand", command });
     },
   };
 }

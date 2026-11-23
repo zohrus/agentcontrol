@@ -25,13 +25,13 @@ export async function expectSessionToTellTheUser(
   }
 }
 
-/** The session's output does not mention this text. */
-export async function expectSessionNotToMention(
+/** The session's output, so far, does not mention this text. */
+export function expectSessionNotToMention(
   relay: RelayAccess,
   call: { session: Session; text: string },
-): Promise<void> {
+): void {
   const { session, text } = call;
-  if ((await outputOnceTheAgentEnded(relay, session)).includes(text)) {
+  if (setupOutputOf(relay, session).includes(text)) {
     throw new Error(`expected session "${session.title}" not to say "${text}", but it did`);
   }
 }

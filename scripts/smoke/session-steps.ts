@@ -19,15 +19,23 @@ async function makeRepo(): Promise<string> {
   return repo;
 }
 
-type Events = { events: { kind: string }[] };
+type Events = { events: { kind: string; payload?: unknown }[] };
 
-/** Starts a session with the mock agent and waits for its turn to end; returns its id and events. */
+const REPLY = { kind: "reply", text: "hello from the mock agent" };
+
+/**
+ * Starts a session and waits for its turn to end; returns its id and events. The agent is the mock
+ * agent, directly or (`claude-code`) as the program of the installed Claude Code adapter, and
+ * does `steps` (a reply by default).
+ */
 export async function runsAMockSession(
   app: SmokeApp,
+  options: { agent?: "mock" | "claude-code"; steps?: unknown[] } = {},
 ): Promise<{ id: string; events: Events["events"] }> {
-  const reply = { kind: "reply", text: "hello from the mock agent" };
-  await writeScript(app, [[reply, { kind: "finish", stopReason: "end_turn" }]]);
-  const body = { agent: "mock", repoPath: await makeRepo(), baseBranch: "main", prompt: "hi" };
+  const steps = options.steps ?? [REPLY];
+  await writeScript(app, [[...steps, { kind: "finish", stopReason: "end_turn" }]]);
+  const agent = options.agent ?? "mock";
+  const body = { agent, repoPath: await makeRepo(), baseBranch: "main", prompt: "hi" };
   const started = (await callApi(app, { method: "POST", path: "/api/sessions", body })) as {
     sessionId: string;
   };

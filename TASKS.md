@@ -103,7 +103,7 @@ Later:
 - [ ] In-app updates (Sparkle): deferred. The menu item opens GitHub Releases.
 - [x] `actions/upload-artifact` in `build.yml` is pinned to a commit SHA.
 - [ ] Release size is about 700 MB per platform (default UI `node_modules` 285 MB: monaco-editor 105 MB, lucide-react 50 MB; two Linux relays 210 MB). Trim only after measuring; decide whether it is acceptable.
-- [ ] Adapter environment: the agent's environment carries `BUN_BE_BUN=1` and `BUN_INSTALL_CACHE_DIR`, so shell commands an agent runs inherit them (a Bun-compiled program of the user's would act as `bun`). Being fixed now by the console agent.
+- [x] Adapter environment (23 Nov 2026): adapters are installed once into `<relay dir>/adapters/<name>@<version>/` and started through `adapters/runtime` + `launch.js`, which remove `BUN_BE_BUN` before the adapter runs; the agent's environment drops `BUN_BE_BUN`, `BUN_INSTALL_CACHE_DIR` and every `AGENTCONTROL_*` except the session's port block (`docs/decisions/2026-11-23-adapter-launch.md`). Still open: a real Codex turn under the compiled relay (only `initialize` was checked), and the Mac builds (never run).
 - [ ] `packages/ui-template/tsconfig.json` repeats the options of `tsconfig.base.json` because a release has no repository root: add a check that compares the two.
 - [ ] The template's transitive dependencies are resolved at build time, not from `bun.lock`; revisit if a release needs byte-for-byte reproduction.
 - [ ] README says `bun dev` does not open the browser. It does (on a terminal, the first time the app listens; `AGENTCONTROL_NO_OPEN` turns it off): correct the README. Also check whether Modify changes show up under `bun dev`, which serves `packages/ui-template`, not the data folder's `ui/`.

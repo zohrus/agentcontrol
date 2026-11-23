@@ -4,6 +4,8 @@ import {
   expectSessionNotToMention,
   expectSessionToTellTheUser,
 } from "../support/expect/adapter-expectations.ts";
+import { expectNothingInstalled } from "../support/expect/adapter-launch-expectations.ts";
+import { expectTurnToEndWithStopReason } from "../support/expect/turn-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
   startRelayWithoutInternet,
@@ -47,8 +49,9 @@ test("without internet the first Claude Code session says to check the connectio
     session,
     text: "adapter has not been downloaded yet and could not start. Check your internet connection",
   });
-  // AND the relay keeps its downloads in its own folder
+  // AND the relay keeps its downloads in its own folder, with nothing half installed in it
   expectAdaptersKeptInTheRelayFolder(relay);
+  expectNothingInstalled(relay);
 });
 
 test("a Claude Code session does not mention a download when the adapter is already there", async () => {
@@ -63,7 +66,8 @@ test("a Claude Code session does not mention a download when the adapter is alre
   const session = await relay.startsClaudeCodeSession({ prompt: "Add rate limiting" });
 
   // ********************************************************************
-  // ** THEN the session never says that it downloads anything
+  // ** THEN its agent runs its turn, and the session never says that it downloads anything
   // ********************************************************************
-  await expectSessionNotToMention(relay, { session, text: "Downloading" });
+  await expectTurnToEndWithStopReason(relay, { session, stopReason: "end_turn" });
+  expectSessionNotToMention(relay, { session, text: "Downloading" });
 });

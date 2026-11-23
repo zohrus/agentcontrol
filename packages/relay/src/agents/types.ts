@@ -1,5 +1,8 @@
 import type { AgentKind } from "@agentcontrol/protocol";
 
+/** The environment the relay reads its agent settings from (the process env, unless injected). */
+export type HostEnv = Record<string, string | undefined>;
+
 export interface PermissionRequest {
   requestId: string;
   toolCall: unknown;
@@ -29,7 +32,7 @@ export interface StartAgentOptions {
   /** Sent as `_meta` of ACP `session/new`: launch-time settings the adapter understands. */
   sessionMeta?: Record<string, unknown>;
   /** The relay's own environment: where agent commands are looked up and what the agent inherits. */
-  hostEnv: Record<string, string | undefined>;
+  hostEnv: HostEnv;
   /** Called with every raw JSON-RPC message, in both directions, unchanged, in wire order. */
   onMessage: (direction: MessageDirection, message: unknown) => void;
   /** Called when the agent asks for permission; the agent waits until the promise resolves. */

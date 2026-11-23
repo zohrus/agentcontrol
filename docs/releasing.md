@@ -55,10 +55,13 @@ by the menu bar app) still overrides where the relay is.
 
 How it runs with no tools installed: the app binary started with `BUN_BE_BUN=1` is the `bun`
 command. The app runs Vite (the UI dev server, as a child process; restarted if it dies), `vite
-build` and `tsc` that way, against the shipped `node_modules`. The relay does the same for the
-agent adapters: `agentcontrol-relay x --bun @agentclientprotocol/<adapter>@<pinned version>`,
-downloaded into `<data dir>/relay/adapters` on first use ("Downloading the Claude Code adapter..."
-appears in the session; offline it says to check the connection). The data folder holds the live
+build` and `tsc` that way, against the shipped `node_modules`. The relay installs the agent adapters with the
+same trick, once: `<data dir>/relay/adapters/<name>@<pinned version>/` is made by
+`agentcontrol-relay install` on first use ("Downloading the Claude Code adapter..." appears in the
+session; offline it says to check the connection), and every later start only reads that folder. The
+adapter is started through `adapters/runtime` and `adapters/launch.js`, which remove `BUN_BE_BUN`
+before the adapter runs, so agents and the commands they run never see it (see
+`docs/decisions/2026-11-23-adapter-launch.md`). The data folder holds the live
 UI (`ui/`), `ui-staging/` and `ui-template/`, with `node_modules` linked to the release folder; the
 links are repointed on every start. Nothing is ever written into the release folder.
 

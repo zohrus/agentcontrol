@@ -3,6 +3,8 @@
 import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { startFakeRegistry } from "../../e2e/support/setup/fake-registry.ts";
+import { mockAdapterPackage } from "../../e2e/support/setup/mock-adapter-package.ts";
 
 const mockAgentMain = join(import.meta.dir, "../../e2e/support/mock-agent/main.ts");
 const STARTUP_MS = 60_000;
@@ -33,10 +35,16 @@ function prepareFolders(releaseDir: string) {
 }
 
 /** The environment of an installed app: a PATH with git but without bun, and the mock agent. */
-function environmentFor(folders: { home: string; scriptPath: string }): Record<string, string> {
+function environmentFor(folders: {
+  home: string;
+  scriptPath: string;
+  registry: string;
+}): Record<string, string> {
   return {
     PATH,
     HOME: folders.home,
+    // The Claude Code adapter is installed from here: a package on this machine, whose program is the mock agent.
+    NPM_CONFIG_REGISTRY: folders.registry,
     AGENTCONTROL_MODIFY_AGENT: "mock",
     AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify([process.execPath, mockAgentMain]),
     MOCK_AGENT_SCRIPT: folders.scriptPath,
@@ -64,33 +72,49 @@ function collect(child: Child): () => string {
   return () => text;
 }
 
-/** Copies the release folder, starts its app on a free port and waits until it listens. */
-export async function startCompiledApp(releaseDir: string): Promise<SmokeApp> {
-  const folders = prepareFolders(releaseDir);
-  const { work, release, dataDir } = folders;
-  await Bun.write(folders.scriptPath, JSON.stringify({ turns: [[]] }));
+function refuseBunOnPath(): void {
   if (Bun.which("bun", { PATH }) !== null) {
     throw new Error(
       "bun is on the smoke test's PATH, so it would not prove the app runs without it",
     );
   }
+}
+
+/** Copies the release folder, starts its app on a free port and waits until it listens. */
+export async function startCompiledApp(releaseDir: string): Promise<SmokeApp> {
+  const folders = prepareFolders(releaseDir);
+  const { release, dataDir } = folders;
+  await Bun.write(folders.scriptPath, JSON.stringify({ turns: [[]] }));
+  refuseBunOnPath();
+  const registry = await startFakeRegistry({ pkg: mockAdapterPackage() });
   const args = [join(release, "agentcontrol"), "--port", "0", "--data-dir", dataDir];
   const child = Bun.spawn(args, {
-    cwd: work,
-    env: environmentFor(folders),
+    cwd: folders.work,
+    env: environmentFor({ ...folders, registry: registry.url }),
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",
   });
   const output = collect(child);
   const baseUrl = await waitForListening({ child, seen: output });
+  const stop = stopping({ child, folders, registry });
   const token = (await Bun.file(join(dataDir, "api-token")).text()).trim();
-  const stop = async () => {
+  return { release, dataDir, scriptPath: folders.scriptPath, baseUrl, token, output, stop };
+}
+
+/** Stops the app, its relay and the registry, and removes the run's folders. */
+function stopping(parts: {
+  child: Child;
+  folders: { work: string; release: string; dataDir: string };
+  registry: { stop: () => void };
+}): () => Promise<void> {
+  const { child, folders, registry } = parts;
+  return async () => {
     child.kill("SIGTERM");
     await child.exited;
-    const relay = join(release, "agentcontrol-relay");
-    Bun.spawnSync([relay, "stop", "--data-dir", join(dataDir, "relay")]);
-    rmSync(work, { recursive: true, force: true });
+    registry.stop();
+    const relay = join(folders.release, "agentcontrol-relay");
+    Bun.spawnSync([relay, "stop", "--data-dir", join(folders.dataDir, "relay")]);
+    rmSync(folders.work, { recursive: true, force: true });
   };
-  return { release, dataDir, scriptPath: folders.scriptPath, baseUrl, token, output, stop };
 }
