@@ -56,6 +56,9 @@ test(
     // ** THEN the file in the worktree holds the new text
     // ********************************************************************
     await expectFileToBeSaved(app, { session, path: "README.md", content: "edited by the user" });
+    // AND the page has taken the save in: the Changes tab shows the new text
+    await app.page.opensChangesTab();
+    await expectDiffToShow(app, "edited by the user");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
