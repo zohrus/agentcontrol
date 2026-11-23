@@ -9,6 +9,11 @@ export interface AddWorkspace {
   host: string;
   /** The name shown in the UI; defaults to the host. */
   label?: string;
+  /**
+   * Names this request on the live stream's `onWorkspaceProgress` messages, so the caller can show
+   * each step as it happens. Any text that is unlikely to be used by another request.
+   */
+  requestId?: string;
 }
 
 function workspaceReads(api: Api) {
@@ -29,7 +34,9 @@ function workspaceReads(api: Api) {
 function workspaceChanges(api: Api) {
   return {
     /**
-     * Adds an ssh workspace: connects, and installs the relay on the host when needed. Resolves once
+     * Adds an ssh workspace: connects, and installs the relay on the host when needed. With
+     * `requestId` each step (connect, platform, install, relay) is pushed as it happens
+     * (`onWorkspaceProgress`). Resolves once
      * the first attempt has finished, so the returned workspace is `connected`, or `offline` with a
      * `reason`. Throws ApiError "invalid-request" for a malformed host, "workspace-exists" for a host
      * that is already a workspace.
@@ -51,10 +58,12 @@ function workspaceRepairs(api: Api) {
      * The "Add workspace / Check and repair" checklist, run now: connect, platform, relay installed,
      * relay running, then the relay's own steps (os, disk, git, gitIdentity, one `agent-<kind>`
      * handshake step per agent) and `repos`. Steps after a failed one are "skipped". It also installs
-     * a missing relay, which is the repair.
+     * a missing relay, which is the repair. With `requestId` each step is also pushed as it happens
+     * (`onWorkspaceProgress`).
      */
-    check: async (id: string): Promise<CheckStep[]> => {
-      const { steps } = await read(api.workspaces[":id"].check.$post({ param: { id } }));
+    check: async (id: string, options: { requestId?: string } = {}): Promise<CheckStep[]> => {
+      const query = options.requestId === undefined ? {} : { requestId: options.requestId };
+      const { steps } = await read(api.workspaces[":id"].check.$post({ param: { id }, query }));
       return steps;
     },
     /**

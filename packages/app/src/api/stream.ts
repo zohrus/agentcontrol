@@ -11,6 +11,7 @@ const dataOf: { [T in HubMessage["type"]]: (message: Of<T>) => unknown } = {
   sessions: (message) => message.sessions.filter((session) => session.kind !== "directory"),
   fs: ({ workspaceId, sessionId, paths }) => ({ workspaceId, sessionId, paths }),
   workspace: (message) => message.workspace,
+  "workspace-progress": (message) => message.progress,
   modify: (message) => message.state,
 };
 
@@ -18,7 +19,8 @@ const dataOf: { [T in HubMessage["type"]]: (message: Of<T>) => unknown } = {
  * One SSE message: its name and its JSON data. Every message that concerns a session names the
  * workspace: `event` is the session event plus `workspaceId`, `sessions` is a list of session rows
  * (each with its `workspaceId`), `fs` is `{ workspaceId, sessionId, paths }`, `workspace` is a
- * workspace record whose connection `state` changed.
+ * workspace record whose connection `state` changed, `workspace-progress` is one step of a setup
+ * (`WorkspaceProgress`).
  */
 function sseOf(message: HubMessage): { event: string; data: string } {
   const toData = dataOf[message.type] as (message: HubMessage) => unknown;
@@ -35,7 +37,7 @@ async function follow(hub: Hub, stream: SSEStreamingApi): Promise<void> {
 }
 
 /**
- * The live stream: `event`, `sessions`, `fs`, `workspace` and `modify` messages, after an initial
+ * The live stream: `event`, `sessions`, `fs`, `workspace`, `workspace-progress` and `modify` messages, after an initial
  * `ready`.
  */
 export function streamRoute({ hub }: ApiDeps) {

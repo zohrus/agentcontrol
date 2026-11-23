@@ -21,6 +21,7 @@ import {
   type DataState,
   fileKey,
   type FileVersions,
+  type SetupStep,
   type WorkspaceCheck,
 } from "./model.ts";
 import { useController } from "./provider.tsx";
@@ -31,6 +32,7 @@ const noEvents: readonly SessionEvent[] = [];
 const noEntries: readonly FsEntry[] = [];
 const noChoices: Choices = { repos: [], agents: [] };
 const noCheck: WorkspaceCheck = { steps: [], running: false };
+const noSteps: readonly SetupStep[] = [];
 
 /** Reads one part of the data; re-renders only when that part changes. */
 export function useData<V>(select: (state: DataState) => V): V {
@@ -90,6 +92,9 @@ export const useChoices = (workspaceId: string): Choices =>
 /** A workspace's latest checklist and whether it is running now. */
 export const useWorkspaceCheck = (workspaceId: string): WorkspaceCheck =>
   useData((s) => s.checks[workspaceId] ?? noCheck);
+/** The steps of one setup as the app announced them, in order; none for an unknown request. */
+export const useSetupSteps = (requestId: string | undefined): readonly SetupStep[] =>
+  useData((s) => (requestId === undefined ? noSteps : (s.setup[requestId] ?? noSteps)));
 /** Harness configuration: the items, the last review and apply, drift and what an import found. */
 export const useConfigState = (): ConfigState => useData((s) => s.config);
 

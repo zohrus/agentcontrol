@@ -55,6 +55,7 @@ export type {
   WaitingReason,
   ConnectionState,
   WorkspaceInfo,
+  WorkspaceProgress,
 } from "@agentcontrol/protocol";
 
 export type {

@@ -44,3 +44,29 @@ export function expectConfirmationToSay(
     return shown.includes(call.text) ? undefined : `it reads ${quote(shown)}`;
   });
 }
+
+/** The dialog showed these checklist rows ("<step>: <state>"), in this order, with others between them. */
+export function expectSetupStepsToHaveBeenShownInOrder(
+  app: AppInBrowser,
+  expected: string[],
+): Promise<void> {
+  const expectation = `expected the dialog to have shown ${expected.map(quote).join(", then ")}`;
+  return pageEventually(expectation, async () => {
+    const shown = await app.page.setupStepsShown();
+    let from = 0;
+    for (const entry of expected) {
+      const at = shown.indexOf(entry, from);
+      if (at < 0) return `it showed ${quote(shown.join(" | "))}`;
+      from = at + 1;
+    }
+    return undefined;
+  });
+}
+
+/** The open dialog does not show this text. */
+export function expectDialogNotToShow(app: AppInBrowser, text: string): Promise<void> {
+  return pageEventually(`expected the dialog not to show ${quote(text)}`, async () => {
+    const dialog = await app.page.dialogText();
+    return dialog.includes(text) ? `it reads ${quote(dialog)}` : undefined;
+  });
+}

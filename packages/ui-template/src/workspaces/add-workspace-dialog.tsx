@@ -1,8 +1,10 @@
-import type { CheckStep } from "@agentcontrol/protocol";
+import type { CheckStep } from "@agentcontrol/sdk";
 import { Loader } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { Button, Dialog, Field, inputClass } from "../components/index.ts";
+import type { SetupStep } from "../data/index.ts";
 import { CheckList } from "../workspace-setup/index.ts";
+import { checklistOf, runningStepOf } from "./setup-steps.ts";
 
 /** Where adding a workspace is: asking for the host, connecting, running the checklist, or done. */
 export type AddStage = "form" | "connecting" | "checking" | "result";
@@ -15,6 +17,8 @@ export type AddWorkspaceDialogProps = {
   hosts: readonly string[];
   /** Why the host was refused, shown under the form. */
   refusal: string | undefined;
+  /** The steps of the setup as they happen, while it connects and checks. */
+  progress: readonly SetupStep[];
   /** The checklist of the workspace being added. */
   steps: readonly CheckStep[];
   /** True when the workspace is added and every step passed. */
@@ -92,13 +96,20 @@ function HostForm(props: Pick<AddWorkspaceDialogProps, "hosts" | "refusal" | "on
   );
 }
 
-function Working({ text }: { text: string }) {
+function Working(props: { text: string; progress: readonly SetupStep[] }) {
   return (
-    <div role="status" className="flex flex-col gap-2 p-4">
+    <div role="status" className="flex flex-col gap-3 p-4">
       <span className="flex items-center gap-2 font-medium">
-        <Loader className="size-4 animate-spin text-run" /> {text}
+        <Loader className="size-4 animate-spin text-run" /> {props.text}
       </span>
-      <span className="text-xs text-muted">Steps: {plannedSteps.join(", ")}, repositories.</span>
+      {props.progress.length === 0 ? (
+        <span className="text-xs text-muted">Steps: {plannedSteps.join(", ")}, repositories.</span>
+      ) : (
+        <CheckList
+          steps={checklistOf(props.progress)}
+          runningStepId={runningStepOf(props.progress)}
+        />
+      )}
     </div>
   );
 }
@@ -134,8 +145,12 @@ function Result(props: Pick<AddWorkspaceDialogProps, "steps" | "connected" | "on
 
 function Body(props: AddWorkspaceDialogProps) {
   if (props.stage === "form") return <HostForm {...props} />;
-  if (props.stage === "connecting") return <Working text="Connecting and installing the relay…" />;
-  if (props.stage === "checking") return <Working text="Checking the machine…" />;
+  if (props.stage === "connecting") {
+    return <Working text="Connecting and installing the relay…" progress={props.progress} />;
+  }
+  if (props.stage === "checking") {
+    return <Working text="Checking the machine…" progress={props.progress} />;
+  }
   return <Result {...props} />;
 }
 

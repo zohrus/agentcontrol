@@ -11,10 +11,15 @@ function workspaceUserOf(app: RunningApp, host: SshHost) {
   return {
     /** Adds the ssh host as a workspace, as the "Add workspace" dialog does. */
     addsTheHost: () => app.sdk.workspaces.add({ kind: "ssh", host: host.alias }),
+    /** Adds the host the way the dialog does: the app announces each setup step under `requestId`. */
+    addsTheHostAnnouncingTheSteps: (requestId: string) =>
+      app.sdk.workspaces.add({ kind: "ssh", host: host.alias, requestId }),
     triesToAdd: (hostName: string) =>
       attemptApi(app.sdk.workspaces.add({ kind: "ssh", host: hostName })),
     readsTheHostAliases: () => app.sdk.workspaces.hosts(),
     checksTheWorkspace: (info: WorkspaceInfo) => app.sdk.workspaces.check(info.id),
+    checksTheWorkspaceAnnouncingTheSteps: (info: WorkspaceInfo, requestId: string) =>
+      app.sdk.workspaces.check(info.id, { requestId }),
     triesToCheck: (id: string) => attemptApi(app.sdk.workspaces.check(id)),
     removesTheWorkspace: (info: WorkspaceInfo) => app.sdk.workspaces.remove(info.id),
     triesToRemove: (id: string) => attemptApi(app.sdk.workspaces.remove(id)),

@@ -13,9 +13,19 @@
 - **Workspaces menu, not Config.** "Config" now opens harness configuration. Workspace setup
   (the checklist and per-repo worktree setup) is "Check and repair" in the Workspaces menu, next to
   Add workspace, Restart relay (only when the relay needs an update, after a warning) and Remove.
-- **Add workspace has no live progress.** `workspaces.add` and `workspaces.check` answer once, so
-  the dialog shows "connecting", then "checking", then the checklist. A step that fails is named
-  with its detail and Retry runs the checklist again (which also installs a missing relay).
+- **Add workspace shows each step as it happens** (24 Nov 2026). `workspaces.add({ requestId })`
+  and `workspaces.check(id, { requestId })` publish `workspace-progress` messages on the live
+  stream (`WorkspaceProgress` in `protocol/src/workspaces/progress.ts`: `requestId`, optional
+  `workspaceId`, `step`, `label`, `state` started/ok/failed, plain `message`; the SDK has
+  `onWorkspaceProgress`). Without a `requestId` nothing is published. Step ids are the checklist's:
+  `connect`, `platform`, `install`, `relay`, then `agents` (the relay's own checks as one step, so
+  its failure names the first failing check) and `repos`. `add` reports connect, platform, install
+  and relay itself (the host steps now run before the connection is started, so the connector finds
+  the relay installed); a host that cannot be reached stops there, the workspace is saved offline
+  with the reason, and the dialog shows the failed step with Retry without running the checklist
+  again. Otherwise the dialog runs `check` with the same request id; a step that already passed is
+  not shown as running again. Retry runs `check`, which repeats every step. The relay's own checks
+  arrive as one `agents` step, not one message per check. Local `workspace.check()` has no progress.
 - **Removed workspaces' sessions share one "Removed" group**, read-only, each row saying which
   workspace it came from. An offline or reconnecting workspace keeps its own group, showing its
   state and reason; its sessions are read-only and the composer says why.

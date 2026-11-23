@@ -36,15 +36,22 @@ function holdCheck(ctx: Context, id: string, check: WorkspaceCheck): void {
   ctx.store.update((s) => ({ ...s, checks: { ...s.checks, [id]: check } }));
 }
 
-const stepsOf = (ctx: Context, id: string): Promise<CheckStep[]> =>
-  id === LOCAL_WORKSPACE ? ctx.client.workspace.check() : ctx.client.workspaces.check(id);
+const stepsOf = (call: { ctx: Context; id: string; requestId?: string }): Promise<CheckStep[]> => {
+  const { ctx, id, requestId } = call;
+  if (id === LOCAL_WORKSPACE) return ctx.client.workspace.check();
+  return ctx.client.workspaces.check(id, requestId === undefined ? {} : { requestId });
+};
 
 /** Runs the workspace's checklist (and repairs what it can); `running` is true meanwhile. */
-async function checkWorkspace(ctx: Context, id: string): Promise<void> {
+async function checkWorkspace(
+  ctx: Context,
+  call: { id: string; requestId?: string },
+): Promise<void> {
+  const { id } = call;
   const before = ctx.store.get().checks[id]?.steps ?? [];
   holdCheck(ctx, id, { steps: before, running: true });
   try {
-    holdCheck(ctx, id, { steps: await stepsOf(ctx, id), running: false });
+    holdCheck(ctx, id, { steps: await stepsOf({ ctx, ...call }), running: false });
   } catch (error) {
     holdCheck(ctx, id, { steps: before, running: false });
     throw error;
@@ -57,7 +64,7 @@ export type AddOutcome = { workspace: WorkspaceInfo } | { refusal: string };
 /** Adds an ssh workspace; a refusal (bad host, already added, no answer) comes back as text for the form. */
 async function addWorkspace(
   ctx: Context,
-  call: { host: string; label?: string },
+  call: { host: string; label?: string; requestId?: string },
 ): Promise<AddOutcome> {
   try {
     const workspace = await ctx.client.workspaces.add({ kind: "ssh", ...call });
@@ -86,9 +93,10 @@ async function restartRelay(ctx: Context, id: string): Promise<void> {
 /** What the user can do about workspaces; each reports a failure itself. */
 export function workspaceActions(ctx: Context) {
   return {
-    add: (call: { host: string; label?: string }) => addWorkspace(ctx, call),
+    add: (call: { host: string; label?: string; requestId?: string }) => addWorkspace(ctx, call),
     hosts: () => listHosts(ctx),
-    check: (id: string) => succeeded(ctx, () => checkWorkspace(ctx, id)),
+    check: (id: string, requestId?: string) =>
+      succeeded(ctx, () => checkWorkspace(ctx, { id, ...(requestId && { requestId }) })),
     remove: (id: string) => succeeded(ctx, () => removeWorkspace(ctx, id)),
     restartRelay: (id: string) => succeeded(ctx, () => restartRelay(ctx, id)),
     loadChoices: (id: string) => attempt(ctx, () => loadChoices(ctx, id)),

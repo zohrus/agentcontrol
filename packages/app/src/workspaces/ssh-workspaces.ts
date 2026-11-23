@@ -1,7 +1,9 @@
 import { VERSION, type WorkspaceInfo } from "@agentcontrol/protocol";
 import { sshTarget, type WorkspaceTarget } from "../relays/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
-import { checkSshWorkspace } from "./ssh-check.ts";
+import type { Hub } from "../sync/index.ts";
+import { reported, reporterFor } from "./progress.ts";
+import { checkSshWorkspace, hostSteps, relayStepOf } from "./ssh-check.ts";
 import type { createRegistry, Entry } from "./registry.ts";
 import { infoOf } from "./registry.ts";
 import { replaceOldRelay, sshConnector } from "./ssh-connect.ts";
@@ -16,6 +18,7 @@ type SshOperations = Pick<Workspaces, "addSsh" | "remove" | "check" | "restartRe
 
 interface Context {
   store: Store;
+  hub: Hub;
   registry: Registry;
   settings: SshSettings;
   targets: Map<string, WorkspaceTarget>;
@@ -39,15 +42,20 @@ function infoNow(context: Context, id: string): WorkspaceInfo {
   return found;
 }
 
-/** Starts keeping an ssh workspace connected. */
-function start(context: Context, workspace: Workspace): Entry {
+function targetFor(context: Context, workspace: Workspace): WorkspaceTarget {
   const { settings } = context;
-  const target = sshTarget({
+  return sshTarget({
     host: workspace.sshHost ?? workspace.id,
     configFile: settings.configFile,
     version: VERSION,
     ...(settings.remoteRoot === undefined ? {} : { root: settings.remoteRoot }),
   });
+}
+
+/** Starts keeping an ssh workspace connected. */
+function start(context: Context, workspace: Workspace): Entry {
+  const { settings } = context;
+  const target = context.targets.get(workspace.id) ?? targetFor(context, workspace);
   context.targets.set(workspace.id, target);
   return context.registry.start({
     workspace,
@@ -59,16 +67,43 @@ function start(context: Context, workspace: Workspace): Entry {
   });
 }
 
+/** Waits for the first connection of a new workspace, reporting it as the "Relay running" step. */
+async function firstConnection(
+  context: Context,
+  call: { entry: Entry; id: string; request?: string },
+) {
+  const report = reporterFor({ hub: context.hub, requestId: call.request, workspaceId: call.id });
+  await reported({
+    report,
+    begin: {
+      id: "relay",
+      label: "Relay running",
+      message: "Starting the relay and connecting to it.",
+    },
+    work: async () => {
+      await call.entry.waiter.next(FIRST_CONNECTION_WAIT_MS);
+      return relayStepOf(infoNow(context, call.id));
+    },
+  });
+}
+
 async function addSsh(
   context: Context,
-  options: { host: string; label?: string | undefined },
+  options: { host: string; label?: string | undefined; requestId?: string | undefined },
 ): Promise<WorkspaceInfo> {
-  const { host, label } = options;
+  const { host, label, requestId } = options;
   const id = `ssh-${crypto.randomUUID().slice(0, 8)}`;
   const workspace: Workspace = { id, label: label ?? host, kind: "ssh", sshHost: host };
   context.store.upsertWorkspace(workspace);
+  const target = targetFor(context, workspace);
+  context.targets.set(id, target);
+  const report = reporterFor({ hub: context.hub, requestId, workspaceId: id });
+  const { relayBinaryFor } = context.settings;
+  const reached = await hostSteps({ target, relayBinaryFor, report });
   const entry = start(context, workspace);
-  await entry.waiter.next(FIRST_CONNECTION_WAIT_MS);
+  if (reached.ok)
+    await firstConnection(context, { entry, id, ...(requestId && { request: requestId }) });
+  else await entry.waiter.next(FIRST_CONNECTION_WAIT_MS);
   return infoNow(context, id);
 }
 
@@ -96,11 +131,12 @@ export function sshWorkspaces(parts: Omit<Context, "targets">) {
     addSsh: (options) => addSsh(context, options),
     remove: (id) => remove(context, id),
     restartRelay: (id) => restartRelay(context, id),
-    check: (id) =>
+    check: (id, options) =>
       checkSshWorkspace({
         entry: entryOf(context, id),
         target: targetOf(context, id),
         relayBinaryFor: context.settings.relayBinaryFor,
+        report: reporterFor({ hub: context.hub, requestId: options?.requestId, workspaceId: id }),
       }),
   };
   return { start: (workspace: Workspace) => start(context, workspace), operations };

@@ -1,6 +1,7 @@
-import type { CheckStep } from "@agentcontrol/protocol";
+import type { CheckStep, ConnectionStatus } from "@agentcontrol/protocol";
 import type { HostInfo, WorkspaceTarget } from "../relays/index.ts";
 import { checkThroughRelay, step } from "./check.ts";
+import { type Reporter, reported } from "./progress.ts";
 import type { Entry } from "./registry.ts";
 import { installOn } from "./ssh-connect.ts";
 import type { SshSettings } from "./types.ts";
@@ -17,7 +18,18 @@ const LABELS = {
   relay: "Relay running",
 } as const;
 
-const skipped = (...ids: Array<keyof typeof LABELS>): CheckStep[] =>
+const BEGINNINGS = {
+  connect: "Reaching the host over ssh.",
+  platform: "Looking at the operating system and CPU.",
+  install: "Putting the relay on the host.",
+  relay: "Starting the relay and connecting to it.",
+} as const;
+
+type StepId = keyof typeof LABELS;
+
+const begin = (id: StepId) => ({ id, label: LABELS[id], message: BEGINNINGS[id] });
+
+const skipped = (...ids: StepId[]): CheckStep[] =>
   ids.map((id) => step(id, LABELS[id], { status: "skipped", detail: "An earlier step failed." }));
 
 /** The relay's connection once it has had a chance to come up, asking for another try if it was down. */
@@ -50,34 +62,60 @@ async function installStep(options: {
   }
 }
 
-async function relayStep(entry: Entry): Promise<CheckStep> {
-  const { state, reason } = await connectionOf(entry);
-  if (state === "connected")
+/** The "Relay running" step for a connection's state. */
+export function relayStepOf(status: ConnectionStatus): CheckStep {
+  if (status.state === "connected") {
     return step("relay", LABELS.relay, { status: "ok", detail: "Connected." });
-  const detail = reason ?? `The workspace is ${state}.`;
+  }
+  const detail = status.reason ?? `The workspace is ${status.state}.`;
   return step("relay", LABELS.relay, { status: "failed", detail });
 }
 
-/** Reaching the host, and what the relay needs from it, as steps; stops at the first failure. */
-async function hostSteps(options: {
+/** Reaches the host: its result, and what the host is when it answered. */
+async function connectStep(target: WorkspaceTarget) {
+  try {
+    const machine = await target.inspect();
+    return { machine, result: step("connect", LABELS.connect, { status: "ok" }) };
+  } catch (error) {
+    const detail = reasonOf(error);
+    return {
+      machine: undefined,
+      result: step("connect", LABELS.connect, { status: "failed", detail }),
+    };
+  }
+}
+
+/**
+ * Reaching the host, and what the relay needs from it, as steps (each reported as it happens);
+ * stops at the first failure.
+ */
+export async function hostSteps(options: {
   target: WorkspaceTarget;
   relayBinaryFor: SshSettings["relayBinaryFor"];
+  report: Reporter;
 }): Promise<{ steps: CheckStep[]; ok: boolean }> {
-  const { target, relayBinaryFor } = options;
-  let machine: HostInfo;
-  try {
-    machine = await target.inspect();
-  } catch (error) {
-    const failed = step("connect", LABELS.connect, { status: "failed", detail: reasonOf(error) });
-    return { steps: [failed, ...skipped("platform", "install")], ok: false };
-  }
-  const installed = await installStep({ target, machine, relayBinaryFor });
-  const steps = [
-    step("connect", LABELS.connect, { status: "ok" }),
-    platformStep(machine),
-    installed,
-  ];
-  return { steps, ok: steps.every((each) => each.status === "ok") };
+  const { target, relayBinaryFor, report } = options;
+  const reached: { machine: HostInfo | undefined } = { machine: undefined };
+  const connect = await reported({
+    report,
+    begin: begin("connect"),
+    work: async () => {
+      const outcome = await connectStep(target);
+      reached.machine = outcome.machine;
+      return outcome.result;
+    },
+  });
+  const { machine } = reached;
+  if (machine === undefined)
+    return { steps: [connect, ...skipped("platform", "install")], ok: false };
+  const platform = await reported({
+    report,
+    begin: begin("platform"),
+    work: () => platformStep(machine),
+  });
+  const work = () => installStep({ target, machine, relayBinaryFor });
+  const installed = await reported({ report, begin: begin("install"), work });
+  return { steps: [connect, platform, installed], ok: installed.status === "ok" };
 }
 
 /**
@@ -88,10 +126,16 @@ export async function checkSshWorkspace(options: {
   entry: Entry;
   target: WorkspaceTarget;
   relayBinaryFor: SshSettings["relayBinaryFor"];
+  report: Reporter;
 }): Promise<CheckStep[]> {
+  const { entry, report } = options;
   const host = await hostSteps(options);
   if (!host.ok) return [...host.steps, ...skipped("relay")];
-  const running = await relayStep(options.entry);
+  const running = await reported({
+    report,
+    begin: begin("relay"),
+    work: async () => relayStepOf(await connectionOf(entry)),
+  });
   if (running.status !== "ok") return [...host.steps, running];
-  return [...host.steps, running, ...(await checkThroughRelay(options.entry.sync))];
+  return [...host.steps, running, ...(await checkThroughRelay(entry.sync, report))];
 }

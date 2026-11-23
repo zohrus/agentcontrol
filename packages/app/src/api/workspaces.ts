@@ -11,7 +11,9 @@ const AddBody = z.object({
   kind: z.literal("ssh"),
   host: z.string().refine(isSafeHost, "a host name or alias, or user@host"),
   label: z.string().min(1).optional(),
+  requestId: z.string().min(1).max(100).optional(),
 });
+const CheckQuery = z.object({ requestId: z.string().min(1).max(100).optional() });
 
 /** The workspace an action is about; it must exist and not be removed. */
 function activeWorkspace(deps: ApiDeps, id: string): WorkspaceInfo {
@@ -53,13 +55,14 @@ export function workspacesRoutes(deps: ApiDeps) {
     .get("/", (c) => c.json({ workspaces: workspaces.list() }))
     .get("/hosts", async (c) => c.json({ hosts: await workspaces.hosts() }))
     .post("/", validate("json", AddBody), async (c) => {
-      const { host, label } = c.req.valid("json");
+      const { host, label, requestId } = c.req.valid("json");
       refuseKnownHost(deps, host);
-      return c.json(await workspaces.addSsh({ host, label }), 201);
+      return c.json(await workspaces.addSsh({ host, label, requestId }), 201);
     })
-    .post("/:id/check", validate("param", IdParam), async (c) => {
+    .post("/:id/check", validate("param", IdParam), validate("query", CheckQuery), async (c) => {
       const { id } = activeWorkspace(deps, c.req.valid("param").id);
-      return c.json({ steps: await workspaces.check(id) });
+      const { requestId } = c.req.valid("query");
+      return c.json({ steps: await workspaces.check(id, { requestId }) });
     })
     .post("/:id/restart-relay", validate("param", IdParam), async (c) => {
       const { id } = activeSshWorkspace(deps, c.req.valid("param").id);
