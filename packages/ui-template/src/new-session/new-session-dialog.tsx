@@ -64,11 +64,7 @@ export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
         value={form.workspaceId}
         onChange={form.onWorkspaceChange}
       />
-      {form.ready ? (
-        <NewSessionForm key={form.workspaceId} {...form} />
-      ) : (
-        <p className="p-4 text-muted">Loading this workspace…</p>
-      )}
+      <NewSessionForm key={form.workspaceId} {...form} />
     </Dialog>
   );
 }

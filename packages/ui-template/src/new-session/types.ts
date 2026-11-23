@@ -19,8 +19,6 @@ export type NewSessionDialogProps = {
   /** The chosen workspace, whose repositories and agents `repos` and `agents` are. */
   workspaceId: string;
   onWorkspaceChange: (id: string) => void;
-  /** False while the chosen workspace's repositories and agents are still being loaded. */
-  ready: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   repos: readonly RepoInfo[];

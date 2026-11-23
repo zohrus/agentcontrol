@@ -22,6 +22,24 @@ function takingTheFile(held: ScopedItem, found: readonly ScopedItem[]): ScopedIt
   return hit ? { ...held, item: { ...hit.item, id: held.item.id } } : held;
 }
 
+/** The repositories the items are scoped to, each once; `undefined` stands for the global scope. */
+const repoPathsOf = (items: readonly ScopedItem[]): (string | undefined)[] => [
+  ...new Set(items.map((scoped) => scoped.scope.repoPath)),
+];
+
+/** What the agent's files hold now, for the global scope and for each repository asked about. */
+async function importFor(
+  ctx: Context,
+  call: { agent: ConfigAgent; repoPaths: readonly (string | undefined)[] },
+): Promise<ScopedItem[]> {
+  const found = await Promise.all(
+    call.repoPaths.map((repoPath) =>
+      ctx.client.config.import({ agents: [call.agent], ...(repoPath && { repoPath }) }),
+    ),
+  );
+  return found.flat();
+}
+
 /**
  * "Keep my manual edit": the items named take the contents the agent's file has now. The other
  * agent's file is not written until the user reviews and applies.
@@ -30,10 +48,9 @@ export async function keepManualEdit(
   ctx: Context,
   call: { agent: ConfigAgent; itemIds: readonly string[] },
 ): Promise<void> {
-  const repoPath = ctx.store.get().config.items.find((s) => s.scope.repoPath)?.scope.repoPath;
-  const target = repoPath === undefined ? {} : { repoPath };
-  const found = await ctx.client.config.import({ agents: [call.agent], ...target });
   const wanted = (scoped: ScopedItem): boolean => call.itemIds.includes(scoped.item.id);
+  const kept = ctx.store.get().config.items.filter(wanted);
+  const found = await importFor(ctx, { agent: call.agent, repoPaths: repoPathsOf(kept) });
   await changeItems(ctx, (held) =>
     held.map((scoped) => (wanted(scoped) ? takingTheFile(scoped, found) : scoped)),
   );

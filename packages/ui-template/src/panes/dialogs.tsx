@@ -6,7 +6,6 @@ import {
   type SessionRef,
   useChoices,
   useController,
-  useData,
   useWorkspaces,
 } from "../data/index.ts";
 import { ConnectedModifyDialog } from "../modify/index.ts";
@@ -32,14 +31,13 @@ const choiceOf = (w: WorkspaceInfo): WorkspaceChoice => ({
   connected: canTakeCommands(w),
 });
 
-/** The workspace a session will start on; it falls back to this Mac when that one goes away. */
+/** The workspace a session will start on; it falls back to this Mac when that one is removed. */
 function useChosenWorkspace(workspaces: readonly WorkspaceInfo[]) {
   const [workspaceId, setWorkspaceId] = useState(LOCAL_WORKSPACE);
-  const chosen = workspaces.find((workspace) => workspace.id === workspaceId);
-  const usable = chosen === undefined || canTakeCommands(chosen);
+  const removed = workspaces.find((workspace) => workspace.id === workspaceId)?.state === "removed";
   useEffect(() => {
-    if (!usable) setWorkspaceId(LOCAL_WORKSPACE);
-  }, [usable]);
+    if (removed) setWorkspaceId(LOCAL_WORKSPACE);
+  }, [removed]);
   return [workspaceId, setWorkspaceId] as const;
 }
 
@@ -49,7 +47,6 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: Sessio
   const [workspaceId, setWorkspaceId] = useChosenWorkspace(every);
   const workspaces = every.filter((workspace) => workspace.state !== "removed");
   const choices = useChoices(workspaceId);
-  const ready = useData((s) => s.choices[workspaceId] !== undefined);
   useEffect(() => {
     if (shared.open) void controller.workspaces.loadChoices(workspaceId);
   }, [controller, shared.open, workspaceId]);
@@ -58,7 +55,6 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: Sessio
       {...shared}
       workspaces={workspaces.map(choiceOf)}
       workspaceId={workspaceId}
-      ready={ready}
       onWorkspaceChange={setWorkspaceId}
       repos={choices.repos}
       agents={choices.agents}

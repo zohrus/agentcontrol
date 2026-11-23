@@ -13,6 +13,7 @@ async function loadDrift(ctx: Context): Promise<void> {
 
 /** The items the app holds and whether any file was edited by hand; on opening the Config screen. */
 export async function loadConfig(ctx: Context): Promise<void> {
+  await pendingChanges(ctx);
   holdConfig(ctx, { loaded: true, items: await ctx.client.config.list() });
   await loadDrift(ctx);
 }
@@ -21,6 +22,11 @@ type Change = (items: readonly ScopedItem[]) => readonly ScopedItem[];
 
 /** Changes to the items wait for the one before, so each starts from what the last one stored. */
 const saving = new WeakMap<Context, Promise<unknown>>();
+
+/** Resolves once every change made so far has been stored. */
+async function pendingChanges(ctx: Context): Promise<void> {
+  await (saving.get(ctx) ?? Promise.resolve()).catch(() => undefined);
+}
 
 /**
  * Changes the stored items (nothing is written to any agent's files). `change` is given the items
@@ -39,6 +45,7 @@ export function changeItems(ctx: Context, change: Change): Promise<void> {
 
 /** Shows what applying the stored items would change in the agents' files, without writing. */
 export async function reviewChanges(ctx: Context, target: ConfigTarget): Promise<void> {
+  await pendingChanges(ctx);
   holdConfig(ctx, { plan: await ctx.client.config.plan(target) });
 }
 
