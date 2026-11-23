@@ -1,0 +1,44 @@
+// The smoke step that runs a session with the mock agent through the compiled app and relay.
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { callApi, waitUntil } from "./api.ts";
+import type { SmokeApp } from "./app-process.ts";
+import { expect, writeScript } from "./check.ts";
+
+const GIT_ENV = { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" };
+
+/** A git repository with one commit on `main`, for the session's worktree. */
+async function makeRepo(): Promise<string> {
+  const repo = mkdtempSync(join(tmpdir(), "ac-smoke-repo-"));
+  const git = (...args: string[]) => Bun.spawnSync(["git", "-C", repo, ...args], { env: GIT_ENV });
+  git("init", "-b", "main");
+  await Bun.write(join(repo, "README.md"), "smoke\n");
+  git("add", ".");
+  git("-c", "user.name=smoke", "-c", "user.email=smoke@example.com", "commit", "-m", "first");
+  return repo;
+}
+
+type Events = { events: { kind: string }[] };
+
+export async function sessionRuns(app: SmokeApp): Promise<void> {
+  const reply = { kind: "reply", text: "hello from the mock agent" };
+  await writeScript(app, [[reply, { kind: "finish", stopReason: "end_turn" }]]);
+  const body = { agent: "mock", repoPath: await makeRepo(), baseBranch: "main", prompt: "hi" };
+  const started = (await callApi(app, { method: "POST", path: "/api/sessions", body })) as {
+    sessionId: string;
+  };
+  const events = await waitUntil({
+    what: "the mock agent's turn to end",
+    seconds: 60,
+    read: async () => {
+      const path = `/api/sessions/${started.sessionId}/events?after=0`;
+      const { events } = (await callApi(app, { path })) as Events;
+      return events.some((event) => event.kind === "turn-ended") ? events : undefined;
+    },
+  });
+  expect(
+    events.some((event) => event.kind === "agent-started"),
+    "the agent never started",
+  );
+}

@@ -1,11 +1,9 @@
 import { Database } from "bun:sqlite";
-import { join } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { migrate } from "./migrate.ts";
 
 export type Db = ReturnType<typeof drizzle>;
 
-const MIGRATIONS = join(import.meta.dir, "../../drizzle");
 const CHUNK = 500;
 
 /** Split rows into batches that stay below SQLite's bound-variable limit. */
@@ -17,7 +15,6 @@ export function* chunks<T>(items: T[]): Generator<T[]> {
 export function openDatabase(path: string): { sqlite: Database; db: Db } {
   const sqlite = new Database(path, { create: true });
   sqlite.run("PRAGMA journal_mode = WAL");
-  const db = drizzle(sqlite);
-  migrate(db, { migrationsFolder: MIGRATIONS });
-  return { sqlite, db };
+  migrate(sqlite);
+  return { sqlite, db: drizzle(sqlite) };
 }

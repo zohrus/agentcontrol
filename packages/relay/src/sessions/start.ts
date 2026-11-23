@@ -8,6 +8,7 @@ import {
   type AgentProcess,
   type PermissionAnswer,
   type PermissionRequest,
+  firstUseDownload,
   startAgent,
 } from "../agents/index.ts";
 import type { RepoWithSetup } from "../repos/index.ts";
@@ -75,28 +76,46 @@ function watchExit(ctx: SessionContext, sessionId: SessionId, agent: AgentProces
   });
 }
 
+async function connectAgent(ctx: SessionContext, launch: Launch): Promise<AgentProcess> {
+  const { sessionId } = launch;
+  const agent = await startAgent({
+    kind: launch.agent,
+    cwd: launch.cwd,
+    env: launch.env,
+    ...(launch.sessionMeta ? { sessionMeta: launch.sessionMeta } : {}),
+    hostEnv: ctx.hostEnv,
+    onMessage: tapAcp(ctx, sessionId),
+    onPermissionRequest: launch.ask,
+  });
+  ctx.live.set(sessionId, agent);
+  await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
+  watchExit(ctx, sessionId, agent);
+  return agent;
+}
+
+/**
+ * Tells the user that the agent's adapter is being downloaded, when it is (first use only).
+ * Returns what to say if that download then fails.
+ */
+function announceDownload(ctx: SessionContext, launch: Launch): string {
+  const download = firstUseDownload(launch.agent, ctx.hostEnv);
+  if (download === undefined) return "";
+  const payload = { stream: "stdout" as const, text: download.started };
+  ctx.record(launch.sessionId, { kind: "setup-output", payload });
+  return download.failed;
+}
+
 /** `agent-started` is recorded once the ACP handshake is done, so it means the agent is up. */
 export async function launchAgent(
   ctx: SessionContext,
   launch: Launch,
 ): Promise<AgentProcess | undefined> {
   const { sessionId } = launch;
+  const ifDownloadFails = announceDownload(ctx, launch);
   try {
-    const agent = await startAgent({
-      kind: launch.agent,
-      cwd: launch.cwd,
-      env: launch.env,
-      ...(launch.sessionMeta ? { sessionMeta: launch.sessionMeta } : {}),
-      hostEnv: ctx.hostEnv,
-      onMessage: tapAcp(ctx, sessionId),
-      onPermissionRequest: launch.ask,
-    });
-    ctx.live.set(sessionId, agent);
-    await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
-    watchExit(ctx, sessionId, agent);
-    return agent;
+    return await connectAgent(ctx, launch);
   } catch (error) {
-    const text = `${reasonOf(error)}\n`;
+    const text = `${ifDownloadFails}${reasonOf(error)}\n`;
     await ctx.log.append(sessionId, { kind: "setup-output", payload: { stream: "stderr", text } });
     await ctx.log.append(sessionId, { kind: "agent-exited", payload: { exitCode: 1 } });
     return undefined;

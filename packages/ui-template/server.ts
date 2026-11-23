@@ -1,15 +1,13 @@
-// Runs inside the app process (never in the browser): serves a UI folder with Vite's dev server,
-// so edits show up at once. Vite speaks Node's http, so it listens on a private port and the app's
-// own server forwards the UI's requests to it.
+// Runs as its own process, started by the app (never in the browser): `server.ts <ui folder>`
+// serves that UI project with Vite's dev server, so edits show up at once. Vite speaks Node's
+// http, so it listens on a private port, prints `{"port":N}` on its first line when it is ready,
+// and the app's own server forwards the UI's requests to it. It quits on SIGTERM, and when the
+// app that started it is gone.
+import { realpath } from "node:fs/promises";
 import { createServer as createHttpServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join, resolve } from "node:path";
 import { createServer as createViteServer } from "vite";
-
-/** The UI dev server as the app mounts it: answer a request, or shut down. */
-export interface UiDevServer {
-  fetch: (request: Request) => Promise<Response>;
-  close: () => Promise<void>;
-}
 
 /** Listens on a free local port; resolves with that port. */
 async function listenOnFreePort(server: Server): Promise<number> {
@@ -35,41 +33,58 @@ async function freePort(): Promise<number> {
   return port;
 }
 
-/** Drops headers that no longer describe the body once `fetch` has decoded it. */
-function plainHeaders(headers: Headers): Headers {
-  const copy = new Headers(headers);
-  copy.delete("content-encoding");
-  copy.delete("content-length");
-  return copy;
+/**
+ * The folders Vite may serve files from besides the project: where its node_modules really is,
+ * because that folder is a link to the dependencies shipped with the app.
+ */
+async function allowedFolders(root: string): Promise<string[]> {
+  const modules = await realpath(join(root, "node_modules")).catch(() => undefined);
+  return modules === undefined ? [root] : [root, modules];
 }
 
-/** Starts Vite for the UI project in `root`; with hot reload, and index.html for every unknown path. */
-export async function createUiDevServer(options: { root: string }): Promise<UiDevServer> {
+/**
+ * Starts Vite for the UI project in `root`, with hot reload and index.html for every unknown
+ * path. Its cache lives in the project's own `.vite` folder, so nothing is written into the
+ * shared node_modules (inside an installed app, that folder must stay as it was shipped).
+ */
+async function startUiDevServer(
+  root: string,
+): Promise<{ port: number; close: () => Promise<void> }> {
   const vite = await createViteServer({
-    root: options.root,
+    root,
+    cacheDir: join(root, ".vite"),
+    configLoader: "runner",
     appType: "spa",
-    server: { middlewareMode: true, hmr: { host: "127.0.0.1", port: await freePort() } },
+    server: {
+      middlewareMode: true,
+      hmr: { host: "127.0.0.1", port: await freePort() },
+      fs: { allow: await allowedFolders(root) },
+    },
   });
   const inner = createHttpServer(vite.middlewares);
   const port = await listenOnFreePort(inner);
   return {
-    fetch: async (request) => {
-      const { pathname, search } = new URL(request.url);
-      const target = `http://127.0.0.1:${String(port)}${pathname}${search}`;
-      const answer = await fetch(target, {
-        headers: request.headers,
-        redirect: "manual",
-        signal: request.signal,
-      }).catch(() => undefined);
-      if (answer === undefined) return new Response("The UI is not available.", { status: 503 });
-      return new Response(answer.body, {
-        status: answer.status,
-        headers: plainHeaders(answer.headers),
-      });
-    },
+    port,
     close: async () => {
       await vite.close();
       await stopListening(inner);
     },
   };
 }
+
+const root = process.argv[2];
+if (root === undefined) {
+  console.error("Usage: server.ts <ui folder>");
+  process.exit(2);
+}
+const server = await startUiDevServer(resolve(root));
+console.log(JSON.stringify({ port: server.port }));
+const stop = (): void => {
+  void server.close().then(() => process.exit(0));
+};
+process.on("SIGTERM", stop);
+// When the app dies without stopping this process, init adopts it; that is the sign to quit.
+const app = process.ppid;
+setInterval(() => {
+  if (process.ppid !== app) stop();
+}, 1000);

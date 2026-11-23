@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -21,9 +22,17 @@ type CheckStep = CheckResult["steps"][number];
 
 const MAX_LINES = 200;
 const TIMEOUT_MS = 5 * 60_000;
+/** Makes a compiled app binary behave as the `bun` command, so it can run vite and tsc itself. */
+const BE_BUN = { BUN_BE_BUN: "1" };
 
 export const runWithBun: RunCommand = async ({ cmd, cwd }) => {
-  const proc = Bun.spawn(cmd, { cwd, stdout: "pipe", stderr: "pipe", timeout: TIMEOUT_MS });
+  const proc = Bun.spawn(cmd, {
+    cwd,
+    env: { ...process.env, ...BE_BUN },
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: TIMEOUT_MS,
+  });
   const [out, err, exitCode] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -55,10 +64,31 @@ async function build(options: { stagingDir: string; run: RunCommand }): Promise<
     name: "build",
     run: options.run,
     cwd: options.stagingDir,
-    cmd: [process.execPath, vite, "build", "--outDir", outDir, "--emptyOutDir"],
+    // The "runner" config loader writes no temporary file into the (shared) node_modules.
+    cmd: [
+      process.execPath,
+      vite,
+      "build",
+      "--configLoader",
+      "runner",
+      "--outDir",
+      outDir,
+      "--emptyOutDir",
+    ],
   });
   await rm(outDir, { recursive: true, force: true });
   return result;
+}
+
+/**
+ * The TypeScript compiler the checks run: the one in the UI's own node_modules (a release ships
+ * it there), or the repository's when running from source.
+ */
+function typescriptBin(stagingDir: string): string {
+  const shipped = join(stagingDir, "node_modules", "typescript", "bin", "tsc");
+  return existsSync(shipped)
+    ? shipped
+    : createRequire(import.meta.url).resolve("typescript/bin/tsc");
 }
 
 /**
@@ -71,7 +101,7 @@ export async function runChecks(options: {
   run: RunCommand;
 }): Promise<CheckResult> {
   const { stagingDir, run } = options;
-  const tsc = createRequire(import.meta.url).resolve("typescript/bin/tsc");
+  const tsc = typescriptBin(stagingDir);
   const typecheck = await step({
     name: "typecheck",
     run,

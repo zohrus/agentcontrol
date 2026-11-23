@@ -20,7 +20,7 @@
   "scripts": {
     "start": "bun src/main.ts",
     "dev": "bun --watch src/main.ts",
-    "db:generate": "drizzle-kit generate --config src/drizzle.config.ts"
+    "db:generate": "drizzle-kit generate --config src/drizzle.config.ts && bun ../../scripts/embed-migrations.ts"
   },
   "bin": {
     "agentcontrol": "./src/main.ts"
