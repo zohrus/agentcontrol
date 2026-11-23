@@ -56,7 +56,7 @@ export function replaceOldRelay(target: Pick<WorkspaceTarget, "stopRelay">): Rep
       (session) => session.turnRunning || session.pendingPermissions.length > 0,
     );
     if (busy.length > 0) {
-      const reason = `The relay is version ${relayVersion}, but this app is version ${VERSION}. ${String(busy.length)} session(s) are still working on it, so it was left running; restart it when they are done.`;
+      const reason = `The relay is version ${relayVersion}, but this app is version ${VERSION}. ${String(busy.length)} ${busy.length === 1 ? "session is" : "sessions are"} still working on it, so it was left running; restart it when they are done.`;
       return { replaced: false, reason };
     }
     await target.stopRelay();

@@ -10,6 +10,7 @@ import {
   startConfigAppWithAServerEditedByHand,
   startConfigAppWithAnExistingSetup,
 } from "../support/browser/config-setups.ts";
+import { expectToastToShow } from "../support/browser/page-expectations.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
 import { expectFileToContain } from "../support/expect/config-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -36,7 +37,7 @@ test(
     await expectConfigToShow(app, "Claude Code", "Codex", "fs");
     // AND adopting the selection puts both servers among the MCP servers
     await app.page.adoptsTheSelection();
-    await expectConfigToShow(app, "Adopted 2 item(s)", "MCP servers");
+    await expectConfigToShow(app, "Adopted 2 items", "MCP servers");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
@@ -101,6 +102,31 @@ test(
     await app.page.appliesTheChanges();
     await app.page.doneWithTheApply();
     await expectNoDriftBanner(app);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "Keep my manual edit says so when the agent's file holds none of the items any more",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN an applied MCP server edited by hand, and Config open with the drift banner
+    // ********************************************************************
+    const app = await startConfigAppWithAServerEditedByHand();
+    await app.page.opensConfig();
+    await expectDriftBannerToName(app, ".claude.json");
+    // AND the agent's file now holds none of the items, when it is read again
+    await app.page.findsNothingInTheAgentsFiles();
+
+    // ********************************************************************
+    // ** WHEN the user chooses Keep my manual edit
+    // ********************************************************************
+    await app.page.keepsMyManualEdit();
+
+    // ********************************************************************
+    // ** THEN a message says none of the items were found and nothing was kept
+    // ********************************************************************
+    await expectToastToShow(app, "so nothing was kept");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

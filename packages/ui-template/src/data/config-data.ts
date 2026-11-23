@@ -14,8 +14,8 @@ async function loadDrift(ctx: Context): Promise<void> {
 /** The items the app holds and whether any file was edited by hand; on opening the Config screen. */
 export async function loadConfig(ctx: Context): Promise<void> {
   await pendingChanges(ctx);
-  holdConfig(ctx, { loaded: true, items: await ctx.client.config.list() });
-  await loadDrift(ctx);
+  const [items, drift] = await Promise.all([ctx.client.config.list(), ctx.client.config.drift()]);
+  holdConfig(ctx, { loaded: true, items, drift });
 }
 
 type Change = (items: readonly ScopedItem[]) => readonly ScopedItem[];

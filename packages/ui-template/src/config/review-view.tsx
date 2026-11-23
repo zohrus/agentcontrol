@@ -1,4 +1,5 @@
 import type { ConfigAgent, ConfigPlan } from "@agentcontrol/protocol";
+import { countOf } from "../status/index.ts";
 import { Button } from "../components/index.ts";
 import { agentName, agentOfPath, allAgents } from "./agents.ts";
 import { FileChangeCard } from "./file-change-card.tsx";
@@ -51,7 +52,7 @@ export function ReviewView({ plan, agents, titles, onApply, onBack }: ReviewView
         <p className="m-0 text-sm font-medium">
           {none
             ? "No files need to change."
-            : `${String(plan.changes.length)} file(s) will change.`}
+            : `${countOf(plan.changes.length, "file")} will change.`}
         </p>
         {allAgents
           .filter((agent) => agents.includes(agent))

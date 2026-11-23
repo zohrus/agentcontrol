@@ -68,7 +68,7 @@ test("a conflicting update is resolved by the Modify agent and both changes surv
   await expectUiChangeReadyToKeep(app);
   await expectLiveUiFileToContain(app, { path: table, text: '"Branch", "Status", "Cost"' });
   // AND the summary says one change was kept automatically and one conflict resolved
-  await expectUpdateSummary(app, "1 of your changes kept automatically, 1 conflict(s) resolved");
+  await expectUpdateSummary(app, "1 of your changes kept automatically, 1 conflict resolved");
   // AND Keep records the update as a version
   await app.user.keepsTheChange();
   await expectUpdateKept(app, "1.1");
