@@ -119,7 +119,6 @@ async function runSession(ctx: SessionContext, session: NewSession): Promise<voi
 
 /** Runs everything after the session exists; every failure ends up as events in the log. */
 export function runInBackground(ctx: SessionContext, session: NewSession): void {
-  runSession(ctx, session).catch((error: unknown) => {
-    console.error(`Session ${session.sessionId} failed unexpectedly: ${reasonOf(error)}`);
-  });
+  const unexpected = `Session ${session.sessionId} failed unexpectedly:`;
+  runSession(ctx, session).catch(console.error.bind(console, unexpected));
 }
