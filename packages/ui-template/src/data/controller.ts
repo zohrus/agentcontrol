@@ -10,6 +10,7 @@ import {
 import { attempt, type Context, inBackground } from "./context.ts";
 import { startLive } from "./live.ts";
 import { initialState } from "./model.ts";
+import { loadModify, modifyActions } from "./modify-data.ts";
 import { createSelection } from "./selection.ts";
 import { loadSessions } from "./sessions-data.ts";
 import { addRepository, checkWorkspace, loadChoices, saveSetup } from "./setup-data.ts";
@@ -36,6 +37,7 @@ function userActions(ctx: Context) {
     saveSetup: (repoId: RepoId, setup: RepoSetup) =>
       attempt(ctx, () => saveSetup(ctx, { repoId, setup })),
     checkWorkspace: () => attempt(ctx, () => checkWorkspace(ctx)),
+    modify: modifyActions(ctx),
   };
 }
 
@@ -46,6 +48,7 @@ export function createController({ client, report }: ControllerOptions) {
   const selection = createSelection(ctx);
   const resync = (): void => {
     inBackground(ctx, Promise.all([loadSessions(ctx), loadChoices(ctx)]));
+    inBackground(ctx, loadModify(ctx));
     selection.reloadAll();
   };
   return {

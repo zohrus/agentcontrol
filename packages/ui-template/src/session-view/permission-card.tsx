@@ -16,8 +16,19 @@ function OptionButton({ option, onChoose }: { option: PermissionOption; onChoose
   );
 }
 
+/** An answer the relay gave by itself: refusals say why, in muted text; allowed edits show as tools. */
+function AutomaticAnswer({ item }: { item: ItemOf<"permission"> }) {
+  if (!item.automatic?.refused) return null;
+  return (
+    <span className="text-xs text-muted">
+      Refused: {item.title}. {item.automatic.reason}
+    </span>
+  );
+}
+
 /** A pending permission request with one button per option, or the answer once given. */
 export function PermissionCard({ item, onAnswer }: Props) {
+  if (item.automatic) return <AutomaticAnswer item={item} />;
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-wait bg-wait-soft p-3">
       <b className="font-medium">{item.title}</b>

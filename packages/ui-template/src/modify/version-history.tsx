@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Badge, Button } from "../components/index.ts";
 import type { UiVersionEntry } from "./types.ts";
 
@@ -12,7 +13,43 @@ function when(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-type RowProps = { entry: UiVersionEntry; current: boolean; onRestore: (commit: string) => void };
+type RestoreProps = { entry: UiVersionEntry; onRestore: (commit: string) => void };
+
+type ConfirmProps = { onYes: () => void; onNo: () => void };
+
+function ConfirmRestore({ onYes, onNo }: ConfirmProps) {
+  return (
+    <span role="group" aria-label="Confirm restore" className="flex items-center gap-1.5 text-xs">
+      Restore this version?
+      <Button variant="primary" onClick={onYes}>
+        Yes, restore
+      </Button>
+      <Button onClick={onNo}>Cancel</Button>
+    </span>
+  );
+}
+
+/** Restore, then a question: bringing a version back replaces the UI the user is looking at. */
+function RestoreButton({ entry, onRestore }: RestoreProps) {
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    const ask = () => {
+      setAsking(true);
+    };
+    return (
+      <Button aria-label={`Restore “${entry.message}”`} onClick={ask}>
+        Restore
+      </Button>
+    );
+  }
+  const answer = (yes: boolean) => () => {
+    setAsking(false);
+    if (yes) onRestore(entry.commit);
+  };
+  return <ConfirmRestore onYes={answer(true)} onNo={answer(false)} />;
+}
+
+type RowProps = RestoreProps & { current: boolean };
 
 function VersionRow({ entry, current, onRestore }: RowProps) {
   return (
@@ -28,14 +65,7 @@ function VersionRow({ entry, current, onRestore }: RowProps) {
       {current ? (
         <span className="text-[11px] text-muted">Current</span>
       ) : (
-        <Button
-          aria-label={`Restore “${entry.message}”`}
-          onClick={() => {
-            onRestore(entry.commit);
-          }}
-        >
-          Restore
-        </Button>
+        <RestoreButton entry={entry} onRestore={onRestore} />
       )}
     </li>
   );
@@ -43,7 +73,7 @@ function VersionRow({ entry, current, onRestore }: RowProps) {
 
 type Props = { versions: readonly UiVersionEntry[]; onRestore: (commit: string) => void };
 
-/** Every saved version of the UI, newest first, each with a Restore button. */
+/** Every saved version of the UI, newest first, each with a Restore button that asks first. */
 export function VersionHistory({ versions, onRestore }: Props) {
   return (
     <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto p-0">

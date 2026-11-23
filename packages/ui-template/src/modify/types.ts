@@ -9,11 +9,19 @@ export type UiVersionEntry = {
   message: string;
   createdAt: string;
   /** For "template" and "update": the default-UI version, for example "1.2". */
-  templateVersion?: string;
+  templateVersion?: string | undefined;
 };
 
-/** Where the check gate is for the change being made. */
-export type CheckGate = "idle" | "checking" | "failed" | "ready";
+/** Where the change being made is, from the user's request to Keep or Undo. */
+export type ChangeProgress = {
+  status: "idle" | "working" | "checking" | "fixing" | "ready" | "failed";
+  /** Files that differ between the new UI and the one running now. */
+  changedFiles: readonly string[];
+  /** Why the last attempt failed, in plain language. */
+  failure?: string | undefined;
+  /** The trimmed output of the check that failed last. */
+  checkOutput?: string | undefined;
+};
 
 /** A default-UI update: first available, then merged and waiting for Keep or Undo. */
 export type UiUpdate =
@@ -23,12 +31,14 @@ export type UiUpdate =
 export type ModifyPanelProps = {
   /** The Modify agent's conversation, as relay events. */
   events: readonly SessionEvent[];
-  gate: CheckGate;
+  change: ChangeProgress;
   versions: readonly UiVersionEntry[];
   update?: UiUpdate | undefined;
   onSendPrompt: (text: string) => void;
   onKeep: () => void;
   onUndo: () => void;
+  /** Throws away a failed or running attempt. */
+  onDiscard: () => void;
   onRestore: (commit: string) => void;
   /** The user asked to merge the available default-UI update. */
   onUpdate: () => void;

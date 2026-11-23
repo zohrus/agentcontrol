@@ -12,7 +12,16 @@ const messages: Record<string, string> = {
   "internal-error": "Something went wrong inside AgentControl.",
 };
 /** Codes whose own message tells the user something they can act on. */
-const withDetail = new Set(["setup-failed", "invalid-request", "internal-error"]);
+const withDetail = new Set([
+  "setup-failed",
+  "invalid-request",
+  "internal-error",
+  "modify-busy",
+  "no-update",
+  "nothing-to-keep",
+  "nothing-to-undo",
+  "nothing-to-discard",
+]);
 
 /** A failure in plain words for a toast or an inline message. */
 export function describeError(error: unknown): string {
