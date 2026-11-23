@@ -7,7 +7,7 @@ import { gitLines, runLive } from "./proc.ts";
 const APP_DIR = "dist/release/linux-x64";
 
 /** Whether every path is documentation: under docs/, or a Markdown file. */
-export const isDocsOnly = (paths: readonly string[]): boolean =>
+const isDocsOnly = (paths: readonly string[]): boolean =>
   paths.every((path) => path.startsWith("docs/") || path.endsWith(".md"));
 
 /** The files the branch (checked out in `scratch`) changes compared with origin/main. */

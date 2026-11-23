@@ -1,11 +1,15 @@
 import { afterEach, test } from "bun:test";
 import {
   expectThePageToHaveBeenToldToReload,
+  expectTheSecretToHaveBeenRefusedTimes,
   expectTheTerminalToSayItCouldNotConnect,
   expectTheTerminalToSayTheSecretIsOutOfDate,
 } from "../support/expect/terminal-stale-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { openShellWithAnOutOfDateSecret } from "../support/setup/stale-terminal.ts";
+import {
+  aPageWithAnOutOfDateSecret,
+  openShellWithAnOutOfDateSecret,
+} from "../support/setup/stale-terminal.ts";
 import { startAppWithASession } from "../support/setup/start-app-with-shell.ts";
 import { openShell } from "../support/setup/terminal-user.ts";
 
@@ -45,4 +49,24 @@ test("a terminal that is refused for another reason still says it could not conn
   // ** THEN the terminal says it could not connect
   // ********************************************************************
   await expectTheTerminalToSayItCouldNotConnect(shell);
+});
+
+test("a terminal closed before it was refused does not make the page reload", async () => {
+  // ********************************************************************
+  // ** GIVEN a page with an out-of-date secret that opens a terminal and closes it at once
+  // ********************************************************************
+  const { app, session } = await startAppWithASession();
+  const page = aPageWithAnOutOfDateSecret(app);
+  page.opensTerminalOn(session).closes();
+
+  // ********************************************************************
+  // ** WHEN the page then opens another terminal, which is refused
+  // ********************************************************************
+  const kept = page.opensTerminalOn(session);
+  await expectTheTerminalToSayTheSecretIsOutOfDate(kept);
+
+  // ********************************************************************
+  // ** THEN the app refused the secret once: only for the terminal that was kept
+  // ********************************************************************
+  expectTheSecretToHaveBeenRefusedTimes(page.refusals, 1);
 });

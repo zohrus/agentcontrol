@@ -1,3 +1,4 @@
+import type { SessionAnalytics } from "@agentcontrol/sdk";
 import type { AppAccess } from "../setup/app.ts";
 import { eventually } from "../setup/eventually.ts";
 
@@ -36,17 +37,19 @@ export function expectTheLogToSayUsageCouldNotBeRead(log: { lines(): string[] })
   });
 }
 
-/**
- * The session's waiting time in a range that ended one millisecond after its request was asked is
- * no more than that millisecond, however long the request has been waiting since.
- */
-export async function expectWaitingNotToRunPastTheRange(app: AppAccess, title: string) {
+/** The analytics of a range that ended one millisecond after the agent's permission request was asked. */
+export async function readsAnalyticsOfARangeEndingJustAfterTheRequest(
+  app: AppAccess,
+): Promise<SessionAnalytics[]> {
   const asked = await app.streamed.waitFor(
     (event) => event.kind === "permission-requested",
     "expected the agent to ask for permission",
   );
-  const to = new Date(Date.parse(asked.ts) + 1).toISOString();
-  const rows = await app.sdk.analytics.sessions({ to });
+  return app.sdk.analytics.sessions({ to: new Date(Date.parse(asked.ts) + 1).toISOString() });
+}
+
+/** The session waited at most one millisecond inside that range, however long it has waited since. */
+export function expectWaitingNotToRunPastTheRange(rows: SessionAnalytics[], title: string): void {
   const waited = rows.find((row) => row.title === title)?.waitingMs;
   if (waited !== undefined && waited <= 1) return;
   const saw = String(waited);

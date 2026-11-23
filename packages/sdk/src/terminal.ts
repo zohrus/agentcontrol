@@ -2,7 +2,7 @@ import { type SessionId, TERMINAL_PROTOCOL, TOKEN_PROTOCOL_PREFIX } from "@agent
 import { listen, whyRefused } from "./terminal-listen.ts";
 import type { OpenTerminal, Terminal, TerminalConnection } from "./terminal-types.ts";
 
-export type { OpenTerminal, Terminal, TerminalConnection };
+export type { OpenTerminal, Terminal };
 
 interface Place {
   location?: { protocol: string; host: string };
@@ -36,7 +36,7 @@ function sender(socket: WebSocket, first: object): (message: object) => void {
  * it to the callbacks. It is the user's own console, not the agent's. Work typed before the
  * connection is ready is kept and sent in order. Throws if there is no secret to send.
  */
-export function openTerminal(call: {
+function openTerminal(call: {
   connection: TerminalConnection;
   id: SessionId;
   options: OpenTerminal;

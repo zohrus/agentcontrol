@@ -6,6 +6,7 @@ import {
   expectAnalyticsToShowSessionWaiting,
   expectTheLogToSayUsageCouldNotBeRead,
   expectWaitingNotToRunPastTheRange,
+  readsAnalyticsOfARangeEndingJustAfterTheRequest,
 } from "../support/expect/analytics-live-expectations.ts";
 import { expectSessionTable } from "../support/expect/analytics-insight-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -91,12 +92,12 @@ test("a waiting session's time is not counted past the end of the range asked fo
   // ********************************************************************
   // ** WHEN the user reads the analytics for a range that ended just after the request was asked
   // ********************************************************************
-  // (read by the check below)
+  const rows = await readsAnalyticsOfARangeEndingJustAfterTheRequest(app);
 
   // ********************************************************************
   // ** THEN the session waited no longer than that range lasted, not until now
   // ********************************************************************
-  await expectWaitingNotToRunPastTheRange(app, "Run the tests");
+  expectWaitingNotToRunPastTheRange(rows, "Run the tests");
 });
 
 test("when the relay cannot read the usage of a session, the app says so in its log", async () => {

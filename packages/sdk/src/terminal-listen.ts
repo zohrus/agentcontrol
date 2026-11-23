@@ -62,6 +62,7 @@ function handlersOf(call: {
 /** Ends the terminal when the socket closes: lost if it had opened, else refused (and why). */
 function endWhenClosed(call: {
   socket: WebSocket;
+  isOver: () => boolean;
   end: (code: number | null, why?: string) => void;
   refused: () => Promise<string>;
 }): void {
@@ -70,6 +71,7 @@ function endWhenClosed(call: {
     opened = true;
   });
   call.socket.addEventListener("close", () => {
+    if (call.isOver()) return;
     if (opened) call.end(null, LOST);
     else {
       void call.refused().then((reason) => {
@@ -92,6 +94,6 @@ export function listen(call: {
     const message = isOver() ? undefined : parseMessage(event.data);
     if (message) handlers[message.type](message as never);
   });
-  endWhenClosed({ socket, end, refused });
+  endWhenClosed({ socket, isOver, end, refused });
   return silence;
 }

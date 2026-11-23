@@ -21,3 +21,12 @@ export async function expectTheTerminalToSayItCouldNotConnect(shell: OpenShell):
     "expected the terminal to say it could not connect",
   );
 }
+
+/** The app refused the page's secret exactly this many times so far. */
+export function expectTheSecretToHaveBeenRefusedTimes(refusals: Timeline<number>, times: number) {
+  if (refusals.entries.length === times) return;
+  const saw = String(refusals.entries.length);
+  throw new Error(
+    `expected the app to refuse the secret ${String(times)} time(s), but it did ${saw}`,
+  );
+}

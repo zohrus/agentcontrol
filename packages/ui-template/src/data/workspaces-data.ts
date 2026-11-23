@@ -21,11 +21,13 @@ export function applyWorkspace(ctx: Context, info: WorkspaceInfo): void {
 
 /** Every workspace the app knows, after a (re)connect; one the app no longer lists is dropped. */
 export async function loadWorkspaces(ctx: Context): Promise<void> {
+  const before = new Set(ctx.store.get().workspaces.map((known) => known.id));
   const listed = await ctx.client.workspaces.list();
   const ids = new Set(listed.map((workspace) => workspace.id));
+  // Only a workspace that was known before the question and is missing from the answer is dropped.
   ctx.store.update((s) => ({
     ...s,
-    workspaces: s.workspaces.filter((known) => ids.has(known.id)),
+    workspaces: s.workspaces.filter((known) => ids.has(known.id) || !before.has(known.id)),
   }));
   for (const workspace of listed) applyWorkspace(ctx, workspace);
 }

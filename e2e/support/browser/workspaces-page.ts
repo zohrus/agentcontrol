@@ -14,7 +14,7 @@ function menu(page: Page) {
       page.getByRole("button", { name: "Workspaces", exact: true }).click(),
     /** What the menu says about one workspace: its name, connection and reason. */
     workspaceRowText: async (label: string): Promise<string> =>
-      (await rowOf(label).count()) === 0 ? "" : rowOf(label).innerText(),
+      (await rowOf(label).allInnerTexts()).join("\n"),
     restartsTheRelayOf: (label: string) =>
       rowOf(label).getByRole("button", { name: "Restart relay" }).click(),
     removesTheWorkspace: (label: string) =>

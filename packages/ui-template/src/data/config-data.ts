@@ -14,8 +14,15 @@ async function loadDrift(ctx: Context): Promise<void> {
 /** The items the app holds and whether any file was edited by hand; on opening the Config screen. */
 export async function loadConfig(ctx: Context): Promise<void> {
   await pendingChanges(ctx);
-  const [items, drift] = await Promise.all([ctx.client.config.list(), ctx.client.config.drift()]);
-  holdConfig(ctx, { loaded: true, items, drift });
+  const [items, drift] = await Promise.allSettled([
+    ctx.client.config.list(),
+    ctx.client.config.drift(),
+  ]);
+  if (items.status === "rejected") throw items.reason;
+  holdConfig(ctx, { loaded: true, items: items.value });
+  // The items are shown even when the drift check fails; that failure is still reported.
+  if (drift.status === "rejected") throw drift.reason;
+  holdConfig(ctx, { drift: drift.value });
 }
 
 type Change = (items: readonly ScopedItem[]) => readonly ScopedItem[];
