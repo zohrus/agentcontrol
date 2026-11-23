@@ -15,6 +15,7 @@ import { availableParallelism } from "node:os";
 
 const TEST_TIMEOUT_MS = 20_000;
 const PARALLEL_FILES = 4;
+const MAX_BROWSER_FILES = 2;
 /** Where scripts/coverage.ts reads the per-file reports from. */
 const PARTS_DIR = "coverage/parts";
 
@@ -77,18 +78,35 @@ async function runJob(job: Job, coverage: boolean): Promise<JobRun> {
   return { name: job.name, exitCode, output: out + err };
 }
 
-async function runAll(jobs: Job[], coverage: boolean): Promise<JobRun[]> {
-  const results: JobRun[] = [];
-  const queue = [...jobs];
+/** Runs the jobs of one group, `workers` at a time, adding each result to `results`. */
+async function drain(
+  group: { jobs: Job[]; workers: number },
+  options: { coverage: boolean; results: JobRun[] },
+): Promise<void> {
+  const queue = [...group.jobs];
   const worker = async (): Promise<void> => {
     for (let job = queue.shift(); job !== undefined; job = queue.shift()) {
-      const finished = await runJob(job, coverage);
-      results.push(finished);
+      const finished = await runJob(job, options.coverage);
+      options.results.push(finished);
       console.log(`${finished.exitCode === 0 ? "pass" : "FAIL"} ${finished.name}`);
     }
   };
-  const workers = Math.min(PARALLEL_FILES, availableParallelism());
-  await Promise.all(Array.from({ length: workers }, worker));
+  await Promise.all(Array.from({ length: group.workers }, worker));
+}
+
+/** Browser files run at most two at a time (each starts Chromium); the rest fill the other workers. */
+async function runAll(jobs: Job[], coverage: boolean): Promise<JobRun[]> {
+  const results: JobRun[] = [];
+  const isBrowser = (job: Job): boolean => job.file.startsWith("e2e/browser/");
+  const total = Math.min(PARALLEL_FILES, availableParallelism());
+  const browserWorkers = Math.min(MAX_BROWSER_FILES, total);
+  await Promise.all([
+    drain({ jobs: jobs.filter(isBrowser), workers: browserWorkers }, { coverage, results }),
+    drain(
+      { jobs: jobs.filter((job) => !isBrowser(job)), workers: total - browserWorkers || 1 },
+      { coverage, results },
+    ),
+  ]);
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
