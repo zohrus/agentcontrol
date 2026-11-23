@@ -4,6 +4,7 @@ import { launch, type Running, type Where } from "./vite-process.ts";
 
 const RESTART_DELAY_MS = 1000;
 const RESTART_TRIES = 5;
+const STOP_TIMEOUT_MS = 5000;
 
 /** Drops headers that no longer describe the body once `fetch` has decoded it. */
 function plainHeaders(headers: Headers): Headers {
@@ -28,6 +29,16 @@ function forwardTo(port: () => number): UiHandler["fetch"] {
       headers: plainHeaders(answer.headers),
     });
   };
+}
+
+/** Asks the server to quit; one that does not within a few seconds is killed. */
+async function stopServer(child: Running["child"]): Promise<void> {
+  child.kill("SIGTERM");
+  const timer = setTimeout(() => {
+    child.kill("SIGKILL");
+  }, STOP_TIMEOUT_MS);
+  await child.exited;
+  clearTimeout(timer);
 }
 
 interface Supervised {
@@ -77,8 +88,7 @@ export async function serveUiWithVite(options: {
     fetch: forwardTo(() => state.current.port),
     close: async () => {
       state.closing = true;
-      state.current.child.kill("SIGTERM");
-      await state.current.child.exited;
+      await stopServer(state.current.child);
     },
   };
 }

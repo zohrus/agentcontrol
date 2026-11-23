@@ -89,7 +89,7 @@ let stopping = false;
 const stop = (): void => {
   if (stopping) return;
   stopping = true;
-  void server.close().then(() => process.exit(0));
+  void server.close().finally(() => process.exit(0));
 };
 process.on("SIGTERM", stop);
 // When the app dies without stopping this process, init adopts it; that is the sign to quit.

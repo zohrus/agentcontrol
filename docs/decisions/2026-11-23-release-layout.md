@@ -78,3 +78,7 @@ a user's Mac does not have.
   Checked: the native Claude Code binary (2.1.330) ignores `BUN_BE_BUN`. `bunx` has no flag for the
   cache folder, and a symlink named `bun` does not make a compiled binary act as bun, so the
   variables cannot be kept out of the adapter's environment. Revisit if it bites.
+- `packages/ui-template/tsconfig.json` repeats the options of `tsconfig.base.json`, because a
+  release has no repository root. Keep the two in step by hand until a check compares them.
+- `findResources` also returns `relaysDir` (the Linux relays under `relays/`) for the SSH
+  workspaces work, which installs the relay on remote hosts from it; nothing in the app reads it yet.

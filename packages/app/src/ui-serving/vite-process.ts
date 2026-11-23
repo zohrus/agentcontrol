@@ -54,7 +54,7 @@ async function readPort(child: DevServer): Promise<number> {
     const found = findPort(seen);
     if (found === undefined) continue;
     reader.releaseLock();
-    forwardLog(child, `${found.before}\n${found.after}`);
+    forwardLog(child, [found.before, found.after].filter((part) => part !== "").join("\n"));
     return found.port;
   }
 }
@@ -95,14 +95,18 @@ function isUiServer(pid: number): boolean {
  */
 async function stopLeftover(pidFile: string): Promise<void> {
   const pid = Number(await readFile(pidFile, "utf8").catch(() => ""));
-  if (Number.isInteger(pid) && pid > 0 && isUiServer(pid)) process.kill(pid, "SIGTERM");
+  if (!Number.isInteger(pid) || pid <= 0 || !isUiServer(pid)) return;
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    // It ended by itself in the meantime, or belongs to someone else: nothing left to stop.
+  }
 }
 
 /** Starts the UI server for the project in `where.root` and waits until it says where it listens. */
 export async function launch(where: Where): Promise<Running> {
   await stopLeftover(where.pidFile);
   const child = startDevServer(where.root);
-  await writeFile(where.pidFile, String(child.pid));
   let timer: Timer | undefined;
   const late = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
@@ -110,6 +114,7 @@ export async function launch(where: Where): Promise<Running> {
     }, START_TIMEOUT_MS);
   });
   try {
+    await writeFile(where.pidFile, String(child.pid));
     return { child, port: await Promise.race([readPort(child), late]) };
   } catch (error) {
     child.kill();
