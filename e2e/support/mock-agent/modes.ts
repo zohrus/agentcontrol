@@ -20,7 +20,10 @@ export function createModes(startsIn: string | undefined) {
       current === undefined
         ? {}
         : { modes: { currentModeId: current, availableModes: CLAUDE_MODES } },
+    /** Like the adapter, refuses a mode it did not offer. */
     switchTo: (modeId: string): void => {
+      if (!CLAUDE_MODES.some((mode) => mode.id === modeId))
+        throw new Error(`Unknown mode ${modeId}`);
       current = modeId;
     },
     asksBeforeActing: (): boolean => current === undefined || current === "default",

@@ -11,8 +11,15 @@ export type ViewState = {
 export function relativePath(state: ViewState, path: string): string;
 export function relativePath(state: ViewState, path: string | undefined): string | undefined;
 export function relativePath(state: ViewState, path: string | undefined): string | undefined {
-  const prefix = state.root === undefined ? undefined : `${state.root.replace(/\/+$/, "")}/`;
-  return prefix !== undefined && path?.startsWith(prefix) ? path.slice(prefix.length) : path;
+  if (state.root === undefined || path === undefined) return path;
+  const prefix = `${withoutPrivate(state.root).replace(/\/+$/, "")}/`;
+  const plain = withoutPrivate(path);
+  return plain.startsWith(prefix) ? plain.slice(prefix.length) : path;
+}
+
+/** On a Mac the same folder is `/var/x` and `/private/var/x`; agents may report either. */
+function withoutPrivate(path: string): string {
+  return path.replace(/^\/private(?=\/(?:var|tmp|etc)\/)/, "");
 }
 
 type ChunkItem = ItemOf<"user" | "message" | "thought">;

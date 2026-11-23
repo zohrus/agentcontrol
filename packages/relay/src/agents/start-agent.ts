@@ -44,7 +44,9 @@ async function switchMode(
 ): Promise<void> {
   await connection.agent.request(methods.agent.session.setMode, change).catch((error: unknown) => {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`the agent would not switch to its "${change.modeId}" mode (${reason})`);
+    throw new Error(
+      `the agent would not switch to its "${change.modeId}" mode, so it could not be made to ask before it acts; the user's own Claude settings may forbid changing the mode (${reason})`,
+    );
   });
 }
 
