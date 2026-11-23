@@ -1,0 +1,49 @@
+name: real-agents
+# Drives the real agents (Claude Code, later Codex) through the relay, app and SDK with
+# `bun run smoke:real`. It needs API keys and costs a little money, so it is not part of `check` or
+# `ci`: run it by hand, or let the nightly schedule do it. Without a key the step is skipped and the
+# job stays green.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 4 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+      - run: bun install --frozen-lockfile
+      - name: Git identity for the temporary repositories
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.com
+      - name: Claude Code
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "ANTHROPIC_API_KEY is not set: skipping the Claude Code scenarios."
+          else
+            bun run smoke:real --agent claude-code
+          fi
+      - name: Codex
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "OPENAI_API_KEY is not set: skipping the Codex scenarios."
+          else
+            bun run smoke:real --agent codex
+          fi

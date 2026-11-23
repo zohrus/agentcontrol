@@ -16,7 +16,9 @@ const reducers: Reducers = {
   acp: (state, { seq, payload }) => {
     for (const update of payload.updates ?? []) applyUpdate(state, update, seq);
   },
-  "session-created": ignore,
+  "session-created": (state, { payload }) => {
+    state.root = payload.worktreePath;
+  },
   "agent-started": ignore,
   "setup-output": reduceSetupOutput,
   "setup-finished": reduceSetupFinished,

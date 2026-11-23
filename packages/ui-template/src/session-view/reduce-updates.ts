@@ -2,7 +2,7 @@ import type { AgentUpdate } from "@agentcontrol/protocol";
 import { diffStatOf } from "./diff-stats.ts";
 import { reduceMode, reduceNotice } from "./reduce-notices.ts";
 import type { ItemOf } from "./view-items.ts";
-import { addChunk, findTool, itemKey, pick, type ViewState } from "./view-state.ts";
+import { addChunk, findTool, itemKey, pick, relativePath, type ViewState } from "./view-state.ts";
 
 type UpdateMap = { [U in AgentUpdate as U["type"]]: U };
 type ToolUpdate = UpdateMap["tool-started" | "tool-updated"];
@@ -34,7 +34,7 @@ function upsertTool(state: ViewState, update: ToolUpdate): void {
   tool.title = pick(update.title, tool.title);
   tool.kind = pick(update.kind, tool.kind);
   tool.status = pick(update.status, tool.status);
-  tool.path = pick(pathOf(update), tool.path);
+  tool.path = pick(relativePath(state, pathOf(update)), tool.path);
   tool.stat = pick(diffStatOf(update.files), tool.stat);
 }
 

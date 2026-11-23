@@ -1,7 +1,26 @@
 import type { ItemOf, ViewItem } from "./view-items.ts";
 
 /** The items built so far; reducers add to it or update items in place. */
-export type ViewState = { items: ViewItem[] };
+export type ViewState = {
+  items: ViewItem[];
+  /** The session's worktree folder: paths below it are shown relative to it. */
+  root?: string;
+};
+
+/** A path shown relative to the session's folder, as the agent sees its project. */
+export function relativePath(state: ViewState, path: string): string;
+export function relativePath(state: ViewState, path: string | undefined): string | undefined;
+export function relativePath(state: ViewState, path: string | undefined): string | undefined {
+  if (state.root === undefined || path === undefined) return path;
+  const prefix = `${withoutPrivate(state.root).replace(/\/+$/, "")}/`;
+  const plain = withoutPrivate(path);
+  return plain.startsWith(prefix) ? plain.slice(prefix.length) : path;
+}
+
+/** On a Mac the same folder is `/var/x` and `/private/var/x`; agents may report either. */
+function withoutPrivate(path: string): string {
+  return path.replace(/^\/private(?=\/(?:var|tmp|etc)\/)/, "");
+}
 
 type ChunkItem = ItemOf<"user" | "message" | "thought">;
 type Chunk = { type: ChunkItem["type"]; key: string; text: string; messageId: string | undefined };
