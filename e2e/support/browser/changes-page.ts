@@ -30,7 +30,7 @@ export function changesPage(page: Page) {
     filtersFilesBy: (text: string) => page.getByLabel("Filter files").fill(text),
     /** The files the Editor tab offers, as its list shows them. */
     editableFiles: (): Promise<string[]> =>
-      page.locator('[data-testid="file-tree"] li').allInnerTexts(),
+      page.locator('[data-testid="file-tree"] li > button:first-child').allInnerTexts(),
     /** Where "Open in VS Code" leads, or "" while there is no such link. */
     vscodeLinkTarget: async (): Promise<string> =>
       (await page.getByRole("link", { name: "Open in VS Code" }).getAttribute("href")) ?? "",

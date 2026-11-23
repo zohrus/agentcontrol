@@ -66,8 +66,13 @@ export async function startRecording(session: CDPSession): Promise<Recording> {
   const total: FileHits = new Map();
   const known = new Map<string, string>();
   let busy: Promise<unknown> = Promise.resolve();
+  let failure: Error | undefined;
   const take = (): Promise<unknown> => {
-    busy = busy.then(() => takeInto(session, total, known)).catch(() => undefined);
+    busy = busy
+      .then(() => takeInto(session, total, known))
+      .catch((error: unknown) => {
+        failure ??= error instanceof Error ? error : new Error(String(error));
+      });
     return busy;
   };
   await session.send("Profiler.enable");
@@ -81,6 +86,8 @@ export async function startRecording(session: CDPSession): Promise<Recording> {
   return {
     finish: async () => {
       await take();
+      // A handover that failed means lines are missing: say so instead of reporting less coverage.
+      if (failure !== undefined) throw failure;
       return total;
     },
   };

@@ -1,6 +1,7 @@
 import { type RunningApp, startAppWithLocalWorkspace } from "../setup/start-app.ts";
 import { type AppPage, appPageOf } from "./app-page.ts";
-import { openTab, type Page } from "./playwright.ts";
+import { openTab } from "./open-tab.ts";
+import type { Page } from "./playwright.ts";
 import { recordBrowserCoverage } from "./ui-coverage/collect.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
@@ -49,6 +50,9 @@ export async function openInBrowser<A extends RunningApp>(
     ...(colorScheme && { colorScheme }),
   });
   await prepareTab(tab, options);
+  // The app seeds the Modify agent's UI folders on the first request for its state. Doing that
+  // before the page opens means no seed is still running when the test ends and the data folder goes.
+  await app.sdk.modify.state().catch(() => undefined);
   await tab.goto(app.baseUrl);
   await waitUntilConnected(tab);
   return Object.assign(app, { page: appPageOf(tab) });

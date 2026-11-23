@@ -1,5 +1,6 @@
 import type { RunningApp } from "../setup/start-app.ts";
-import { openTab, type Page } from "./playwright.ts";
+import { openTab } from "./open-tab.ts";
+import type { Page } from "./playwright.ts";
 
 const CALL_WAIT_MS = 15_000;
 
