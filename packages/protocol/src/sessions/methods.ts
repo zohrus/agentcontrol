@@ -55,6 +55,11 @@ export const PermissionRespondParams = z.object({
 /** Params of relay/cancel. */
 export const CancelParams = z.object({ sessionId: SessionId });
 
+/** Params of relay/sessions.resume. */
+export const SessionsResumeParams = z.object({ sessionId: SessionId });
+/** Result of relay/sessions.resume: whether the new agent remembers the earlier conversation. */
+export const SessionsResumeResult = z.object({ contextRestored: z.boolean() });
+
 /** Params of relay/sessions.archive. */
 export const SessionsArchiveParams = z.object({
   sessionId: SessionId,
@@ -75,5 +80,6 @@ export type SessionsCreateResult = z.infer<typeof SessionsCreateResult>;
 export type PromptParams = z.infer<typeof PromptParams>;
 export type PermissionRespondParams = z.infer<typeof PermissionRespondParams>;
 export type CancelParams = z.infer<typeof CancelParams>;
+export type SessionsResumeResult = z.infer<typeof SessionsResumeResult>;
 export type SessionsArchiveParams = z.infer<typeof SessionsArchiveParams>;
 export type SessionsArchiveResult = z.infer<typeof SessionsArchiveResult>;

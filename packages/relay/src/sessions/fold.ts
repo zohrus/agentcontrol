@@ -9,6 +9,8 @@ export interface Fold {
   lastSeq: number;
   setupExitCode: number | undefined;
   agentStarted: boolean;
+  /** The relay stopped while the agent ran; cleared when a new agent is started. */
+  interrupted: boolean;
   exitCode: number | null | undefined;
   turnOpen: boolean;
   lastStopReason: string | undefined;
@@ -24,12 +26,27 @@ const reducers: Reducers = {
   "setup-output": (fold) => fold,
   "session-created": (fold, event) => ({ ...fold, created: event }),
   "setup-finished": (fold, event) => ({ ...fold, setupExitCode: event.payload.exitCode }),
-  "agent-started": (fold) => ({ ...fold, agentStarted: true }),
+  // A started agent is a living one, also after an earlier agent of the session was interrupted.
+  "agent-started": (fold) => ({
+    ...fold,
+    agentStarted: true,
+    interrupted: false,
+    exitCode: undefined,
+  }),
   "agent-exited": (fold, event) => ({
     ...fold,
     exitCode: event.payload.exitCode,
     pendingRequests: [],
   }),
+  // The turn the agent was in the middle of is over: nobody is left to finish it.
+  "agent-interrupted": (fold) => ({
+    ...fold,
+    interrupted: true,
+    pendingRequests: [],
+    turnOpen: false,
+    lastStopReason: "interrupted",
+  }),
+  "session-resumed": (fold) => fold,
   "permission-requested": (fold, event) => ({
     ...fold,
     pendingRequests: [...fold.pendingRequests, pendingRequestOf(event.payload)],
@@ -52,6 +69,7 @@ export const emptyFold: Fold = {
   lastSeq: 0,
   setupExitCode: undefined,
   agentStarted: false,
+  interrupted: false,
   exitCode: undefined,
   turnOpen: false,
   lastStopReason: undefined,

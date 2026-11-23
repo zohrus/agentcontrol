@@ -40,6 +40,26 @@ export const SetupOutputPayload = z.object({
 /** Payload of "setup-finished": how the setup script ended. */
 export const SetupFinishedPayload = z.object({ exitCode: z.number().int() });
 
+/** Payload of "agent-started": the agent's own id for the session, which resuming needs. */
+export const AgentStartedPayload = z.object({
+  /** The id the agent gave the session (ACP session id). Absent in logs from before resuming existed. */
+  agentSessionId: z.string().optional(),
+});
+
+/** Payload of "agent-interrupted": the relay stopped (or died) while the agent was running. */
+export const AgentInterruptedPayload = z.object({
+  /** How many permission requests were waiting for an answer and were dropped with the agent. */
+  droppedRequests: z.number().int().nonnegative(),
+});
+
+/** Payload of "session-resumed": a new agent was started for an interrupted session. */
+export const SessionResumedPayload = z.object({
+  /** True when the agent loaded its earlier conversation; false when it started a fresh one. */
+  contextRestored: z.boolean(),
+  /** A plain sentence for the user about what the agent remembers. */
+  note: z.string(),
+});
+
 /** Payload of "agent-exited": how the agent process ended. */
 export const AgentExitedPayload = z.object({
   exitCode: z.number().int().nullable(),

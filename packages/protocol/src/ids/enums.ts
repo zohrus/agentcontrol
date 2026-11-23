@@ -12,6 +12,8 @@ export const SessionStatus = z.enum([
   "idle",
   "done",
   "failed",
+  /** The relay stopped while the agent was running: the agent is gone; resume it to carry on. */
+  "interrupted",
   "archived",
 ]);
 export type SessionStatus = z.infer<typeof SessionStatus>;

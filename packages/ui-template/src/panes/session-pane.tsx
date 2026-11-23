@@ -19,6 +19,10 @@ type Props = {
 
 type OpenProps = { selected: SessionRef; onArchive: (ref: SessionRef) => void };
 
+function Missing({ loaded }: { loaded: boolean }) {
+  return <p className="p-4 text-muted">{loaded ? "That session no longer exists." : "Loading…"}</p>;
+}
+
 function OpenSession({ selected, onArchive }: OpenProps) {
   const controller = useController();
   const loaded = useData((s) => s.loaded);
@@ -26,11 +30,7 @@ function OpenSession({ selected, onArchive }: OpenProps) {
   const events = useSessionEvents(selected);
   const usage = useUsage(selected);
   const workspace = useWorkspace(selected.workspaceId);
-  if (!summary) {
-    return (
-      <p className="p-4 text-muted">{loaded ? "That session no longer exists." : "Loading…"}</p>
-    );
-  }
+  if (!summary) return <Missing loaded={loaded} />;
   return (
     <SessionView
       summary={summary}
@@ -40,6 +40,7 @@ function OpenSession({ selected, onArchive }: OpenProps) {
       readOnlyNote={workspace && readOnlyNote(workspace)}
       onSendPrompt={(text) => void controller.sendPrompt(selected.id, text)}
       onCancel={() => void controller.cancel(selected.id)}
+      onResume={() => void controller.resume(selected.id)}
       onArchive={() => {
         onArchive(selected);
       }}

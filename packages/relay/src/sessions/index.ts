@@ -17,11 +17,12 @@ import { archiveSession } from "./archive.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
 import { createDirectorySession } from "./directory.ts";
 import { answerRequest, cancelRequests } from "./permissions.ts";
-import { recoverSessions } from "./recovery.ts";
+import { interruptSession, recoverSessions } from "./recovery.ts";
 import { shellTarget } from "./shell-target.ts";
 import { runInBackground } from "./start.ts";
 import { createLiveSummaries, type LiveSummaries } from "./live-summaries.ts";
 import { followEvents, followSummaries } from "./subscribe.ts";
+import { agentToPrompt, resumeSession } from "./resume.ts";
 import { liveAgent, startTurn } from "./turn.ts";
 
 type CreateParams = z.infer<typeof SessionsCreateParams>;
@@ -33,6 +34,8 @@ export interface Sessions {
   cancel(sessionId: SessionId): Promise<void>;
   respond(call: { sessionId: SessionId; requestId: string; optionId: string }): Promise<void>;
   archive(call: { sessionId: SessionId; force: boolean }): Promise<ArchiveResult>;
+  /** Starts a new agent for an interrupted session; says whether it remembers the earlier work. */
+  resume(sessionId: SessionId): Promise<{ contextRestored: boolean }>;
   /** Every session's summary, oldest first, from memory. */
   list(): Promise<SessionSummary[]>;
   /**
@@ -88,12 +91,18 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
   return sessionId;
 }
 
+async function resume(ctx: SessionContext, sessionId: SessionId) {
+  return { contextRestored: (await resumeSession(ctx, sessionId)).restored };
+}
+
 async function shutdown(ctx: SessionContext): Promise<void> {
   const ids = [...ctx.live.keys()];
   // Each stop returns once the agent's last messages were reported; waiting on `lastSeq` then
   // waits for every append queued for the session, so nothing the agent said is lost.
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
   await Promise.all(ids.map((id) => ctx.log.lastSeq(id)));
+  // The agents were stopped by the relay stopping, not by the user: they read as interrupted.
+  for (const id of ids) await interruptSession(ctx.log, id);
   ctx.stopRecording();
 }
 
@@ -104,7 +113,7 @@ async function cancel(ctx: SessionContext, sessionId: SessionId): Promise<void> 
 }
 
 async function prompt(ctx: SessionContext, call: { sessionId: SessionId; text: string }) {
-  const agent = await liveAgent(ctx, call.sessionId);
+  const agent = await agentToPrompt(ctx, call.sessionId);
   await startTurn(ctx, { ...call, agent });
 }
 
@@ -124,6 +133,7 @@ function contextOf(options: {
     ...{ log, repos, worktreesDir, hostEnv, summaries, endTerminals },
     permissions: createPendingPermissions(),
     live: new Map(),
+    resuming: new Map(),
     stopRecording: () => {
       recording = false;
     },
@@ -155,6 +165,7 @@ export async function createSessions(options: {
     cancel: (sessionId) => cancel(ctx, sessionId),
     respond: (call) => answerRequest(ctx, call),
     archive: (call) => archiveSession(ctx, call),
+    resume: (sessionId) => resume(ctx, sessionId),
     list: () => Promise.resolve(summaries.list()),
     followSummaries: (sessionId, send) => followSummaries({ summaries, sessionId, send }),
     info: (sessionId) => sessionInfo(ctx, sessionId),

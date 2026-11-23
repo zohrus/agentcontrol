@@ -22,7 +22,7 @@ test("the relay rebuilds 50 long sessions from their logs after a restart and li
   await relay.restartsTheRelay();
 
   // ********************************************************************
-  // ** THEN the list holds all 50 sessions as failed, with no request nobody can answer
+  // ** THEN the list holds all 50 sessions as interrupted, with no request nobody can answer
   // ********************************************************************
   await expectListToHoldRebuiltSessions(relay, { ids, eventCount: EVENTS });
 

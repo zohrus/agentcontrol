@@ -68,7 +68,7 @@ function sessionCosts(api: Api) {
   };
 }
 
-/** Acting on sessions: start, talk to the agent, answer permissions, cancel, archive. */
+/** Acting on sessions: start, talk to the agent, answer permissions, resume, cancel, archive. */
 function sessionActions(api: Api) {
   return {
     /** Starts a session in a new git worktree and sends the first prompt. Resolves with its id. */
@@ -82,6 +82,14 @@ function sessionActions(api: Api) {
     sendPrompt: async (id: SessionId, text: string): Promise<void> => {
       await read(api.sessions[":id"].prompt.$post({ param: { id }, json: { text } }));
     },
+    /**
+     * Starts a new agent for a session whose status is "interrupted" (the relay stopped while its
+     * agent ran). `contextRestored` says whether the agent remembers the earlier work; when it does
+     * not, the session's events say so. Sending a prompt to an interrupted session resumes it first.
+     * Throws ApiError "session-archived" (409) or "invalid-request" (400, not interrupted).
+     */
+    resume: (id: SessionId): Promise<{ contextRestored: boolean }> =>
+      read(api.sessions[":id"].resume.$post({ param: { id } })),
     /** Answers an agent's permission request with one of the offered option ids (a PermissionOption). */
     answerPermission: async (id: SessionId, requestId: string, optionId: string): Promise<void> => {
       const param = { id, requestId };

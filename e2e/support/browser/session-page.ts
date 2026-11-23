@@ -27,12 +27,23 @@ function composer(page: Page) {
   };
 }
 
+/** The "Interrupted" banner above the composer, shown when the relay stopped with the agent. */
+function resumeBanner(page: Page) {
+  const resume = page.getByRole("button", { name: "Resume", exact: true });
+  return {
+    resumes: () => resume.click(),
+    /** Whether the open session offers a Resume button. */
+    offersResume: async (): Promise<boolean> => (await resume.count()) > 0,
+  };
+}
+
 /** The open session: its conversation stream, the permission card and the composer. */
 export function sessionPage(page: Page) {
   return {
     ...composer(page),
     allowsTheCommandInTheStream: () =>
       streamOf(page).getByRole("button", { name: "Allow", exact: true }).click(),
+    ...resumeBanner(page),
     /** Opens the one-line summary of collapsed lookups ("Read 2 files, searched 1 time"). */
     opensTheCollapsedLookups: () =>
       streamOf(page)

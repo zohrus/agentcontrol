@@ -28,6 +28,11 @@ export function sendPrompt(ctx: Context, call: { id: SessionId; text: string }) 
   return attempt(ctx, () => ctx.client.sessions.sendPrompt(call.id, call.text));
 }
 
+/** Starts a new agent for an interrupted session; the session's status changes when it is up. */
+export function resumeSession(ctx: Context, id: SessionId) {
+  return attempt(ctx, () => ctx.client.sessions.resume(id));
+}
+
 export function cancelTurn(ctx: Context, id: SessionId) {
   return attempt(ctx, () => ctx.client.sessions.cancel(id));
 }

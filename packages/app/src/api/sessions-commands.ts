@@ -33,7 +33,7 @@ export function sessionStartRoute(deps: ApiDeps) {
   );
 }
 
-/** Talking with a session's agent: replies and permission answers. */
+/** Talking with a session's agent: replies, permission answers, resuming it after the relay stopped. */
 export function sessionConversationRoutes(deps: ApiDeps) {
   const relay = (sessionId: SessionId): Link => routeRequest(deps, { sessionId }).link;
   return new Hono()
@@ -42,6 +42,10 @@ export function sessionConversationRoutes(deps: ApiDeps) {
       const sessionId = c.req.valid("param").id;
       await relay(sessionId).call(N.prompt, { sessionId, text });
       return c.json({});
+    })
+    .post("/:id/resume", validate("param", IdParam), async (c) => {
+      const sessionId = c.req.valid("param").id;
+      return c.json(await relay(sessionId).call(N.sessionsResume, { sessionId }));
     })
     .post(
       "/:id/permissions/:requestId",

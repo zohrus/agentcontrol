@@ -11,6 +11,7 @@ import {
   answerPermission,
   archiveSession,
   cancelTurn,
+  resumeSession,
   sendPrompt,
   startSession,
 } from "./commands.ts";
@@ -38,6 +39,7 @@ function sessionActions(ctx: Context) {
     startSession: (request: StartSession) => startSession(ctx, request),
     sendPrompt: (id: SessionId, text: string) => sendPrompt(ctx, { id, text }),
     cancel: (id: SessionId) => cancelTurn(ctx, id),
+    resume: (id: SessionId) => resumeSession(ctx, id),
     answerPermission: (id: SessionId, requestId: string, optionId: string) =>
       answerPermission(ctx, { id, requestId, optionId }),
     archive: (id: SessionId, force: boolean) => archiveSession(ctx, { id, force }),

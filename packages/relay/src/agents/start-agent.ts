@@ -1,15 +1,15 @@
-import {
-  client,
-  methods,
-  PROTOCOL_VERSION,
-  type RequestPermissionRequest,
-} from "@agentclientprotocol/sdk";
+import { client, methods, type RequestPermissionRequest } from "@agentclientprotocol/sdk";
 import { launchFor } from "./commands.ts";
 import { agentEnvironment } from "./environment.ts";
-import { modeToSwitchTo } from "./modes.ts";
+import { handshake, type Opened, type Replay } from "./handshake.ts";
 import { type SpawnedAgent, spawnAgent } from "./spawn.ts";
 import { tapStream } from "./tap.ts";
-import type { AgentProcess, PermissionAnswer, StartAgentOptions } from "./types.ts";
+import type {
+  AgentProcess,
+  MessageDirection,
+  PermissionAnswer,
+  StartAgentOptions,
+} from "./types.ts";
 
 function toOutcome(answer: PermissionAnswer) {
   return "optionId" in answer
@@ -26,46 +26,33 @@ async function askPermission(params: RequestPermissionRequest, options: StartAge
   return { outcome: toOutcome(answer) };
 }
 
+const isUpdate = (message: unknown): boolean =>
+  typeof message === "object" &&
+  message !== null &&
+  "method" in message &&
+  message.method === methods.client.session.update;
+
+/** Reports every message, except the history a loaded session replays: that was logged live once. */
+function reportingTo(options: StartAgentOptions, replay: Replay) {
+  return (direction: MessageDirection, message: unknown): void => {
+    if (replay.active && direction === "from-agent" && isUpdate(message)) return;
+    options.onMessage(direction, message);
+  };
+}
+
 function connectTo(spawned: SpawnedAgent, options: StartAgentOptions) {
-  const { stream, drained } = tapStream(spawned.stream, options.onMessage);
+  const replay: Replay = { active: false };
+  const { stream, drained } = tapStream(spawned.stream, reportingTo(options, replay));
   const connection = client({ name: "agentcontrol-relay" })
     .onNotification(methods.client.session.update, () => undefined)
     .onRequest(methods.client.session.requestPermission, ({ params }) =>
       askPermission(params, options),
     )
     .connect(stream);
-  return { connection, drained };
+  return { connection, drained, replay };
 }
 
 type Connection = ReturnType<typeof connectTo>["connection"];
-
-/** Puts the agent in the mode that makes it ask; failing is loud, since it would otherwise never ask. */
-async function switchMode(
-  connection: Connection,
-  change: { sessionId: string; modeId: string },
-): Promise<void> {
-  await connection.agent.request(methods.agent.session.setMode, change).catch((error: unknown) => {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `the agent would not switch to its "${change.modeId}" mode, so it could not be made to ask before it acts; the user's own Claude settings may forbid changing the mode (${reason})`,
-    );
-  });
-}
-
-async function handshake(connection: Connection, options: StartAgentOptions): Promise<string> {
-  await connection.agent.request(methods.agent.initialize, {
-    protocolVersion: PROTOCOL_VERSION,
-    clientCapabilities: {},
-  });
-  const { sessionId, modes } = await connection.agent.request(methods.agent.session.new, {
-    cwd: options.cwd,
-    mcpServers: [],
-    ...(options.sessionMeta ? { _meta: options.sessionMeta } : {}),
-  });
-  const modeId = modeToSwitchTo(options.kind, modes);
-  if (modeId !== undefined) await switchMode(connection, { sessionId, modeId });
-  return sessionId;
-}
 
 /** How long a stopped agent's last messages may take to be reported before they are given up on. */
 const DRAIN_MS = 100;
@@ -74,9 +61,10 @@ function agentProcess(parts: {
   spawned: SpawnedAgent;
   connection: Connection;
   drained: Promise<void>;
-  sessionId: string;
+  opened: Opened;
 }) {
-  const { spawned, connection, drained, sessionId } = parts;
+  const { spawned, connection, drained, opened } = parts;
+  const { sessionId } = opened;
   const agent: AgentProcess = {
     prompt: async (text) => {
       const { stopReason } = await connection.agent.request(methods.agent.session.prompt, {
@@ -93,6 +81,9 @@ function agentProcess(parts: {
       await Promise.race([drained, Bun.sleep(DRAIN_MS)]);
     },
     exited: spawned.exited,
+    agentSessionId: sessionId,
+    restored: opened.restored,
+    notRestoredBecause: opened.notRestoredBecause,
   };
   return agent;
 }
@@ -104,7 +95,10 @@ function failure(command: string[], reason: unknown, spawned?: SpawnedAgent): Er
   return new Error(`Could not start the agent with \`${command.join(" ")}\`: ${detail}${output}`);
 }
 
-/** Spawns the adapter, runs initialize and session/new, and returns once it is ready for a prompt. */
+/**
+ * Spawns the adapter, runs initialize and session/new (or session/load, to continue the session
+ * `options.resume` names), and returns once it is ready for a prompt.
+ */
 export async function startAgent(options: StartAgentOptions): Promise<AgentProcess> {
   const launch = await launchFor(options.kind, options.hostEnv);
   if (!launch) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
@@ -116,9 +110,9 @@ export async function startAgent(options: StartAgentOptions): Promise<AgentProce
       cwd: options.cwd,
       env: { ...agentEnvironment(options.hostEnv), ...launch.env, ...options.env },
     });
-    const { connection, drained } = connectTo(spawned, options);
-    const sessionId = await handshake(connection, options);
-    return agentProcess({ spawned, connection, drained, sessionId });
+    const { connection, drained, replay } = connectTo(spawned, options);
+    const opened = await handshake(connection, { options, replay });
+    return agentProcess({ spawned, connection, drained, opened });
   } catch (error) {
     spawned?.kill();
     await spawned?.exited;

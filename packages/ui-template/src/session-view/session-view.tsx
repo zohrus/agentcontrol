@@ -4,6 +4,7 @@ import { ArchivedBanner } from "../archive/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { SessionUsage } from "../status/index.ts";
 import { Composer } from "./composer.tsx";
+import { InterruptedBanner } from "./interrupted-banner.tsx";
 import { ReadOnlyBanner } from "./read-only-banner.tsx";
 import { buildViewItems, isTurnRunning } from "./reduce-events.ts";
 import { SessionHeader } from "./session-header.tsx";
@@ -18,6 +19,8 @@ export type SessionViewProps = {
   turnRunning?: boolean | undefined;
   onSendPrompt: (text: string) => void;
   onCancel: () => void;
+  /** Starts a new agent for an interrupted session (its status is "interrupted"). */
+  onResume: () => void;
   /** Asks to archive; the caller shows the confirmation (see ArchiveDialog). */
   onArchive: () => void;
   onAnswerPermission: (requestId: string, optionId: string) => void;
@@ -31,13 +34,16 @@ function Footer(props: SessionViewProps) {
   }
   if (props.readOnlyNote !== undefined) return <ReadOnlyBanner text={props.readOnlyNote} />;
   return (
-    <Composer
-      running={props.turnRunning ?? isTurnRunning(props.events)}
-      placeholder={`Reply to ${agentLabel(props.summary.agent)}…`}
-      onSendPrompt={props.onSendPrompt}
-      onCancel={props.onCancel}
-      onArchive={props.onArchive}
-    />
+    <>
+      {props.summary.status === "interrupted" && <InterruptedBanner onResume={props.onResume} />}
+      <Composer
+        running={props.turnRunning ?? isTurnRunning(props.events)}
+        placeholder={`Reply to ${agentLabel(props.summary.agent)}…`}
+        onSendPrompt={props.onSendPrompt}
+        onCancel={props.onCancel}
+        onArchive={props.onArchive}
+      />
+    </>
   );
 }
 

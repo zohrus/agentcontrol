@@ -31,6 +31,8 @@ export interface Launch {
   cwd: string;
   env: Record<string, string>;
   sessionMeta?: Record<string, unknown>;
+  /** Continue this earlier agent session (resuming an interrupted one) rather than start afresh. */
+  resume?: { agentSessionId: string };
   ask: (request: PermissionRequest) => Promise<PermissionAnswer>;
 }
 
@@ -76,19 +78,22 @@ function watchExit(ctx: SessionContext, sessionId: SessionId, agent: AgentProces
   });
 }
 
-async function connectAgent(ctx: SessionContext, launch: Launch): Promise<AgentProcess> {
+/** Starts the agent and records `agent-started` once its handshake is done. */
+export async function connectAgent(ctx: SessionContext, launch: Launch): Promise<AgentProcess> {
   const { sessionId } = launch;
   const agent = await startAgent({
     kind: launch.agent,
     cwd: launch.cwd,
     env: launch.env,
     ...(launch.sessionMeta ? { sessionMeta: launch.sessionMeta } : {}),
+    ...(launch.resume ? { resume: launch.resume } : {}),
     hostEnv: ctx.hostEnv,
     onMessage: tapAcp(ctx, sessionId),
     onPermissionRequest: launch.ask,
   });
   ctx.live.set(sessionId, agent);
-  await ctx.log.append(sessionId, { kind: "agent-started", payload: {} });
+  const payload = { agentSessionId: agent.agentSessionId };
+  await ctx.log.append(sessionId, { kind: "agent-started", payload });
   watchExit(ctx, sessionId, agent);
   return agent;
 }

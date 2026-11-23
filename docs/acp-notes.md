@@ -132,7 +132,10 @@ Recordings of these runs are in `e2e/fixtures/recordings/claude-code/` (relay ev
   agent invented). Nothing else arrived as `other`.
 - **Relay restart.** Agents die with the daemon; the session reads as `idle`, and a new prompt fails with "This session's
   agent is not running." A new adapter process can `session/load` the old agent session id (cwd = the worktree): it
-  replays about a dozen messages and the next turn remembers the earlier work. Resume is therefore possible; not built.
+  replays about a dozen messages and the next turn remembers the earlier work. Resume is therefore possible, and built
+  (23 Nov 2026, `docs/decisions/2026-11-23-session-resume.md`): the relay marks sessions whose agent was alive as
+  `interrupted`, `relay/sessions.resume` starts a new adapter and calls `session/load`, hiding the replayed updates
+  from the log. Tested with the mock agent only; not yet through the relay with the real adapters.
 - **Modify fence launch settings.** `_meta.claudeCode.options` (`tools`, `disallowedTools`, `allowDangerouslySkipPermissions`,
   `settingSources: []`) is accepted. The agent never had a Bash tool (asked to "run ls first" it used Glob), and 14 of 62
   slash commands (the user's own) were gone. Plugin and managed skills are still listed; they cannot run without the

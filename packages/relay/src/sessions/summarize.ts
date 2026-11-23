@@ -9,6 +9,9 @@ interface Status {
 const archived = (fold: Fold): Status | undefined =>
   fold.archivedAt === undefined ? undefined : { status: "archived" };
 
+const interrupted = (fold: Fold): Status | undefined =>
+  fold.interrupted ? { status: "interrupted" } : undefined;
+
 /** The agent died during a turn, or before it ever finished one. A restart kills agents too. */
 const failed = (fold: Fold): Status | undefined => {
   const exitedBadly = fold.exitCode !== undefined && fold.exitCode !== 0;
@@ -40,7 +43,16 @@ const idle = (fold: Fold): Status | undefined =>
   fold.agentStarted ? { status: "idle" } : undefined;
 
 /** First rule that matches wins; a session that has not started its agent is "starting". */
-const rules = [archived, failed, setupFailed, needsPermission, running, needsReply, idle];
+const rules = [
+  archived,
+  interrupted,
+  failed,
+  setupFailed,
+  needsPermission,
+  running,
+  needsReply,
+  idle,
+];
 
 function statusOf(fold: Fold): Status {
   for (const rule of rules) {
@@ -77,9 +89,11 @@ function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSumm
 /**
  * The session list row for a fold, or undefined while it has no session-created event.
  *
- * Restart rule: when the relay restarts, the agents die. Recovery appends `agent-exited` for them,
- * which also drops their pending requests (nobody is left to answer them) and ends `turnRunning`,
- * so a turn that was open then reads as `failed`; a session that finished its turn reads as `idle`.
+ * Restart rule: when the relay stops or dies, its agents die. Every session whose agent was alive
+ * gets an `agent-interrupted` event (see recovery.ts), which drops its pending requests (nobody is
+ * left to answer them), ends the open turn and makes the session read as `interrupted` until a
+ * new agent is started by resuming it. An agent that had already exited keeps its own reading
+ * (`failed` when its turn was open, else `idle`).
  */
 export function summaryOf(fold: Fold): SessionSummary | undefined {
   return fold.created ? toSummary(fold, fold.created) : undefined;

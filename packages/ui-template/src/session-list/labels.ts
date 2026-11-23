@@ -22,6 +22,7 @@ const dotKinds: Record<SessionStatus, DotKind> = {
   idle: "idle",
   done: "done",
   failed: "fail",
+  interrupted: "wait",
   archived: "idle",
 };
 

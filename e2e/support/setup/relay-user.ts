@@ -6,6 +6,7 @@ import { git } from "./git.ts";
 import { optionOfKind } from "./permission-option.ts";
 import type { RelayAccess, Session } from "./relay.ts";
 import { refusedUserOf } from "./relay-refused-user.ts";
+import { resumeUserOf } from "./relay-resume-user.ts";
 import { forSession, worktreeOf } from "./session-events.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
@@ -92,6 +93,7 @@ export function userOf(relay: RelayAccess) {
     ...sessionLifeOf(relay),
     ...editorUserOf(relay),
     ...refusedUserOf(relay),
+    ...resumeUserOf(relay),
   };
 }
 

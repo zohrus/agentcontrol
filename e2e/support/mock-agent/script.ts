@@ -54,6 +54,11 @@ const scriptSchema = z.object({
    * mode but "default" (shown as "Manual") the agent never asks before it runs a command.
    */
   startsInMode: z.string().optional(),
+  /**
+   * The agent advertises `loadSession`. `session/load` for its session id replays `history` as agent
+   * messages, then answers; with `fails` it answers with an error instead.
+   */
+  loadSession: z.object({ history: z.array(z.string()), fails: z.boolean().optional() }).optional(),
   /** `session/set_mode` fails, as when the user's Claude Code policy forbids changing the mode. */
   refusesModeChange: z.boolean().optional(),
 });

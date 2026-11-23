@@ -26,6 +26,15 @@ const reducers: Reducers = {
     const { exitCode, signal } = payload;
     state.items.push({ type: "agent-exited", key: itemKey("exit", seq), exitCode, signal });
   },
+  "agent-interrupted": (state, { seq, payload }) => {
+    const dropped = payload.droppedRequests;
+    const waiting = dropped === 0 ? "" : ` ${String(dropped)} waiting request(s) were dropped.`;
+    const text = `Interrupted: the relay stopped while the agent was running.${waiting}`;
+    state.items.push({ type: "notice", key: itemKey("interrupted", seq), text });
+  },
+  "session-resumed": (state, { seq, payload }) => {
+    state.items.push({ type: "notice", key: itemKey("resumed", seq), text: payload.note });
+  },
   "permission-requested": reducePermissionRequested,
   "permission-answered": reducePermissionAnswered,
   "prompt-sent": (state, { seq, payload }) => {
@@ -58,7 +67,7 @@ export function buildViewItems(events: readonly SessionEvent[]): ViewItem[] {
 /** True while a prompt has been sent and its turn has not ended. */
 export function isTurnRunning(events: readonly SessionEvent[]): boolean {
   const last = events.findLast((e) =>
-    ["prompt-sent", "turn-ended", "agent-exited"].includes(e.kind),
+    ["prompt-sent", "turn-ended", "agent-exited", "agent-interrupted"].includes(e.kind),
   );
   return last?.kind === "prompt-sent";
 }

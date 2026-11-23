@@ -55,7 +55,7 @@ interface Deps {
 }
 
 function outcomeOf(event: SessionEvent): TurnOutcome | undefined {
-  if (event.kind === "agent-exited") {
+  if (event.kind === "agent-exited" || event.kind === "agent-interrupted") {
     return { ok: false, reason: "The Modify agent stopped before it finished." };
   }
   if (event.kind !== "turn-ended") return undefined;

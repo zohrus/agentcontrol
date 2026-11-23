@@ -19,6 +19,8 @@ export interface SessionContext {
   hostEnv: HostEnv;
   /** Agents that are running right now. */
   live: Map<SessionId, AgentProcess>;
+  /** Resumes in progress, so two requests to resume one session start one agent. */
+  resuming: Map<SessionId, Promise<AgentProcess>>;
   /** After this, `record` drops events: only what is still starting up when the relay stops. */
   stopRecording(): void;
   /** Appends an event without waiting; a failed write is reported on stderr. */

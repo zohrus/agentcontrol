@@ -85,7 +85,7 @@ test("the list row shows a turn running while the agent works and none after the
   await expectListedAsTurnRunning(relay, { session, running: false });
 });
 
-test("after the relay restarts, a session that was waiting for approval has no request and has failed", async () => {
+test("after the relay restarts, a session that was waiting for approval has no request and is interrupted", async () => {
   // ********************************************************************
   // ** GIVEN a session waiting for approval to run `npm test`
   // ********************************************************************
@@ -97,9 +97,9 @@ test("after the relay restarts, a session that was waiting for approval has no r
   await relay.restartsTheRelay();
 
   // ********************************************************************
-  // ** THEN the session is listed as failed, with no request nobody can answer and no turn running
+  // ** THEN the session is listed as interrupted, with no request nobody can answer and no turn running
   // ********************************************************************
-  await expectSessionListedAs(relay, { session, status: "failed" });
+  await expectSessionListedAs(relay, { session, status: "interrupted" });
   await expectListedWithNoPendingRequest(relay, session);
   await expectListedAsTurnRunning(relay, { session, running: false });
 });

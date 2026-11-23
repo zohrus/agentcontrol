@@ -20,6 +20,7 @@ export const RelayMethods = {
   [N.cancel]: { params: s.CancelParams, result: s.AckResult },
   [N.diff]: { params: DiffParams, result: DiffResult },
   [N.sessionsArchive]: { params: s.SessionsArchiveParams, result: s.SessionsArchiveResult },
+  [N.sessionsResume]: { params: s.SessionsResumeParams, result: s.SessionsResumeResult },
   [N.workspaceCheck]: { params: w.WorkspaceCheckParams, result: w.WorkspaceCheckResult },
   [N.reposAdd]: { params: w.ReposAddParams, result: w.RepoInfo },
   [N.reposList]: { params: w.ReposListParams, result: w.ReposListResult },

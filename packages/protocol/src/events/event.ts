@@ -14,8 +14,10 @@ export const SessionEvent = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("session-created"), payload: p.SessionCreatedPayload }),
   z.object({ ...base, kind: z.literal("setup-output"), payload: p.SetupOutputPayload }),
   z.object({ ...base, kind: z.literal("setup-finished"), payload: p.SetupFinishedPayload }),
-  z.object({ ...base, kind: z.literal("agent-started"), payload: p.EmptyPayload }),
+  z.object({ ...base, kind: z.literal("agent-started"), payload: p.AgentStartedPayload }),
   z.object({ ...base, kind: z.literal("agent-exited"), payload: p.AgentExitedPayload }),
+  z.object({ ...base, kind: z.literal("agent-interrupted"), payload: p.AgentInterruptedPayload }),
+  z.object({ ...base, kind: z.literal("session-resumed"), payload: p.SessionResumedPayload }),
   z.object({
     ...base,
     kind: z.literal("permission-requested"),

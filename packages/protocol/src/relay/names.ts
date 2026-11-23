@@ -10,6 +10,7 @@ export const RelayName = {
   cancel: "relay/cancel",
   diff: "relay/diff",
   sessionsArchive: "relay/sessions.archive",
+  sessionsResume: "relay/sessions.resume",
   workspaceCheck: "relay/workspace.check",
   reposAdd: "relay/repos.add",
   reposList: "relay/repos.list",

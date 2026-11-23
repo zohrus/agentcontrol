@@ -10,7 +10,8 @@ type SessionMethods =
   | typeof N.prompt
   | typeof N.permissionRespond
   | typeof N.cancel
-  | typeof N.sessionsArchive;
+  | typeof N.sessionsArchive
+  | typeof N.sessionsResume;
 
 /** Streams events, and the summaries that change, to the client until it disconnects. */
 async function subscribe(call: {
@@ -52,6 +53,7 @@ export function sessionHandlers(sessions: Sessions): Pick<Handlers, SessionMetho
       await sessions.cancel(sessionId);
       return {};
     },
+    [N.sessionsResume]: ({ sessionId }) => sessions.resume(sessionId),
     [N.sessionsArchive]: ({ sessionId, force }) =>
       sessions.archive({ sessionId, force: force ?? false }),
   };

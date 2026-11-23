@@ -2,8 +2,9 @@ import { RelayName, type SessionId } from "@agentcontrol/protocol";
 import type { RelayAccess } from "../setup/relay.ts";
 
 /**
- * The session list has exactly these sessions, every one failed (its agent is gone), none with a
- * request nobody can answer, each remembering all of its events.
+ * The session list has exactly these sessions, every one interrupted (its agent is gone), none with a
+ * request nobody can answer, each remembering all of its events and the two the interruption added
+ * (the dropped request answered as cancelled, and the interruption).
  */
 export async function expectListToHoldRebuiltSessions(
   relay: RelayAccess,
@@ -18,15 +19,15 @@ export async function expectListToHoldRebuiltSessions(
   }
   const wrong = sessions.find(
     (session) =>
-      session.status !== "failed" ||
+      session.status !== "interrupted" ||
       session.pendingPermissions.length > 0 ||
       session.turnRunning ||
-      session.lastSeq !== call.eventCount + 1,
+      session.lastSeq !== call.eventCount + 2,
   );
   if (wrong) {
     const seen = `${wrong.status}, ${String(wrong.pendingPermissions.length)} requests, last event ${String(wrong.lastSeq)}`;
     throw new Error(
-      `expected session "${wrong.title}" to be failed with no request after ${String(call.eventCount + 1)} events, but it is ${seen}`,
+      `expected session "${wrong.title}" to be interrupted with no request after ${String(call.eventCount + 2)} events, but it is ${seen}`,
     );
   }
 }

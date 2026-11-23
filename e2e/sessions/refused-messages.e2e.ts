@@ -9,17 +9,16 @@ import {
 } from "../support/expect/session-expectations.ts";
 import { expectNoCommandToHaveRun } from "../support/expect/turn-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { startRelayWithSessionWaitingForReply } from "../support/setup/relay-sessions.ts";
+import { startRelayWithSessionWhoseAgentDied } from "../support/setup/relay-sessions.ts";
 import { startRelayWithLocalRepo } from "../support/setup/start-relay.ts";
 
 afterEach(cleanUpAfterTest);
 
 test("a message to a session whose agent is gone is refused", async () => {
   // ********************************************************************
-  // ** GIVEN a session whose agent finished its turn, and then the relay restarted
+  // ** GIVEN a session whose agent died in the middle of its turn
   // ********************************************************************
-  const { relay, session } = await startRelayWithSessionWaitingForReply("Tests pass");
-  await relay.restartsTheRelay();
+  const { relay, session } = await startRelayWithSessionWhoseAgentDied();
 
   // ********************************************************************
   // ** WHEN the user sends the session a message

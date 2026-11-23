@@ -30,6 +30,16 @@ export function relayIsKilledWhileTheAgentWorks(
   });
 }
 
+/** The relay is killed while the agent waits for an answer: the log ends with the request. */
+export function relayIsKilledWhileTheAgentWaitsForApproval(
+  relay: RunningRelay,
+  session: Session,
+): Promise<void> {
+  return relay.restartsTheRelay({
+    whileDown: () => logEndsAfter(logOf(relay, session), "permission-requested"),
+  });
+}
+
 /** The relay is killed in the middle of writing an event: the log's last line is cut off. */
 export function relayIsKilledMidWrite(relay: RunningRelay, session: Session): Promise<void> {
   const file = logOf(relay, session);

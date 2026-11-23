@@ -32,7 +32,7 @@ test("after the relay was killed during a session's setup, the session waits for
   await expectSessionWaitingForSetupFix(relay, session);
 });
 
-test("after the relay was killed while the agent worked, the session is listed as failed", async () => {
+test("after the relay was killed while the agent worked, the session is listed as interrupted", async () => {
   // ********************************************************************
   // ** GIVEN a session whose agent was working when the relay was killed
   // ********************************************************************
@@ -44,9 +44,9 @@ test("after the relay was killed while the agent worked, the session is listed a
   await relayIsKilledWhileTheAgentWorks(relay, session);
 
   // ********************************************************************
-  // ** THEN the session is listed as failed
+  // ** THEN the session is listed as interrupted
   // ********************************************************************
-  await expectSessionListedAs(relay, { session, status: "failed" });
+  await expectSessionListedAs(relay, { session, status: "interrupted" });
 });
 
 test("a log whose last line was cut off by a crash is repaired and its history replays", async () => {
@@ -65,6 +65,6 @@ test("a log whose last line was cut off by a crash is repaired and its history r
   // ** THEN the history before the cut is replayed
   // ********************************************************************
   await expectSessionHistoryToBeReplayed(relay, session);
-  // AND the session is listed as failed
-  await expectSessionListedAs(relay, { session, status: "failed" });
+  // AND the session is listed as interrupted
+  await expectSessionListedAs(relay, { session, status: "interrupted" });
 });

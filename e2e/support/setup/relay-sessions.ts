@@ -5,6 +5,18 @@ import {
 import type { Session } from "./relay.ts";
 import { type RunningRelay, startRelayWithLocalRepo } from "./start-relay.ts";
 
+/** A relay with a session whose agent died in the middle of its turn, by itself. */
+export async function startRelayWithSessionWhoseAgentDied(): Promise<{
+  relay: RunningRelay;
+  session: Session;
+}> {
+  const relay = await startRelayWithLocalRepo();
+  relay.mockAgent.willExitUnexpectedly();
+  const session = await relay.user.startsSession({ prompt: "Crash" });
+  await relay.user.waitsForTheAgentToExit(session);
+  return { relay, session };
+}
+
 /** A relay with a session whose agent is waiting for approval to run `npm test`. */
 export async function startRelayWithSessionWaitingToRunNpmTest(
   options: { thenReplies?: string } = {},
