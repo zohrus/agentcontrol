@@ -51,7 +51,7 @@ async function handshake(connection: Connection, options: StartAgentOptions): Pr
 }
 
 /** How long a stopped agent's last messages may take to be reported before they are given up on. */
-const DRAIN_MS = 2000;
+const DRAIN_MS = 100;
 
 function agentProcess(parts: {
   spawned: SpawnedAgent;

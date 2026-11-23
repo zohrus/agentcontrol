@@ -1,18 +1,4 @@
-import type { AgentUpdate } from "@agentcontrol/protocol";
-import { eventually } from "../setup/eventually.ts";
-import { allUpdates } from "../setup/updates.ts";
-import type { EventSource } from "./update-expectations.ts";
-
-async function expectUpdate(
-  source: EventSource,
-  want: { describe: string; matches: (update: AgentUpdate) => boolean },
-): Promise<void> {
-  await eventually(`expected ${want.describe}`, async () => {
-    const updates = allUpdates(await source());
-    if (updates.some(want.matches)) return undefined;
-    return `it arrived as: ${updates.map((update) => update.type).join(", ") || "no updates"}`;
-  });
-}
+import { type EventSource, expectUpdate } from "./update-expectations.ts";
 
 /** The agent's switch to this mode arrived as a `mode-changed` update. */
 export function expectModeChangeAsUpdate(source: EventSource, modeId: string): Promise<void> {

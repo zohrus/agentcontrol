@@ -75,6 +75,13 @@ export async function commitsFile(
   await commitAll(project, `Change ${file} on ${branch}`);
 }
 
+/** A branch and main that both changed shared.txt, with main already published. */
+export async function branchAndMainBothChangedSharedFile(project: Project): Promise<void> {
+  await commitsFile(project, { branch: "feature", file: "shared.txt", text: "feature\n" });
+  await commitsFile(project, { branch: "main", file: "shared.txt", text: "main\n" });
+  await publishesMain(project);
+}
+
 /** Pushes main as it is, so origin/main moves. */
 export async function publishesMain(project: Project): Promise<void> {
   await gitIn(project, "push", "origin", "main");

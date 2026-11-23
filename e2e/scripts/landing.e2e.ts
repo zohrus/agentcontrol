@@ -7,6 +7,7 @@ import {
 } from "../support/expect/landing-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
+  branchAndMainBothChangedSharedFile,
   commitsFile,
   createProjectWithOrigin,
   integrates,
@@ -21,9 +22,7 @@ test("a branch that merged main in, settling a conflict, lands as the merge it i
   // ** GIVEN a branch and main that both changed shared.txt, and main was merged into the branch
   // ********************************************************************
   const project = await createProjectWithOrigin();
-  await commitsFile(project, { branch: "feature", file: "shared.txt", text: "feature\n" });
-  await commitsFile(project, { branch: "main", file: "shared.txt", text: "main\n" });
-  await publishesMain(project);
+  await branchAndMainBothChangedSharedFile(project);
   await mergesMainIntoTheBranch(project, "feature");
 
   // ********************************************************************
@@ -64,9 +63,7 @@ test("a branch that conflicts with main and did not merge it is refused with the
   // ** GIVEN a branch and main that both changed shared.txt, with main not merged into the branch
   // ********************************************************************
   const project = await createProjectWithOrigin();
-  await commitsFile(project, { branch: "feature", file: "shared.txt", text: "feature\n" });
-  await commitsFile(project, { branch: "main", file: "shared.txt", text: "main\n" });
-  await publishesMain(project);
+  await branchAndMainBothChangedSharedFile(project);
 
   // ********************************************************************
   // ** WHEN the branch is integrated
