@@ -2,7 +2,7 @@
 
 ## Cut a release
 
-1. Set `"version"` in the root `package.json` (for example `0.2.0`) and commit it to `main`.
+1. Set `"version"` in the root `package.json` (for example `0.2.0`) and in `packages/protocol/package.json` (the build refuses to run when they differ), and commit it to `main`.
 2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
 3. The `release` workflow builds everything on a macOS runner, signs and notarizes when the
    secrets below exist, and publishes a GitHub Release with `AgentControl-<version>-arm64.dmg`,
@@ -24,7 +24,7 @@ which is what the smoke tests run:
 - `bun scripts/smoke-binary.ts --app dist/release/linux-x64` runs the compiled app from a clean
   copy of the folder (temp working folder, no `bun` on PATH, no source tree) and prints PASS or
   FAIL for each step: it listens, `/api/health`, the UI page and a script load, the database is
-  migrated, a mock-agent session runs, a Modify request fails its typecheck, is fixed, builds and
+  migrated, a mock-agent session runs, a terminal runs a command in a pseudo-terminal, a Modify request fails its typecheck, is fixed, builds and
   is promoted (the shipped `tsc` and Vite run), the UI server serves the promoted file, and nothing
   was written into the shipped `node_modules`. It takes 30 to 90 seconds.
 
