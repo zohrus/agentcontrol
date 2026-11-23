@@ -1,9 +1,44 @@
 import { Dialog, Tabs, TabsContent, TabsList, TabsTrigger } from "../components/index.ts";
+import { ChangeDetails } from "./change-details.tsx";
 import { ModifyChat } from "./modify-chat.tsx";
 import { ReviewBar } from "./review-bar.tsx";
 import type { ModifyPanelProps } from "./types.ts";
 import { UpdateBanner } from "./update-banner.tsx";
 import { VersionHistory } from "./version-history.tsx";
+
+function RecoveryLink() {
+  return (
+    <a
+      href="/_safe"
+      className="border-t border-line px-4 py-2 text-xs text-muted underline hover:text-fg"
+    >
+      If the UI breaks, open the recovery page
+    </a>
+  );
+}
+
+function ChatTab(props: ModifyPanelProps) {
+  const { change, update, versions } = props;
+  const { status } = change;
+  return (
+    <>
+      <ModifyChat
+        events={props.events}
+        canSend={(status === "idle" || status === "failed") && update?.phase !== "merged"}
+        onSendPrompt={props.onSendPrompt}
+      />
+      <ChangeDetails change={change} />
+      <ReviewBar
+        status={status}
+        canGoBack={versions.length > 1}
+        hideKeepUndo={update?.phase === "merged"}
+        onKeep={props.onKeep}
+        onUndo={props.onUndo}
+        onDiscard={props.onDiscard}
+      />
+    </>
+  );
+}
 
 /** Chat with the Modify agent, Keep / Undo for its change, update banner and version history. */
 export function ModifyPanel(props: ModifyPanelProps) {
@@ -19,13 +54,13 @@ export function ModifyPanel(props: ModifyPanelProps) {
           <TabsTrigger value="history">History ({props.versions.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="chat">
-          <ModifyChat events={props.events} onSendPrompt={props.onSendPrompt} />
-          <ReviewBar gate={props.gate} onKeep={onKeep} onUndo={onUndo} />
+          <ChatTab {...props} />
         </TabsContent>
         <TabsContent value="history">
           <VersionHistory versions={props.versions} onRestore={props.onRestore} />
         </TabsContent>
       </Tabs>
+      <RecoveryLink />
     </div>
   );
 }

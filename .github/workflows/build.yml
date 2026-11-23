@@ -1,7 +1,8 @@
 name: build
+# What each job proves, and how to read a red run: docs/decisions/2026-11-23-ci.md
 on:
   push:
-    branches: [main]
+    branches: [main, "queue/**"]
   workflow_dispatch:
 
 permissions:
@@ -10,25 +11,53 @@ permissions:
 jobs:
   mac:
     runs-on: macos-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: bun run build
+      # `bash script`, not `./script`: a lost executable bit in git must not break the build.
       - name: Build the app and an unsigned dmg for each architecture
         run: |
           set -euo pipefail
           for arch in arm64 x64; do
             swift_arch=$([ "$arch" = x64 ] && echo x86_64 || echo arm64)
             (cd packages/mac && swift build -c release --arch "$swift_arch")
-            scripts/mac/make-app.sh "$arch"
+            bash scripts/mac/make-app.sh "$arch"
             # No secrets here, so this is an ad-hoc signed dmg for testing.
-            scripts/mac/sign-and-notarize.sh "$arch"
+            bash scripts/mac/sign-and-notarize.sh "$arch"
           done
-      # TODO: pin this action to a commit SHA like the others (Dependabot can do it).
-      - uses: actions/upload-artifact@v4.6.2
+      - name: The ad-hoc signature is valid and covers the bundle
+        run: |
+          set -euo pipefail
+          for arch in arm64 x64; do
+            app="dist/app-$arch/AgentControl.app"
+            codesign -dv --verbose=2 "$app"
+            codesign --verify --deep --strict "$app"
+            for file in MacOS/AgentControlMenu Resources/agentcontrol Resources/agentcontrol-relay; do
+              test -x "$app/Contents/$file"
+            done
+          done
+      # Only the runner's own architecture can run here.
+      - name: Smoke test the compiled app and relay inside the bundle
+        run: |
+          arch=$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64)
+          bash scripts/mac/smoke-app.sh "dist/app-$arch/AgentControl.app"
+      # The unsigned dmg is the shipped artifact: open it and run what is inside, as a user would.
+      - name: The dmg mounts, and the app inside it runs
+        run: |
+          set -euo pipefail
+          native=$([ "$(uname -m)" = arm64 ] && echo arm64 || echo x64)
+          for dmg in dist/AgentControl-*.dmg; do
+            hdiutil verify "$dmg"
+            mount="$(mktemp -d)"
+            hdiutil attach "$dmg" -readonly -nobrowse -mountpoint "$mount"
+            test -x "$mount/AgentControl.app/Contents/MacOS/AgentControlMenu"
+            codesign --verify --deep --strict "$mount/AgentControl.app"
+            case "$dmg" in *"-$native.dmg") bash scripts/mac/smoke-app.sh "$mount/AgentControl.app" ;; esac
+            hdiutil detach "$mount"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: agentcontrol-mac
           path: |
@@ -39,11 +68,9 @@ jobs:
 
   linux-relay:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/setup
       - run: bun run build:relay-linux-x64
       - run: bun scripts/smoke-binary.ts dist/agentcontrol-relay-linux-x64

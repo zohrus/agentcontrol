@@ -67,3 +67,16 @@ Everything Mac-specific was written without running it: the Swift menu bar app (
 needed by the Bun binaries under the hardened runtime, and the cross-architecture `swift build`.
 The first run of the `build` workflow on `macos-latest` is the real test; expect to fix small
 things there. The darwin binaries were cross-compiled but never executed.
+
+## Opening an unsigned build
+
+Until a Developer ID certificate exists, the release is only ad-hoc signed and not notarized, so
+macOS blocks the first open. Either:
+
+- open System Settings > Privacy & Security, scroll to the blocked AgentControl message and click
+  Open Anyway; or
+- run `xattr -dr com.apple.quarantine /Applications/AgentControl.app` and open the app again.
+
+The signing and notarization steps in `scripts/mac/sign-and-notarize.sh` run only when the Apple
+secrets exist; without them the same script produces the ad-hoc signed app and the unsigned dmg.
+There is no Homebrew cask and no in-app update yet.

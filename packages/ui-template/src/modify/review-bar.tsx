@@ -1,46 +1,82 @@
 import { Check, CircleAlert, Loader } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "../components/index.ts";
-import type { CheckGate } from "./types.ts";
+import type { ChangeProgress } from "./types.ts";
 
-const statusText: Record<CheckGate, string> = {
+type Status = ChangeProgress["status"];
+
+const statusText: Record<Status, string> = {
   idle: "Describe a change to get started.",
+  working: "Working on it…",
   checking: "Checking…",
-  failed: "Checks failed — sent back to the agent",
+  fixing: "Checks failed — sent back to the agent",
   ready: "Ready",
+  failed: "The change could not be made",
 };
 
-const statusIcon: Record<CheckGate, ReactNode> = {
+const spinner = <Loader className="size-3.5 animate-spin text-run" />;
+const alert = <CircleAlert className="size-3.5 text-fail" />;
+
+const statusIcon: Record<Status, ReactNode> = {
   idle: null,
-  checking: <Loader className="size-3.5 animate-spin text-run" />,
-  failed: <CircleAlert className="size-3.5 text-fail" />,
+  working: spinner,
+  checking: spinner,
+  fixing: alert,
   ready: <Check className="size-3.5 text-done" />,
+  failed: alert,
 };
 
-/** The check gate's status as one line, for example "Checking…". */
-function GateStatus({ gate }: { gate: CheckGate }) {
+/** The change's status as one line, for example "Checking…". */
+function StatusLine({ status }: { status: Status }) {
   return (
     <span role="status" className="flex items-center gap-1.5 text-xs text-muted">
-      {statusIcon[gate]}
-      {statusText[gate]}
+      {statusIcon[status]}
+      {statusText[status]}
     </span>
   );
 }
 
-type Props = { gate: CheckGate; onKeep: () => void; onUndo: () => void };
+export type ReviewBarProps = {
+  status: Status;
+  /** True when a kept version exists to go back to. */
+  canGoBack: boolean;
+  /** Keep and Undo are somewhere else (the update banner). */
+  hideKeepUndo: boolean;
+  onKeep: () => void;
+  onUndo: () => void;
+  onDiscard: () => void;
+};
 
-/** Gate status with the Keep and Undo buttons; Keep is available only when checks pass. */
-export function ReviewBar({ gate, onKeep, onUndo }: Props) {
+const discardable = new Set<Status>(["working", "checking", "fixing", "failed"]);
+
+function KeepAndUndo({ status, canGoBack, onKeep, onUndo }: ReviewBarProps) {
+  const idle = status === "idle";
+  return (
+    <>
+      <Button onClick={onUndo} disabled={idle && !canGoBack}>
+        {idle ? "Undo last change" : "Undo"}
+      </Button>
+      {!idle && (
+        <Button variant="primary" onClick={onKeep}>
+          Keep
+        </Button>
+      )}
+    </>
+  );
+}
+
+function Buttons(props: ReviewBarProps) {
+  if (discardable.has(props.status)) return <Button onClick={props.onDiscard}>Discard</Button>;
+  return props.hideKeepUndo ? null : <KeepAndUndo {...props} />;
+}
+
+/** The status line with the buttons that fit the moment: Discard, or Undo and Keep. */
+export function ReviewBar(props: ReviewBarProps) {
   return (
     <div className="flex items-center gap-2 border-t border-line px-4 py-2">
-      <GateStatus gate={gate} />
+      <StatusLine status={props.status} />
       <span className="flex-1" />
-      <Button onClick={onUndo} disabled={gate === "idle"}>
-        Undo
-      </Button>
-      <Button variant="primary" onClick={onKeep} disabled={gate !== "ready"}>
-        Keep
-      </Button>
+      <Buttons {...props} />
     </div>
   );
 }

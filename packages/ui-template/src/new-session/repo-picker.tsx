@@ -4,13 +4,14 @@ import { Button, Field, inputClass } from "../components/index.ts";
 import type { DraftForm } from "./use-draft.ts";
 import { ADD_REPOSITORY } from "./validate.ts";
 
-type AddRowProps = { form: DraftForm; onAdd: (path: string) => void };
+type AddRowProps = { form: DraftForm; onAdd: (path: string) => Promise<string | undefined> };
 
 function AddRepositoryRow({ form, onAdd }: AddRowProps) {
   const [path, setPath] = useState("");
   const add = () => {
-    onAdd(path.trim());
-    form.update({ repoPath: path.trim(), branch: undefined });
+    void onAdd(path.trim()).then((added) => {
+      if (added !== undefined) form.update({ repoPath: added, branch: undefined });
+    });
   };
   return (
     <div className="flex gap-2">
@@ -30,7 +31,7 @@ function AddRepositoryRow({ form, onAdd }: AddRowProps) {
   );
 }
 
-type PickerProps = { repos: readonly RepoInfo[]; form: DraftForm; onAdd: (path: string) => void };
+type PickerProps = { repos: readonly RepoInfo[]; form: DraftForm; onAdd: AddRowProps["onAdd"] };
 
 /** Repository choice from the known repos, plus "Add repository…" that takes a folder path. */
 export function RepoPicker({ repos, form, onAdd }: PickerProps) {
