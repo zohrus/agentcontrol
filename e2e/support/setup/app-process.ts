@@ -12,7 +12,7 @@ export interface AppProcess {
   stop(): Promise<void>;
 }
 
-async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
+export async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
   const reader = stdout.getReader();
   const decoder = new TextDecoder();
   let seen = "";
@@ -25,7 +25,7 @@ async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<str
   }
 }
 
-function afterTimeout(): Promise<never> {
+export function afterTimeout(): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => {
       reject(new Error("the app did not report that it was listening in time"));
@@ -69,8 +69,19 @@ interface LaunchOptions {
   modify?: ModifyConfig | undefined;
   /** How ssh workspaces are reached; in-process runs only. */
   ssh?: Partial<SshSettings> | undefined;
+  /** How long a preview link lasts after its last use; in-process runs only. */
+  previewLifetimeMs?: number | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
+}
+
+/** The settings that are only given to the app when a test asks for them. */
+function extraSettings(options: LaunchOptions) {
+  const { ssh, previewLifetimeMs } = options;
+  return {
+    ...(ssh && { ssh }),
+    ...(previewLifetimeMs !== undefined && { previewLifetimeMs }),
+  };
 }
 
 /** Starts the app inside this test process, talking to the relay over its socket. */
@@ -80,7 +91,7 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     port: options.port ?? 0,
     ...(options.ui && { ui: options.ui }),
     ...(options.modify && { modify: options.modify }),
-    ...(options.ssh && { ssh: options.ssh }),
+    ...extraSettings(options),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

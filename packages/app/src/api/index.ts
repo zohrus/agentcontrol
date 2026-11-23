@@ -4,6 +4,7 @@ import { configRoutes } from "./config.ts";
 import { reportFailure } from "./errors.ts";
 import { fileRoutes } from "./files.ts";
 import { modifyRoutes } from "./modify.ts";
+import { previewTicketRoutes } from "./preview.ts";
 import {
   sessionControlRoutes,
   sessionConversationRoutes,
@@ -15,6 +16,7 @@ import { workspaceRoutes } from "./workspace.ts";
 import { workspacesRoutes } from "./workspaces.ts";
 
 export type { ApiDeps } from "./deps.ts";
+export { previewSource } from "./preview.ts";
 
 /** The HTTP API, mounted under `/api` by the server. Its type feeds the SDK's typed client. */
 export function createApi(deps: ApiDeps) {
@@ -25,6 +27,7 @@ export function createApi(deps: ApiDeps) {
     .route("/sessions", sessionConversationRoutes(deps))
     .route("/sessions", sessionControlRoutes(deps))
     .route("/sessions", fileRoutes(deps))
+    .route("/sessions", previewTicketRoutes(deps))
     .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))
     .route("/workspaces", workspacesRoutes(deps))

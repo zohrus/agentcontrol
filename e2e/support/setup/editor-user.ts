@@ -1,5 +1,6 @@
 import { type FsReadParams, RelayName } from "@agentcontrol/protocol";
 import { attempt } from "./attempt.ts";
+import { bytesUserOf } from "./bytes-user.ts";
 import type { RelayAccess, Session } from "./relay.ts";
 
 interface FileRef {
@@ -28,6 +29,7 @@ export function editorUserOf(relay: RelayAccess) {
   return {
     readsFile: read,
     triesToReadFile: (session: Session, file: FileRef) => attempt(read(session, file)),
+    ...bytesUserOf(relay),
     savesFile: save,
     triesToSaveFile: (session: Session, file: FileSave) => attempt(save(session, file)),
     /** Asks to be told when files in the session's worktree change. */

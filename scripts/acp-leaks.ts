@@ -27,6 +27,8 @@ const ACP_VOCABULARY = new RegExp(
 const ALLOWED: Record<string, string> = {
   "e2e/support/expect/raw-message-expectations.ts": "proves the raw message is kept unchanged",
   "e2e/support/expect/agent-expectations.ts": "tests the mock agent itself, which speaks real ACP",
+  "e2e/support/expect/recording-expectations.ts":
+    "names the adapter messages left as `other` on purpose; an `other` update carries the agent's own name",
 };
 
 const SKIPPED = /(^|\/)(node_modules|dist|coverage)\//;

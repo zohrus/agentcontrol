@@ -7,7 +7,7 @@ import { attemptApi } from "./app-attempt.ts";
 
 const UNKNOWN_SESSION: Session = { id: SessionId.parse(crypto.randomUUID()), title: "no such" };
 
-async function worktreeOf(app: AppAccess, session: Session): Promise<string> {
+export async function worktreeOf(app: AppAccess, session: Session): Promise<string> {
   const isCreation = (event: SessionEvent) =>
     event.sessionId === session.id && event.kind === "session-created";
   const created = await app.streamed.waitFor(isCreation, `expected "${session.title}" to exist`);

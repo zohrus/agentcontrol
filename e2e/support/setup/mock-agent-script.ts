@@ -29,6 +29,13 @@ export interface MockAgent {
   willWaitForFile(path: string): void;
   /** The turn reports this usage, in a `usage_update` and in the prompt result, like the adapters. */
   willReportUsage(usage: ReportedUsage): void;
+  /**
+   * The agent behaves like the Claude Code adapter: it offers the same permission modes, starts in
+   * this one, and asks before running a command only in "default" (Manual).
+   */
+  startsInMode(modeId: string): void;
+  /** The request to change the mode is refused, as when the user's Claude Code policy forbids it. */
+  refusesToChangeMode(): void;
   /** Steps added after this call run on the next prompt instead of the current one. */
   onNextPrompt(): void;
   writeScript(): Promise<void>;
@@ -38,7 +45,13 @@ type ReportedUsage = Omit<Extract<Step, { kind: "reportUsage" }>, "kind">;
 
 type ScriptedSteps = Omit<
   MockAgent,
-  "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript" | "startsNewScript"
+  | "dataFolder"
+  | "scriptPath"
+  | "onNextPrompt"
+  | "writeScript"
+  | "startsNewScript"
+  | "startsInMode"
+  | "refusesToChangeMode"
 >;
 
 function turnEndingSteps(
@@ -118,6 +131,12 @@ export async function createMockAgent(): Promise<MockAgent> {
     ...scriptedSteps((step) => {
       script.turns.at(-1)?.push(step);
     }),
+    startsInMode: (modeId) => {
+      script.startsInMode = modeId;
+    },
+    refusesToChangeMode: () => {
+      script.refusesModeChange = true;
+    },
     onNextPrompt: () => script.turns.push([]),
     startsNewScript: () => {
       script.turns.splice(0, script.turns.length, []);

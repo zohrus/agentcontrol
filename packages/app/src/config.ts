@@ -8,8 +8,6 @@ export interface AppConfig {
   uiRoot: string | undefined;
   /** A folder of built UI files to serve as they are. Wins over `uiRoot`. */
   uiDist: string | undefined;
-  /** The folder with the relay binaries (`agentcontrol-relay-linux-x64`, ...) to install on ssh hosts. */
-  relayBinaries: string | undefined;
 }
 
 const DEFAULT_PORT = 4747;
@@ -20,9 +18,8 @@ function flag(args: string[], name: string): string | undefined {
 }
 
 /**
- * Reads `--port`, `--data-dir`, `--ui-root`, `--ui-dist` and `--relay-binaries`, then
- * AGENTCONTROL_PORT, AGENTCONTROL_HOME, AGENTCONTROL_UI_ROOT, AGENTCONTROL_UI_DIST and
- * AGENTCONTROL_RELAY_BINARIES, then defaults (no UI).
+ * Reads `--port`, `--data-dir`, `--ui-root` and `--ui-dist`, then AGENTCONTROL_PORT,
+ * AGENTCONTROL_HOME, AGENTCONTROL_UI_ROOT and AGENTCONTROL_UI_DIST, then defaults (no UI).
  */
 export function readConfig(options: {
   args: string[];
@@ -37,6 +34,5 @@ export function readConfig(options: {
     dataDir: option("data-dir", "AGENTCONTROL_HOME") ?? join(homedir(), ".agentcontrol"),
     uiRoot: option("ui-root", "AGENTCONTROL_UI_ROOT"),
     uiDist: option("ui-dist", "AGENTCONTROL_UI_DIST"),
-    relayBinaries: option("relay-binaries", "AGENTCONTROL_RELAY_BINARIES"),
   };
 }

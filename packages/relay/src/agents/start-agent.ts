@@ -4,7 +4,8 @@ import {
   PROTOCOL_VERSION,
   type RequestPermissionRequest,
 } from "@agentclientprotocol/sdk";
-import { commandFor } from "./commands.ts";
+import { launchFor } from "./commands.ts";
+import { modeToSwitchTo } from "./modes.ts";
 import { type SpawnedAgent, spawnAgent } from "./spawn.ts";
 import { tapStream } from "./tap.ts";
 import type { AgentProcess, PermissionAnswer, StartAgentOptions } from "./types.ts";
@@ -36,16 +37,31 @@ function connectTo(spawned: SpawnedAgent, options: StartAgentOptions) {
 
 type Connection = ReturnType<typeof connectTo>;
 
+/** Puts the agent in the mode that makes it ask; failing is loud, since it would otherwise never ask. */
+async function switchMode(
+  connection: Connection,
+  change: { sessionId: string; modeId: string },
+): Promise<void> {
+  await connection.agent.request(methods.agent.session.setMode, change).catch((error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `the agent would not switch to its "${change.modeId}" mode, so it could not be made to ask before it acts; the user's own Claude settings may forbid changing the mode (${reason})`,
+    );
+  });
+}
+
 async function handshake(connection: Connection, options: StartAgentOptions): Promise<string> {
   await connection.agent.request(methods.agent.initialize, {
     protocolVersion: PROTOCOL_VERSION,
     clientCapabilities: {},
   });
-  const { sessionId } = await connection.agent.request(methods.agent.session.new, {
+  const { sessionId, modes } = await connection.agent.request(methods.agent.session.new, {
     cwd: options.cwd,
     mcpServers: [],
     ...(options.sessionMeta ? { _meta: options.sessionMeta } : {}),
   });
+  const modeId = modeToSwitchTo(options.kind, modes);
+  if (modeId !== undefined) await switchMode(connection, { sessionId, modeId });
   return sessionId;
 }
 
@@ -78,14 +94,15 @@ function failure(command: string[], reason: unknown, spawned?: SpawnedAgent): Er
 
 /** Spawns the adapter, runs initialize and session/new, and returns once it is ready for a prompt. */
 export async function startAgent(options: StartAgentOptions): Promise<AgentProcess> {
-  const command = commandFor(options.kind, options.hostEnv);
-  if (!command) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
+  const launch = launchFor(options.kind, options.hostEnv);
+  if (!launch) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
+  const { command } = launch;
   let spawned: SpawnedAgent | undefined;
   try {
     spawned = spawnAgent({
       command,
       cwd: options.cwd,
-      env: { ...options.hostEnv, ...options.env },
+      env: { ...options.hostEnv, ...launch.env, ...options.env },
     });
     const connection = connectTo(spawned, options);
     const sessionId = await handshake(connection, options);

@@ -10,14 +10,21 @@ export type ChangesTabProps = {
   baseContent: string;
   /** Content of the selected file in the worktree. */
   workingContent: string;
+  /** Shows a file in the Preview tab. */
+  onPreview: (path: string) => void;
 };
 
 /** File list from a DiffResult and a diff editor for the selected file. */
 export function ChangesTab(props: ChangesTabProps) {
-  const { diff, selectedPath, onSelectPath, baseContent, workingContent } = props;
+  const { diff, selectedPath, onSelectPath, onPreview, baseContent, workingContent } = props;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <FileList files={diff.files} selectedPath={selectedPath} onSelect={onSelectPath} />
+      <FileList
+        files={diff.files}
+        selectedPath={selectedPath}
+        onSelect={onSelectPath}
+        onPreview={onPreview}
+      />
       {selectedPath ? (
         <DiffViewer path={selectedPath} base={baseContent} working={workingContent} />
       ) : (

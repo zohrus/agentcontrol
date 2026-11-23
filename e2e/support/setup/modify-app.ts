@@ -15,7 +15,7 @@ export interface ModifiableApp extends RunningApp {
 }
 
 /** A copy of the fixture UI that the test owns; its node_modules is the real one, for tsc and vite. */
-async function createUiTemplate(): Promise<string> {
+export async function createUiTemplate(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "agentcontrol-ui-template-"));
   onTestEnd(() => rm(dir, { recursive: true, force: true }));
   await cp(fixtureDir, dir, { recursive: true });
@@ -37,7 +37,7 @@ const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
  * behind that name is the mock agent too.
  */
 export async function startAppWithModifiableUi(
-  options: { agent?: ModifyConfig["agent"] } = {},
+  options: { agent?: ModifyConfig["agent"]; withUi?: boolean } = {},
 ): Promise<ModifiableApp> {
   const templateDir = await createUiTemplate();
   const agent = options.agent ?? "mock";
@@ -45,6 +45,7 @@ export async function startAppWithModifiableUi(
   const modify = baseConfig(templateDir, agent);
   const app = await startAppWithLocalWorkspace({
     modify,
+    ...(options.withUi ? { withUi: true } : {}),
     ...(agent === "mock" ? {} : { relayEnv }),
   });
   return Object.assign(app, { templateDir });

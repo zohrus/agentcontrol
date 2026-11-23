@@ -1,7 +1,8 @@
 import type { Server } from "bun";
 import { Hono } from "hono";
 import type { ApiDeps } from "../api/index.ts";
-import { createApi } from "../api/index.ts";
+import { createApi, previewSource } from "../api/index.ts";
+import { previewRoutes } from "../preview/index.ts";
 import { safeRoutes } from "../safe/index.ts";
 import { type GuardOptions, guard, writeTokenFile } from "../security/index.ts";
 import type { UiHandler } from "../ui-serving/index.ts";
@@ -12,8 +13,8 @@ export interface RunningServer {
   stop: () => Promise<void>;
 }
 
-/** Paths that are never the UI's: the API, and the rollback page the app serves itself. */
-const notTheUi = ["/api/*", "/_safe", "/_safe/*"];
+/** Paths that are never the UI's: the API, the rollback page, and the previews of session files. */
+const notTheUi = ["/api/*", "/_safe", "/_safe/*", "/preview", "/preview/*"];
 
 /**
  * The single place that decides what the app serves besides the API: the UI (Vite in dev, built
@@ -27,7 +28,11 @@ function createRoot(options: {
   const root = new Hono()
     .use(guard(options.guarded))
     .route("/api", createApi(options.deps))
-    .route("/_safe", safeRoutes(options.deps.modify));
+    .route("/_safe", safeRoutes(options.deps.modify))
+    .route(
+      "/preview",
+      previewRoutes({ previews: options.deps.previews, source: previewSource(options.deps) }),
+    );
   const { ui } = options;
   if (ui === undefined) return root.get("/", (c) => c.html(fallbackPage));
   for (const path of notTheUi) root.all(path, (c) => c.notFound());

@@ -5,6 +5,7 @@ export { createUiVersions } from "./ui-versions/index.ts";
 export type { AppType } from "./api/index.ts";
 export type { CheckResult, RunCommand, UiWorkspace } from "./ui-workspace/index.ts";
 export { createUiWorkspace } from "./ui-workspace/index.ts";
+export { readModifyConfig } from "./modify/index.ts";
 export type {
   Modify,
   ModifyState,

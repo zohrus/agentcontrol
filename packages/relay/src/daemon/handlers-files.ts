@@ -1,5 +1,5 @@
 import { ErrorCode, RelayName as N } from "@agentcontrol/protocol";
-import { watchFiles, writeFileIfUnchanged } from "../files/index.ts";
+import { readBytes, watchFiles, writeFileIfUnchanged } from "../files/index.ts";
 import { RelayError, type Handlers } from "../rpc/index.ts";
 import type { Sessions } from "../sessions/index.ts";
 import { workdirOf } from "../workdirs/index.ts";
@@ -8,6 +8,7 @@ type FileMethods =
   | typeof N.diff
   | typeof N.fsTree
   | typeof N.fsRead
+  | typeof N.fsReadBytes
   | typeof N.fsWrite
   | typeof N.fsWatch;
 
@@ -18,6 +19,8 @@ export function fileHandlers(sessions: Sessions): Pick<Handlers, FileMethods> {
     [N.fsTree]: async ({ sessionId }) => workdirOf(await sessions.info(sessionId)).tree(),
     [N.fsRead]: async ({ sessionId, path, ref }) =>
       workdirOf(await sessions.info(sessionId)).read({ path, ref }),
+    [N.fsReadBytes]: async ({ sessionId, path }) =>
+      readBytes({ worktreePath: (await sessions.info(sessionId)).worktreePath, path }),
     [N.fsWrite]: async ({ sessionId, path, content, expectedHash }) => {
       const { worktreePath } = await sessions.info(sessionId);
       const written = await writeFileIfUnchanged({ worktreePath, path, content, expectedHash });

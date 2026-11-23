@@ -38,7 +38,6 @@ interface Heard {
   fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   relayConnectionsEnded: Timeline<number>;
-  /** Every change of a workspace's connection state, in order. */
   workspaceChanges: Timeline<WorkspaceInfo>;
 }
 
@@ -85,9 +84,10 @@ export interface StartOptions {
   uiDist?: string;
   /** The default UI and the agent that edits it; the live and staging UI are ready at start. */
   modify?: ModifyConfig;
+  /** How long a preview link stays valid after its last use, in milliseconds (default: an hour). */
+  previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
-  /** How the app reaches ssh workspaces (`host.appSettings` of a started ssh host). */
   ssh?: Partial<SshSettings>;
 }
 
@@ -135,8 +135,9 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
   const heard = newHeard();
   const ui = uiOf(options);
+  const { previewLifetimeMs } = options;
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, ssh: options.ssh, ...extra });
+    openApp({ dataDir, env, host, heard, ui, previewLifetimeMs, ssh: options.ssh, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -164,7 +165,7 @@ interface Opened {
   close(): Promise<void>;
 }
 
-async function openApp(options: {
+interface OpenOptions {
   dataDir: string;
   env: Record<string, string>;
   host: RelayHost;
@@ -173,7 +174,10 @@ async function openApp(options: {
   ssh?: Partial<SshSettings> | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
-}): Promise<Opened> {
+  previewLifetimeMs?: number | undefined;
+}
+
+async function openApp(options: OpenOptions): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({
     ...options,

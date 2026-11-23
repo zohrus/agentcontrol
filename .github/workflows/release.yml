@@ -36,8 +36,8 @@ jobs:
           for arch in arm64 x64; do
             swift_arch=$([ "$arch" = x64 ] && echo x86_64 || echo arm64)
             (cd packages/mac && swift build -c release --arch "$swift_arch")
-            scripts/mac/make-app.sh "$arch"
-            scripts/mac/sign-and-notarize.sh "$arch"
+            bash scripts/mac/make-app.sh "$arch"
+            bash scripts/mac/sign-and-notarize.sh "$arch"
           done
       - name: Publish the GitHub Release
         env:

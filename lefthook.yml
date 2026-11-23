@@ -18,4 +18,5 @@ pre-push:
     - name: coverage
       # Runs the end-to-end suite with coverage: at most 5% of lines uncovered, and the lines this
       # push adds must be covered too. Code that no end-to-end test runs does not get pushed.
-      run: bun run test:coverage
+      # GIT_* is cleared so tests that create their own git repos cannot touch this one.
+      run: env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE -u GIT_COMMON_DIR -u GIT_PREFIX bun run test:coverage

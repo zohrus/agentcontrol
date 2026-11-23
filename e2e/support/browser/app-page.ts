@@ -1,5 +1,7 @@
 import { changesPage } from "./changes-page.ts";
 import { dialogsPage } from "./dialogs-page.ts";
+import { previewContent, previewPage } from "./preview-page.ts";
+import { modifyPage } from "./modify-page.ts";
 import type { Page } from "./playwright.ts";
 import { sessionListPage } from "./session-list-page.ts";
 import { sessionPage } from "./session-page.ts";
@@ -11,6 +13,9 @@ export function appPageOf(page: Page) {
     ...sessionPage(page),
     ...changesPage(page),
     ...dialogsPage(page),
+    ...previewPage(page),
+    ...previewContent(page),
+    ...modifyPage(page),
     /** The connection indicator in the status bar: "Connected", "Reconnecting…" or "Offline". */
     connectionText: async (): Promise<string> => {
       const status = page

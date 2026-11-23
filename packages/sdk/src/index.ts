@@ -45,7 +45,7 @@ export function createClient({ baseUrl, fetch: sender = fetch, ...auth }: Client
   const api = hc<AppType>(`${baseUrl}/api`, { fetch: send });
   return {
     sessions: sessionsApi(api),
-    files: filesApi(api),
+    files: filesApi(api, baseUrl),
     modify: modifyApi(api),
     config: configApi(api),
     repos: reposApi(api),

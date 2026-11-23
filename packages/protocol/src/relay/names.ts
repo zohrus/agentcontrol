@@ -15,6 +15,7 @@ export const RelayName = {
   reposSetSetup: "relay/repos.setSetup",
   fsTree: "relay/fs.tree",
   fsRead: "relay/fs.read",
+  fsReadBytes: "relay/fs.readBytes",
   fsWrite: "relay/fs.write",
   fsWatch: "relay/fs.watch",
   usage: "relay/usage",
