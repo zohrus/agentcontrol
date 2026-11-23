@@ -13,6 +13,9 @@ const app = await startApp({
   modify: readModifyConfig(process.env),
   ui: { root: config.uiRoot, dist: config.uiDist },
   connectRelay: () => relayClientOver(spawnRelayBridge({ command, dataDir })),
+}).catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
 });
 console.log(`AgentControl listening on ${app.url}`);
 
