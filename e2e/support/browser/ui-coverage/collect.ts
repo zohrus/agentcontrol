@@ -32,7 +32,11 @@ export async function recordBrowserCoverage(page: Page): Promise<void> {
   await page.addInitScript("window.addEventListener('beforeunload', () => undefined);");
   const recording = await startRecording(await page.context().newCDPSession(page));
   onTestEnd(async () => {
-    const files = await recording.finish();
+    // A throw here would stop the cleanups below it, so a lost handover is only reported.
+    const files = await recording.finish().catch((error: unknown) => {
+      console.error(`Browser coverage is incomplete: ${String(error)}`);
+      return new Map();
+    });
     partNumber += 1;
     const dir = `${partsDir}-${String(partNumber)}`;
     await mkdir(dir, { recursive: true });

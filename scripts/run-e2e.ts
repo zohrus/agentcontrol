@@ -42,7 +42,7 @@ const partName = (file: string): string => file.replace(/^e2e\//, "").replace(/\
 
 /** Where this job's browser tests write their parts; the test adds `-<n>`. */
 const browserPartsPrefix = (job: Job): string =>
-  `${PARTS_DIR}/${partName(job.file).replaceAll("/", "-")}-browser`;
+  `${PARTS_DIR}/${partName(job.file).replaceAll("/", "-")}${job.inSubprocesses ? "-sub" : ""}-browser`;
 
 function commandFor(job: Job, coverage: boolean): string[] {
   const command = ["bun", "test", "--timeout", String(TEST_TIMEOUT_MS)];

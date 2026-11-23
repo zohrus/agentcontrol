@@ -106,10 +106,10 @@ function lateAnswers(page: Page) {
 /** Trouble on the way between the page and the app, as a flaky network would cause it. */
 function trouble(page: Page) {
   return {
-    /** The whole network goes away: the page can neither listen nor ask. */
     /** Starts watching for the app to refuse the page's secret; resolves when it has. */
     watchesForARefusedSecret: (): Promise<unknown> =>
       page.waitForResponse((response) => response.status() === 401),
+    /** The whole network goes away: the page can neither listen nor ask. */
     losesTheNetwork: () => page.context().setOffline(true),
     /** New live connections to the app fail, so a connection that drops cannot come back. */
     cannotReachTheLiveStream: async (): Promise<void> => {
