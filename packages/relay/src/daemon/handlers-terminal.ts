@@ -13,11 +13,14 @@ type TerminalMethods =
 export function terminalHandlers(options: {
   sessions: Sessions;
   terminals: Terminals;
+  /** Awaited after the session's folder is found and before the shell starts; for tests. */
+  beforeShellStarts?: () => Promise<void>;
 }): Pick<Handlers, TerminalMethods> {
   const { sessions, terminals } = options;
   return {
     [N.terminalOpen]: async ({ sessionId, cols, rows }, client) => {
       const target = await sessions.shellTarget(sessionId);
+      await options.beforeShellStarts?.();
       const terminalId = terminals.open({ client, sessionId, target, size: { cols, rows } });
       return { terminalId };
     },

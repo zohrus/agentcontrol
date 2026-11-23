@@ -29,9 +29,13 @@ function serve(socket: Socket, handlers: Handlers): void {
     },
     backlog: () => socket.writableLength,
   });
-  createInterface({ input: socket }).on("line", (line) => {
-    connection.receive(line);
-  });
+  // A client that hangs up while an answer is being written makes the socket fail; the reader
+  // passes that on as its own error, which nobody may leave unhandled.
+  createInterface({ input: socket })
+    .on("line", (line) => {
+      connection.receive(line);
+    })
+    .on("error", () => undefined);
   socket.on("close", () => {
     connection.close();
   });
@@ -89,6 +93,11 @@ export interface DaemonOptions {
   normaliserVersion?: number;
   /** What `relay/hello` reports as the relay's version; this release's version if left out. */
   relayVersion?: string;
+  /**
+   * A test seam: `relay/terminal.open` waits for this after finding the session's folder and before
+   * starting the shell, so a test can make the client leave in between.
+   */
+  beforeShellStarts?: () => Promise<void>;
 }
 
 /** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
@@ -135,7 +144,11 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
   const sessions = await buildSessions({ dataDir, repos, hostEnv, terminals });
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
-    ...terminalHandlers({ sessions, terminals }),
+    ...terminalHandlers({
+      sessions,
+      terminals,
+      ...(options.beforeShellStarts && { beforeShellStarts: options.beforeShellStarts }),
+    }),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
     ...workspaceHandlers({
