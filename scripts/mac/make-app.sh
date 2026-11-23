@@ -6,9 +6,11 @@
 # Usage: scripts/mac/make-app.sh <arm64|x64> [output-dir]
 # Output: <output-dir>/AgentControl.app   (default output-dir: dist/app-<arch>)
 #
-# The bundle holds: the Swift menu bar binary (Contents/MacOS), the Bun app binary and this
-# architecture's relay (Contents/Resources), and the Linux relays the app copies to remote
-# workspaces (Contents/Resources/relays). Signing happens in sign-and-notarize.sh.
+# The bundle holds: the Swift menu bar binary (Contents/MacOS) and the whole release folder
+# `dist/release/darwin-<arch>/` that `bun run build` assembles, as Contents/Resources: the app
+# (agentcontrol), this architecture's relay (agentcontrol-relay), the Linux relays for remote
+# workspaces (relays/) and the default UI with its node_modules (resources/). See
+# docs/releasing.md. Signing happens in sign-and-notarize.sh.
 set -euo pipefail
 
 arch="${1:-}"
@@ -29,20 +31,20 @@ swift_binary="$bin_dir/AgentControlMenu"
 
 need() { [ -f "$1" ] || { echo "missing $1 (run the earlier build steps first)" >&2; exit 1; }; }
 need "$swift_binary"
-need "$root/dist/agentcontrol-darwin-$arch"
-need "$root/dist/agentcontrol-relay-darwin-$arch"
-need "$root/dist/agentcontrol-relay-linux-x64"
-need "$root/dist/agentcontrol-relay-linux-arm64"
+release="$root/dist/release/darwin-$arch"
+need "$release/agentcontrol"
+need "$release/agentcontrol-relay"
+need "$release/relays/agentcontrol-relay-linux-x64"
+need "$release/relays/agentcontrol-relay-linux-arm64"
+need "$release/resources/ui-template/package.json"
 
 app="$out/AgentControl.app"
 rm -rf "$app"
-mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources/relays"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 
 cp "$swift_binary" "$app/Contents/MacOS/AgentControlMenu"
-cp "$root/dist/agentcontrol-darwin-$arch" "$app/Contents/Resources/agentcontrol"
-cp "$root/dist/agentcontrol-relay-darwin-$arch" "$app/Contents/Resources/agentcontrol-relay"
-cp "$root/dist/agentcontrol-relay-linux-x64" "$root/dist/agentcontrol-relay-linux-arm64" \
-  "$app/Contents/Resources/relays/"
+# -R keeps the links inside node_modules as links; the folder is copied as it is.
+cp -R "$release/." "$app/Contents/Resources/"
 sed "s/@VERSION@/$version/g" "$mac/Resources/Info.plist" > "$app/Contents/Info.plist"
 chmod +x "$app/Contents/MacOS/AgentControlMenu" "$app/Contents/Resources/agentcontrol" \
   "$app/Contents/Resources/agentcontrol-relay"

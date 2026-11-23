@@ -68,9 +68,12 @@ jobs:
 
   linux-relay:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/actions/setup
       - run: bun run build:relay-linux-x64
       - run: bun scripts/smoke-binary.ts dist/agentcontrol-relay-linux-x64
+      # The whole compiled app, run from a clean copy with no source tree and no bun on PATH.
+      - run: bun run build:linux
+      - run: bun scripts/smoke-binary.ts --app dist/release/linux-x64

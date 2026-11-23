@@ -4,7 +4,7 @@ import {
   PROTOCOL_VERSION,
   type RequestPermissionRequest,
 } from "@agentclientprotocol/sdk";
-import { commandFor } from "./commands.ts";
+import { launchFor } from "./commands.ts";
 import { modeToSwitchTo } from "./modes.ts";
 import { type SpawnedAgent, spawnAgent } from "./spawn.ts";
 import { tapStream } from "./tap.ts";
@@ -94,14 +94,15 @@ function failure(command: string[], reason: unknown, spawned?: SpawnedAgent): Er
 
 /** Spawns the adapter, runs initialize and session/new, and returns once it is ready for a prompt. */
 export async function startAgent(options: StartAgentOptions): Promise<AgentProcess> {
-  const command = commandFor(options.kind, options.hostEnv);
-  if (!command) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
+  const launch = launchFor(options.kind, options.hostEnv);
+  if (!launch) throw new Error(`The "${options.kind}" agent is not configured on this machine.`);
+  const { command } = launch;
   let spawned: SpawnedAgent | undefined;
   try {
     spawned = spawnAgent({
       command,
       cwd: options.cwd,
-      env: { ...options.hostEnv, ...options.env },
+      env: { ...options.hostEnv, ...launch.env, ...options.env },
     });
     const connection = connectTo(spawned, options);
     const sessionId = await handshake(connection, options);

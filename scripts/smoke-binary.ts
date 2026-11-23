@@ -7,6 +7,12 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import { smokeApp } from "./smoke/app.ts";
+
+// `--app <release folder>` runs the compiled app instead (see scripts/smoke/).
+if (process.argv[2] === "--app") {
+  process.exit((await smokeApp(process.argv[3] ?? "")) ? 0 : 1);
+}
 
 const HelloReply = z.object({ result: z.object({ relayVersion: z.string() }) });
 const binary = resolve(process.argv[2] ?? "");
