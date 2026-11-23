@@ -1,3 +1,4 @@
+import { addRepositoryPage, typesRepositoryFolder } from "./add-repository-page.ts";
 import type { Page } from "./playwright.ts";
 
 const dialogOf = (page: Page) => page.getByRole("dialog");
@@ -8,15 +9,11 @@ export type NewSession = { repoPath: string; agent: string; prompt: string };
 /** The dialogs: New session, and the archive warning. */
 export function dialogsPage(page: Page) {
   return {
+    ...addRepositoryPage(page),
     /** Opens New session, adds the repository by its folder, picks the agent and starts. */
     startsSession: async (session: NewSession): Promise<void> => {
-      await page.getByRole("button", { name: "New session", exact: true }).click();
+      await typesRepositoryFolder(page, session.repoPath);
       const dialog = dialogOf(page);
-      await dialog
-        .getByRole("combobox", { name: /^Repository/ })
-        .selectOption({ label: "Add repository…" });
-      await dialog.getByLabel("Repository folder").fill(session.repoPath);
-      await dialog.getByRole("button", { name: "Add", exact: true }).click();
       await dialog.getByRole("combobox", { name: /^Agent/ }).selectOption({ label: session.agent });
       await dialog.getByLabel("What should the agent do?").fill(session.prompt);
       await dialog.getByRole("button", { name: "Start", exact: true }).click();

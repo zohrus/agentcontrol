@@ -23,14 +23,16 @@ export function TurnEnded({ item }: { item: ItemOf<"turn-ended"> }) {
 }
 
 function exitText({ exitCode, signal }: ItemOf<"agent-exited">): string {
-  if (signal) return `signal ${signal}`;
-  return `exit code ${String(exitCode ?? "unknown")}`;
+  if (signal === "SIGTERM")
+    return "The agent was stopped (signal SIGTERM), as when a session is archived.";
+  if (signal) return `The agent exited (signal ${signal})`;
+  return `The agent exited (exit code ${String(exitCode ?? "unknown")})`;
 }
 
 export function AgentExited({ item }: { item: ItemOf<"agent-exited"> }) {
   return (
     <div className="rounded-lg border border-line bg-del-bg px-2.5 py-1.5 text-xs text-del-fg">
-      The agent exited ({exitText(item)})
+      {exitText(item)}
     </div>
   );
 }
