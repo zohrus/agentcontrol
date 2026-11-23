@@ -21,6 +21,10 @@
   --add-fg: #17633c;
   --del-bg: #fbe8e8;
   --del-fg: #9b2b2b;
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
   color-scheme: light;
 }
 
@@ -46,6 +50,10 @@
     --add-fg: #8fe0ad;
     --del-bg: #3a1a1c;
     --del-fg: #f2a3a3;
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
     color-scheme: dark;
   }
 }

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ApiDeps } from "./deps.ts";
+import { analyticsRoutes } from "./analytics.ts";
 import { configRoutes } from "./config.ts";
 import { reportFailure } from "./errors.ts";
 import { fileRoutes } from "./files.ts";
@@ -28,6 +29,7 @@ export function createApi(deps: ApiDeps) {
     .route("/sessions", sessionControlRoutes(deps))
     .route("/sessions", fileRoutes(deps))
     .route("/sessions", previewTicketRoutes(deps))
+    .route("/analytics", analyticsRoutes(deps))
     .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))
     .route("/workspaces", workspacesRoutes(deps))

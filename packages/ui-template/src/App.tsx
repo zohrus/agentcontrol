@@ -1,4 +1,6 @@
+import { SessionId } from "@agentcontrol/protocol";
 import type { Client } from "@agentcontrol/sdk";
+import { AnalyticsView, withAnalytics } from "./analytics/index.ts";
 import {
   DataProvider,
   describeError,
@@ -44,10 +46,20 @@ type PaneOptions = {
   select: (ref: SessionRef) => void;
   archive: ReturnType<typeof useArchiveFlow>;
   open: Open;
+  /** Set while the Analytics screen is open: how to close it. */
+  closeAnalytics: (() => void) | undefined;
 };
 
-function paneSlots({ selected, select, archive, open }: PaneOptions) {
+function paneSlots({ selected, select, archive, open, closeAnalytics }: PaneOptions) {
   return {
+    analytics: closeAnalytics && (
+      <AnalyticsView
+        onClose={closeAnalytics}
+        onOpenSession={(workspaceId, id) => {
+          select({ workspaceId, id: SessionId.parse(id) });
+        }}
+      />
+    ),
     sessions: <SessionsPane selected={selected} onSelect={select} />,
     session: (
       <SessionPane
@@ -62,9 +74,25 @@ function paneSlots({ selected, select, archive, open }: PaneOptions) {
   };
 }
 
-function Workbench() {
-  const [selected, select] = useSelectedSession();
+/** Which session is open and whether the Analytics screen is; opening a session leaves Analytics. */
+function useScreen() {
+  const [selected, selectSession] = useSelectedSession();
   const [dialog, setDialog] = useOpenDialog();
+  const analyticsOpen = dialog === "analytics";
+  const select = (ref: SessionRef): void => {
+    selectSession(ref);
+    if (analyticsOpen) setDialog(undefined);
+  };
+  const closeAnalytics = analyticsOpen
+    ? () => {
+        setDialog(undefined);
+      }
+    : undefined;
+  return { selected, select, dialog, setDialog, closeAnalytics };
+}
+
+function Workbench() {
+  const { selected, select, dialog, setDialog, closeAnalytics } = useScreen();
   const archive = useArchiveFlow();
   const stats = useStatusStats();
   useOpenSession(selected);
@@ -73,12 +101,12 @@ function Workbench() {
   };
   const slots = {
     topBar: topBarSlots(open),
-    panes: paneSlots({ selected, select, archive, open }),
+    panes: paneSlots({ selected, select, archive, open, closeAnalytics }),
     statusBar: defaultStatusBarSlots(stats),
   };
   return (
     <>
-      <AppShell layout={layout} slots={slots} />
+      <AppShell layout={closeAnalytics ? withAnalytics(layout) : layout} slots={slots} />
       <AppDialogs open={dialog} onOpenChange={setDialog} onStarted={select} />
       <ArchiveFlowDialog flow={archive} />
     </>

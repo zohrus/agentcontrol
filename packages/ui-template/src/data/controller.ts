@@ -36,6 +36,8 @@ function sessionActions(ctx: Context) {
     archive: (id: SessionId, force: boolean) => archiveSession(ctx, { id, force }),
     saveFile: (ref: SessionRef, path: string, content: string) =>
       attempt(ctx, () => saveFile(ctx, { ref, path, content })),
+    /** What the sessions cost and how they went (the SDK's analytics). */
+    analytics: ctx.client.analytics,
   };
 }
 

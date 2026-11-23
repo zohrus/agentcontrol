@@ -1,6 +1,5 @@
 import type { WorkspaceInfo } from "@agentcontrol/sdk";
 import { useEffect, useState } from "react";
-import { Button, Dialog } from "../components/index.ts";
 import {
   LOCAL_WORKSPACE,
   type SessionRef,
@@ -14,7 +13,7 @@ import { canTakeCommands } from "../workspaces/index.ts";
 import { ConfigDialog } from "./config-dialog.tsx";
 import { WorkspacesDialogs } from "./workspaces-dialogs.tsx";
 
-/** The dialogs the top bar opens. Analytics has no backend yet and only says so. */
+/** What the top bar opens: dialogs, and "analytics", which is a full screen (see `analytics/`). */
 export type DialogName =
   | "new-session"
   | "workspaces"
@@ -68,24 +67,6 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: Sessio
   );
 }
 
-const comingSoon: Record<"analytics", string> = {
-  analytics:
-    "Analytics is not ready yet. It will show what your sessions cost and where time goes.",
-};
-
-function ComingSoon({ name, onClose }: { name: "analytics" | undefined; onClose: () => void }) {
-  return (
-    <Dialog open={name !== undefined} onOpenChange={onClose} title="Coming soon">
-      <div className="flex flex-col gap-3 p-4">
-        <p className="m-0">{name ? comingSoon[name] : ""}</p>
-        <Button className="self-end" onClick={onClose}>
-          OK
-        </Button>
-      </div>
-    </Dialog>
-  );
-}
-
 type Props = {
   open: DialogName | undefined;
   onOpenChange: (name: DialogName | undefined) => void;
@@ -100,19 +81,12 @@ export function AppDialogs({ open, onOpenChange, onStarted }: Props) {
       onOpenChange(isOpen ? name : undefined);
     },
   });
-  const soon = open === "analytics" ? open : undefined;
   return (
     <>
       <NewSession {...shared("new-session")} onStarted={onStarted} />
       <WorkspacesDialogs menu={shared("workspaces")} add={shared("add-workspace")} />
       <ConfigDialog {...shared("config")} />
       <ConnectedModifyDialog {...shared("modify")} />
-      <ComingSoon
-        name={soon}
-        onClose={() => {
-          onOpenChange(undefined);
-        }}
-      />
     </>
   );
 }

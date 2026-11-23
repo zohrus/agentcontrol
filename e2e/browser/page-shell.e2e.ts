@@ -2,9 +2,7 @@ import { afterEach, test } from "bun:test";
 import {
   expectBackgroundToBe,
   expectConnectionToSay,
-  expectDialogToShow,
   expectElapsedTimeToShow,
-  expectNoDialogToBeOpen,
 } from "../support/browser/page-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
@@ -62,29 +60,6 @@ test(
     // ** THEN the header shows days and hours
     // ********************************************************************
     await expectElapsedTimeToShow(app, /^2d 4h$/);
-  },
-  BROWSER_TEST_TIMEOUT_MS,
-);
-
-test(
-  "Analytics tells the user it is not ready yet and closes with OK",
-  async () => {
-    // ********************************************************************
-    // ** GIVEN the app is open in a browser
-    // ********************************************************************
-    const app = await startAppInBrowser();
-
-    // ********************************************************************
-    // ** WHEN the user presses Analytics
-    // ********************************************************************
-    await app.page.opensAnalytics();
-
-    // ********************************************************************
-    // ** THEN a notice says analytics is not ready yet, and OK closes it
-    // ********************************************************************
-    await expectDialogToShow(app, "Analytics is not ready yet.");
-    await app.page.dismissesTheNotice();
-    await expectNoDialogToBeOpen(app);
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

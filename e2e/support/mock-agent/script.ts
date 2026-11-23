@@ -40,7 +40,8 @@ const stepSchema = z.discriminatedUnion("kind", [
     outputTokens: z.number(),
     cachedReadTokens: z.number(),
     cachedWriteTokens: z.number(),
-    costUsd: z.number(),
+    /** Left out for an agent that reports no cost, as with a subscription login. */
+    costUsd: z.number().optional(),
   }),
 ]);
 

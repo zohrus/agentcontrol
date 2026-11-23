@@ -1,3 +1,4 @@
+import { analyticsPage } from "./analytics-page.ts";
 import { changesPage } from "./changes-page.ts";
 import { configEditorPage } from "./config-editor-page.ts";
 import { configPage } from "./config-page.ts";
@@ -14,6 +15,7 @@ import { workspacesPage } from "./workspaces-page.ts";
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
   return {
+    ...analyticsPage(page),
     ...sessionListPage(page),
     ...sessionPage(page),
     ...changesPage(page),

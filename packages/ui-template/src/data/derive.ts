@@ -11,7 +11,7 @@ import type { DataState } from "./model.ts";
 import { LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
 
 /** How the user knows a workspace: the Mac itself is "This Mac", anything else keeps its name. */
-function workspaceLabel(id: string): string {
+export function workspaceLabel(id: string): string {
   return id === LOCAL_WORKSPACE ? "This Mac" : id;
 }
 

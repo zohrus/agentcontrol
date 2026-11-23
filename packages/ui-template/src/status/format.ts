@@ -5,9 +5,14 @@ export function formatTokens(count: number): string {
   return String(count);
 }
 
-/** 0.4213 becomes "$0.42". */
+/** 0.4213 becomes "$0.42"; an amount under a cent shows as "<$0.01", never as "$0.00". */
 export function formatCost(usd: number): string {
-  return `$${usd.toFixed(2)}`;
+  return usd > 0 && usd < 0.01 ? "<$0.01" : `$${usd.toFixed(2)}`;
+}
+
+/** Like `formatCost`, but a sub-cent amount shows its digits: 0.0042 becomes "$0.0042". */
+export function formatCostExact(usd: number): string {
+  return usd > 0 && usd < 0.01 ? `$${usd.toFixed(4)}` : formatCost(usd);
 }
 
 /** Milliseconds as "45s", "12m", "3h 05m" or "2d 4h". */
