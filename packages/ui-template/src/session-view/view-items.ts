@@ -31,6 +31,8 @@ type ItemMap = {
     title: string;
     options: PermissionOption[];
     answer: string | undefined;
+    /** Set when the relay answered by itself (the Modify agent's permission policy), and why. */
+    automatic: { reason: string; refused: boolean } | undefined;
   };
   setup: { type: "setup"; key: string; text: string; exitCode: number | undefined };
   "turn-ended": { type: "turn-ended"; key: string; stopReason: string };

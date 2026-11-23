@@ -2,10 +2,11 @@ import type { SessionId } from "@agentcontrol/protocol";
 import { useEffect } from "react";
 import { Button, Dialog } from "../components/index.ts";
 import { useController, useData } from "../data/index.ts";
+import { ConnectedModifyDialog } from "../modify/index.ts";
 import { NewSessionDialog } from "../new-session/index.ts";
 import { WorkspaceSetupDialog } from "../workspace-setup/index.ts";
 
-/** The dialogs the top bar opens. Analytics and Modify have no backend yet and only say so. */
+/** The dialogs the top bar opens. Analytics has no backend yet and only says so. */
 export type DialogName = "new-session" | "workspace" | "analytics" | "modify";
 
 type Shared = { open: boolean; onOpenChange: (open: boolean) => void };
@@ -49,19 +50,12 @@ function Workspace(shared: Shared) {
   );
 }
 
-const comingSoon: Record<"analytics" | "modify", string> = {
+const comingSoon: Record<"analytics", string> = {
   analytics:
     "Analytics is not ready yet. It will show what your sessions cost and where time goes.",
-  modify: "Modify this UI is not ready yet. It needs the Modify agent, which is still being built.",
 };
 
-function ComingSoon({
-  name,
-  onClose,
-}: {
-  name: "analytics" | "modify" | undefined;
-  onClose: () => void;
-}) {
+function ComingSoon({ name, onClose }: { name: "analytics" | undefined; onClose: () => void }) {
   return (
     <Dialog open={name !== undefined} onOpenChange={onClose} title="Coming soon">
       <div className="flex flex-col gap-3 p-4">
@@ -88,11 +82,12 @@ export function AppDialogs({ open, onOpenChange, onStarted }: Props) {
       onOpenChange(isOpen ? name : undefined);
     },
   });
-  const soon = open === "analytics" || open === "modify" ? open : undefined;
+  const soon = open === "analytics" ? open : undefined;
   return (
     <>
       <NewSession {...shared("new-session")} onStarted={onStarted} />
       <Workspace {...shared("workspace")} />
+      <ConnectedModifyDialog {...shared("modify")} />
       <ComingSoon
         name={soon}
         onClose={() => {
