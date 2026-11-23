@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 12:20 UTC";
+const UPDATED = "23 Nov 2026, 14:00 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -204,7 +204,7 @@ const C = [
   { id:"protocol", phase:"p0", name:"Shared protocol types", status:"done", desc:"Relay methods, events and config items shared by relay, app, SDK and UI.", path:"packages/protocol" },
   { id:"mock-agent", phase:"p0", name:"Mock ACP agent", status:"done", desc:"Scriptable fake agent so every test runs without real agents or API keys.", path:"e2e/support/mock-agent" },
   { id:"e2e", phase:"p0", name:"End-to-end test harness", status:"done", desc:"GIVEN / WHEN / THEN banner-comment tests with readable setup and expect helpers. No unit tests.", path:"e2e/" },
-  { id:"coverage", phase:"p0", name:"Coverage gate", status:"done", desc:"End-to-end line coverage must be at least 95%, in total and on changed lines; now 97.95%. Deterministic: five identical runs. Enforced in the check, before every push and in CI. The UI package is not counted yet.", path:"scripts/coverage.ts" },
+  { id:"coverage", phase:"p0", name:"Coverage gate", status:"done", desc:"End-to-end line coverage must be at least 98% in total and 95% on changed lines; now 98.9%, the UI included (browser tests report which UI lines ran). Enforced in the check, before every push and in CI.", path:"scripts/coverage.ts" },
   { id:"abstractions", phase:"p0", name:"Abstraction changes", status:"done", desc:"All five done: normalised agent updates (raw ACP stays in the log), live session summaries pushed by the relay with pending requests, workspace id on live messages, the workdir seam (worktree or plain folder), and a single client in the UI.", path:"docs/abstractions-review.md" },
   { id:"dev-loop", phase:"p0", name:"Development loop", status:"done", desc:"Parallel timed checks, quick check, integrate script that keeps main green, done-report, guardrails, CI fix, decision log. From docs/dev-loop-review.md.", path:"docs/dev-loop-review.md" },
   { id:"server-security", phase:"p2", name:"Local server lock-down", status:"done", desc:"Host check, Origin check and a secret token on every route, so no website open in the browser can drive the app. The token is sent as a header, never as a cookie. 12 tests.", path:"packages/app/src/security" },
@@ -248,8 +248,9 @@ const C = [
   { id:"packaging", phase:"rel", name:"Compiled app and release folder", status:"done", desc:"The compiled app runs end to end with no source tree and no Bun installed: 9 of 9 smoke steps on Linux, also run in CI. Ships the default UI with its tools; about 700 MB.", path:"scripts/build.ts" },
   { id:"mac-bundle", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
   // Phase 5
-  { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"progress", desc:"SSH connection manager, relay deployment and version handshake, Linux builds, sessions that survive SSH drops and sleep.", path:"" },
-  { id:"console", phase:"p5", name:"Console in the app", status:"planned", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
+  { id:"relay-deploy", phase:"p5", name:"Relay over SSH", status:"done", desc:"Add a host, install the relay over ssh, run sessions there; survives dropped connections and the app being offline; relay versions handled; agents found through the login-shell PATH. About 40 tests over real ssh. Not yet tried on a real remote machine.", path:"" },
+  { id:"workspace-ui", phase:"p5", name:"Workspace picker in the UI", status:"progress", desc:"Pick a workspace, add an SSH host, see its checklist, restart its relay. The API and SDK are ready.", path:"packages/ui-template/src/workspaces" },
+  { id:"console", phase:"p5", name:"Console in the app", status:"progress", desc:"A Terminal tab with a real shell on the session's workspace, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection.", path:"" },
   { id:"gateway", phase:"p5", name:"AI gateway", status:"planned", desc:"Optional LiteLLM proxy per workspace for uniform cost logs.", path:"" },
   { id:"ide", phase:"p5", name:"Browser VS Code", status:"planned", desc:"code-server on the workspace, tunnelled over SSH.", path:"" },
   // Phase 6
@@ -263,8 +264,9 @@ const C = [
 ];
 
 const NOW = [
-  "Remote SSH workspaces (Phase 5): final merge, compiled relay over ssh, finding agents on a real host",
-  "UI under the coverage rule: browser coverage and the missing browser tests",
+  "Workspace picker and Config screen in the UI",
+  "Console: a terminal on the workspace, inside the app",
+  "Analytics screen: tokens and cost per session, model and workspace",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
@@ -295,6 +297,7 @@ const LOG = [
   ["23 Nov 2026 10:10", "Landed: real Claude Code working through the whole app (it never asked for permission before; fixed), README and first-run fixes, and the Preview tab with sandboxed HTML and Markdown. 82 test runs pass, coverage 98.4%."],
   ["23 Nov 2026 11:00", "Compiled app landed: it runs end to end with no source tree and no Bun installed (9 of 9 smoke steps on Linux, now in CI). bun dev opens the browser. Plan page brought up to date with everything since yesterday. 13 follow-up fixes are done on their branch and merging."],
   ["23 Nov 2026 12:20", "Landed: 13 follow-up fixes (app starts when the relay is down, relay shutdown keeps the last events, relay stop reports what it did, stale updates re-read, coverage floor raised to 98%) and the Mac build fix. On a real Mac runner the compiled app passed all 9 smoke steps, from the app bundle and from the mounted disk image; unsigned disk images are built for both chip types (about 320 MB each). Three Mac-only bugs found and fixed."],
+  ["23 Nov 2026 14:00", "Landed: remote SSH workspaces (Phase 5 core, about 40 tests over real ssh, compiled relay installed over ssh) and UI coverage (the UI now counts toward the coverage rule, about 50 new browser tests). 124 test runs pass, coverage 98.9%. A break in the compiled app caused by the follow-up fixes was caught by GitHub's build and fixed; the compiled-app smoke test now runs before every landing."],
 ];
 /* ===== END DATA ===== */
 
