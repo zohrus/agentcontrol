@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 00:45 UTC";
+const UPDATED = "23 Nov 2026, 08:35 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -241,7 +241,7 @@ const C = [
   { id:"ui-updates", phase:"p4", name:"Default UI updates", status:"done", desc:"Merge each new default UI into yours; the Modify agent resolves conflicts, then checks, Keep or Undo.", path:"packages/app/src/ui-versions" },
   { id:"safe", phase:"p4", name:"/_safe recovery page", status:"done", desc:"Served by the app itself so a broken UI can always be rolled back.", path:"" },
   // Release
-  { id:"modify-ui", phase:"p4", name:"Modify panel in the UI", status:"progress", desc:"Connects the Modify this UI panel to the backend: request, check status, Keep, Undo, history, default-UI updates, with browser tests.", path:"packages/ui-template/src/modify" },
+  { id:"modify-ui", phase:"p4", name:"Modify panel in the UI", status:"done", desc:"Connects the Modify this UI panel to the backend: request, check status, Keep, Undo, history, default-UI updates, with browser tests.", path:"packages/ui-template/src/modify" },
   { id:"mac-shell", phase:"rel", name:"Menu bar app", status:"progress", desc:"Starts the server, opens the UI, shows how many sessions are waiting.", path:"packages/mac" },
   { id:"packaging", phase:"rel", name:"Mac app bundle and .dmg (unsigned)", status:"progress", desc:"bun build --compile, codesign, notarize, create-dmg, cask, release workflow. Needs an Apple Developer ID.", path:"scripts/" },
   // Phase 5
@@ -260,17 +260,18 @@ const C = [
 ];
 
 const NOW = [
-  "Modify panel in the UI, connected to its backend, with browser tests",
-  "Preview tab: HTML files from a worktree rendered in a sandbox, and Markdown",
-  "Remote SSH workspaces (Phase 5): install the relay over ssh, version check, several workspaces at once, tested over real ssh",
+  "Compiled app working end to end with no source tree (needed for the Mac release)",
+  "Real Claude Code driven through the whole app, with fixes for what breaks",
   "Follow-up fixes: app start when the relay is down, relay shutdown order, weak coverage spots, version numbers",
+  "Preview tab (final check) and README with first-run check (final check)",
+  "Paused until the machine has room: remote SSH workspaces, UI coverage",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
-  "CI on GitHub is red on main (gate-proof job, check job, Mac build script permission): being fixed now",
+  "Mac build on GitHub: red on one step only. The compiled app cannot find its database setup files; being fixed by the compiled-app work",
   "Codex in the spike: needs an OpenAI API key and api.openai.com allowed in this environment, or your Mac attached",
 ];
 const LOG = [
@@ -291,6 +292,7 @@ const LOG = [
   ["22 Nov 2026 23:10", "UI on live data landed: every action wired through the SDK, served by the app with hot reload, 10 browser tests, reading normalised updates only. Playwright added as a dependency so browser tests run in CI. Local server lock-down started."],
   ["23 Nov 2026 00:10", "Landed: harness config backend (38 tests, verified against real Claude Code and Codex) and the Modify agent backend (fenced agent, check gate, Keep and Undo, default-UI updates, /_safe; 26 tests). Coverage 98.2%. Next wave started: Modify panel in the UI, Preview tab, SSH workspaces, follow-up fixes."],
   ["23 Nov 2026 00:45", "Local server lock-down landed: every route, the live stream and /_safe now refuse requests from other websites or without the app's secret token. A working local copy runs from source with bun dev (checked on Linux; not yet run on a Mac)."],
+  ["23 Nov 2026 08:35", "CI on GitHub is green on main for the first time. The Swift menu bar app builds on a real Mac for both chip types and the app bundle is assembled and ad-hoc signed there. Modify panel in the UI landed with 10 browser tests. Fixed: tests run from a git hook were changing this repository's own git settings. Decision: first Mac release is unsigned; Apple Developer ID parked."],
 ];
 /* ===== END DATA ===== */
 
