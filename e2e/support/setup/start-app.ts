@@ -12,7 +12,8 @@ import { type Outsiders, outsidersOf } from "./outsiders.ts";
 import { sessionsOfRelay } from "./relay-peek.ts";
 import type { RelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
-import { prepareWorkspace } from "./workspace-parts.ts";
+import type { Wire } from "./wire.ts";
+import { prepareWorkspace, type WorkspaceOptions } from "./workspace-parts.ts";
 
 const STREAM_WAIT_MS = 5000;
 
@@ -73,7 +74,7 @@ function newHeard(): Heard {
   };
 }
 
-export interface StartOptions {
+export interface StartOptions extends WorkspaceOptions {
   /** Also serve the default UI, so a browser can use the app. */
   withUi?: boolean;
   /** Serve this folder of built UI files instead (what a release does). */
@@ -82,17 +83,11 @@ export interface StartOptions {
   modify?: ModifyConfig;
   /** How long a preview link stays valid after its last use, in milliseconds (default: an hour). */
   previewLifetimeMs?: number;
-  /** Extra environment for the relay, for example the command behind an agent name. */
-  relayEnv?: Record<string, string>;
   ssh?: Partial<SshSettings>;
-  /** The repo holds this many files besides its readme, so a worktree has plenty. */
-  repoFiles?: number;
-  /** The version the relay reports it is (in-process runs only), for a relay that is not this release. */
-  relayVersion?: string;
+  /** Wraps each connection the app opens to the relay, to make the relay misbehave (in-process runs only). */
+  relayWire?: (wire: Wire) => Wire;
   /** Stop the relay before the app starts, so the app finds none. */
   relayStopped?: boolean;
-  /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
-  dataFolderBehindALink?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -129,9 +124,10 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const heard = newHeard();
   const ui = uiOf(options);
   const fixed = { dataDir, env, host, heard, ui, relayDown: options.relayStopped };
+  const wiring = { relayWire: options.relayWire };
   const lifetime = { previewLifetimeMs: options.previewLifetimeMs };
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ ...fixed, ...lifetime, ssh: options.ssh, ...extra });
+    openApp({ ...fixed, ...wiring, ...lifetime, ssh: options.ssh, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -177,6 +173,7 @@ interface OpenOptions {
   port?: number;
   modify?: ModifyConfig | undefined;
   previewLifetimeMs?: number | undefined;
+  relayWire?: ((wire: Wire) => Wire) | undefined;
 }
 
 async function openApp(options: OpenOptions): Promise<Opened> {

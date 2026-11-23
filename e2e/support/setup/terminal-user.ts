@@ -1,4 +1,4 @@
-import type { Terminal } from "@agentcontrol/sdk";
+import type { Client, Terminal } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
 import { Timeline } from "./timeline.ts";
 
@@ -25,14 +25,17 @@ export interface OpenShell {
 type Heard = Pick<OpenShell, "screens" | "endings" | "problems" | "printed">;
 
 /** Opens the terminal and records what it reports. */
-function connect(app: AppAccess, call: { session: Session; cols: number; rows: number }) {
+function connect(
+  app: AppAccess,
+  call: { session: Session; cols: number; rows: number; sdk?: Client | undefined },
+) {
   const heard = {
     screens: new Timeline<string>(SCREEN_WAIT_MS),
     endings: new Timeline<{ exitCode: number | null }>(SCREEN_WAIT_MS),
     problems: new Timeline<string>(SCREEN_WAIT_MS),
   };
   let printed = "";
-  const terminal: Terminal = app.sdk.terminal.open(call.session.id, {
+  const terminal: Terminal = (call.sdk ?? app.sdk).terminal.open(call.session.id, {
     cols: call.cols,
     rows: call.rows,
     onData: (text) => {
@@ -53,7 +56,7 @@ function connect(app: AppAccess, call: { session: Session; cols: number; rows: n
 /** Opens a terminal on the session with the SDK, as the Terminal tab does. */
 export function openShell(
   app: AppAccess,
-  call: { session: Session; cols?: number; rows?: number },
+  call: { session: Session; cols?: number; rows?: number; sdk?: Client },
 ): OpenShell {
   const { terminal, read } = connect(app, { cols: 80, rows: 24, ...call });
   return {

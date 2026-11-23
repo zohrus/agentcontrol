@@ -12,6 +12,8 @@ const messages: Record<string, string> = {
   "internal-error": "Something went wrong inside AgentControl.",
   "workspace-exists": "That host is already a workspace.",
   "workspace-removed": "That workspace was removed, so its sessions can only be read.",
+  "drift-no-match":
+    "None of those items could be found in the agent's files any more, so nothing was kept.",
   "config-plan-stale":
     "A file changed after you reviewed it, so nothing was written. Review the changes again.",
 };

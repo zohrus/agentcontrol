@@ -14,7 +14,7 @@ function menu(page: Page) {
       page.getByRole("button", { name: "Workspaces", exact: true }).click(),
     /** What the menu says about one workspace: its name, connection and reason. */
     workspaceRowText: async (label: string): Promise<string> =>
-      (await rowOf(label).count()) === 0 ? "" : rowOf(label).innerText(),
+      (await rowOf(label).allInnerTexts()).join("\n"),
     restartsTheRelayOf: (label: string) =>
       rowOf(label).getByRole("button", { name: "Restart relay" }).click(),
     removesTheWorkspace: (label: string) =>
@@ -22,7 +22,7 @@ function menu(page: Page) {
     /** The question that stands before restarting or removing, or "" when none is asked. */
     confirmationText: async (title: string): Promise<string> => {
       const question = page.getByRole("dialog", { name: title, exact: true });
-      return (await question.count()) === 0 ? "" : question.innerText();
+      return (await question.allInnerTexts()).join("\n");
     },
     confirms: (title: string, button: string) =>
       page
@@ -50,7 +50,7 @@ function onOtherMachines(page: Page) {
     /** What the list says under one workspace's name (its connection, reason and rows). */
     groupText: async (title: string): Promise<string> => {
       const group = page.getByRole("region", { name: title, exact: true });
-      return (await group.count()) === 0 ? "" : group.innerText();
+      return (await group.allInnerTexts()).join("\n");
     },
     /** Opens New session, picks the workspace first, adds the repository there and starts. */
     startsSessionOnWorkspace: async (call: {

@@ -1,4 +1,4 @@
-import type { ConfigAgent, ConfigItem, ScopedItem } from "@agentcontrol/sdk";
+import { ApiError, type ConfigAgent, type ConfigItem, type ScopedItem } from "@agentcontrol/sdk";
 import { changeItems } from "./config-data.ts";
 import type { Context } from "./context.ts";
 
@@ -40,9 +40,14 @@ async function importFor(
   return found.flat();
 }
 
+/** The error for a "Keep my manual edit" that found none of its items in the agent's file. */
+const noMatch = (): ApiError =>
+  new ApiError(409, { code: "drift-no-match", message: "None of the items were found." });
+
 /**
  * "Keep my manual edit": the items named take the contents the agent's file has now. The other
- * agent's file is not written until the user reviews and applies.
+ * agent's file is not written until the user reviews and applies. When the file holds none of the
+ * items any more, nothing is changed and the user is told so.
  */
 export async function keepManualEdit(
   ctx: Context,
@@ -51,6 +56,7 @@ export async function keepManualEdit(
   const wanted = (scoped: ScopedItem): boolean => call.itemIds.includes(scoped.item.id);
   const kept = ctx.store.get().config.items.filter(wanted);
   const found = await importFor(ctx, { agent: call.agent, repoPaths: repoPathsOf(kept) });
+  if (!kept.some((scoped) => matchesOf(scoped, found))) throw noMatch();
   await changeItems(ctx, (held) =>
     held.map((scoped) => (wanted(scoped) ? takingTheFile(scoped, found) : scoped)),
   );

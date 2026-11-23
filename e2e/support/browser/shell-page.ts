@@ -1,4 +1,5 @@
-import type { Page } from "./playwright.ts";
+import type { WorkspaceInfo } from "@agentcontrol/sdk";
+import type { Page, Route } from "./playwright.ts";
 
 const liveStream = "**/api/stream";
 
@@ -82,6 +83,34 @@ function badAnswers(page: Page) {
   };
 }
 
+/** Answers from the app that say something else than the app would, as if its data were different. */
+function differentAnswers(page: Page) {
+  return {
+    /**
+     * Every list of workspaces the page asks for has this one in it as well, as if the app knew it,
+     * until the returned function is called.
+     */
+    hearsOfAnotherWorkspace: async (extra: WorkspaceInfo): Promise<() => void> => {
+      let told = true;
+      await page.route("**/api/workspaces", async (route: Route): Promise<void> => {
+        if (!told) return route.continue();
+        const real = await route.fetch();
+        const { workspaces } = (await real.json()) as { workspaces: WorkspaceInfo[] };
+        return route.fulfill({ response: real, json: { workspaces: [...workspaces, extra] } });
+      });
+      return () => {
+        told = false;
+      };
+    },
+    /** Reading what the agents' files hold finds no items, as if they were all deleted just now. */
+    findsNothingInTheAgentsFiles: async (): Promise<void> => {
+      await page.route("**/api/config/import", (route) =>
+        route.fulfill({ status: 200, json: { items: [] } }),
+      );
+    },
+  };
+}
+
 /** Answers from the app that arrive late. */
 function lateAnswers(page: Page) {
   return {
@@ -116,6 +145,17 @@ function trouble(page: Page) {
       await page.route(liveStream, (route) => route.abort());
     },
     canReachTheLiveStreamAgain: (): Promise<void> => page.unroute(liveStream),
+    /**
+     * The live connection says "ready" and ends at once; the page connects again every second and
+     * asks for its lists each time, without the app restarting (which would make it reload for a
+     * new secret).
+     */
+    hasALiveConnectionThatEndsAtOnce: async (): Promise<void> => {
+      const headers = { "content-type": "text/event-stream" };
+      await page.route(liveStream, (route) =>
+        route.fulfill({ status: 200, headers, body: "event: ready\ndata: {}\n\n" }),
+      );
+    },
   };
 }
 
@@ -126,6 +166,7 @@ export function shellPage(page: Page) {
     ...topBar(page),
     ...toasts(page),
     ...badAnswers(page),
+    ...differentAnswers(page),
     ...lateAnswers(page),
     ...trouble(page),
   };

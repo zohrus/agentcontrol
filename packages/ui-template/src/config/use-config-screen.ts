@@ -1,4 +1,5 @@
 import type { ConfigAgent, ScopedItem } from "@agentcontrol/protocol";
+import { countOf } from "../status/index.ts";
 import { useEffect, useState } from "react";
 import { agentOfPath, allAgents } from "./agents.ts";
 import { newOnes, repoOf, toggled, withItem, without } from "./config-items.ts";
@@ -86,7 +87,7 @@ function useImport({ actions, goTo, say }: Call) {
       if (!saved) return;
       actions.forgetFound();
       goTo("items");
-      say(`Adopted ${String(adopted)} item(s). Review changes to record them.`);
+      say(`Adopted ${countOf(adopted, "item")}. Review changes to record them.`);
     },
   };
 }

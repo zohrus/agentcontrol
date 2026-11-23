@@ -16,9 +16,12 @@ export type { Store, StoreOptions, StoredSession, Workspace } from "./types.ts";
 
 /** Re-translated events: replace a session's stored ones, and find the sessions that need it. */
 function normalisation(db: Db) {
+  let revision = 0;
   return {
+    revision: (): number => revision,
     replaceSessionEvents: (call: Parameters<Store["replaceSessionEvents"]>[0]): void => {
       replaceSessionEvents(db, call);
+      revision += 1;
     },
     sessionsNormalisedBefore: (call: Parameters<Store["sessionsNormalisedBefore"]>[0]) =>
       sessionsNormalisedBefore(db, call),

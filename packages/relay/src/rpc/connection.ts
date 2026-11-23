@@ -55,9 +55,11 @@ function rejectLine(parsed: { reason: string; detail: string }, write: Write): v
   write({ id: null, error: toErrorBody(new RelayError(code, parsed.detail)) });
 }
 
-function clientFor(write: Write): { client: Client; cleanups: Array<() => void> } {
+function clientFor(call: { write: Write; backlog: () => number }) {
+  const { write, backlog } = call;
   const cleanups: Array<() => void> = [];
   const client: Client = {
+    backlog,
     notify: (method, params) => {
       write({ method, params });
     },
@@ -70,11 +72,13 @@ function clientFor(write: Write): { client: Client; cleanups: Array<() => void> 
 export function createRpcConnection(options: {
   handlers: Handlers;
   send: (line: string) => void;
+  /** Bytes sent that the client has not read yet; 0 when that is not known. */
+  backlog?: () => number;
 }): RpcConnection {
   const write: Write = (message) => {
     options.send(JSON.stringify({ jsonrpc: "2.0", ...message }));
   };
-  const { client, cleanups } = clientFor(write);
+  const { client, cleanups } = clientFor({ write, backlog: options.backlog ?? (() => 0) });
   const context = { handlers: options.handlers, client, write };
   return {
     receive: (line) => {

@@ -6,6 +6,13 @@ const dialogOf = (page: Page) => page.getByRole("dialog");
 /** What to start a session with, typed into the New session dialog. */
 export type NewSession = { repoPath: string; agent: string; prompt: string; baseBranch?: string };
 
+/** Presses Add and waits until the app has the repository: the dialog then selects it and resets the base branch. */
+async function addsTheRepository(page: Page): Promise<void> {
+  const dialog = dialogOf(page);
+  await dialog.getByRole("button", { name: "Add", exact: true }).click();
+  await dialog.getByLabel("Repository folder").waitFor({ state: "hidden" });
+}
+
 /** The New session dialog, field by field. */
 function newSessionForm(page: Page) {
   const dialog = dialogOf(page);
@@ -16,7 +23,7 @@ function newSessionForm(page: Page) {
         .getByRole("combobox", { name: /^Repository/ })
         .selectOption({ label: "Add repository…" }),
     typesRepositoryFolder: (folder: string) => dialog.getByLabel("Repository folder").fill(folder),
-    addsTheRepository: () => dialog.getByRole("button", { name: "Add", exact: true }).click(),
+    addsTheRepository: () => addsTheRepository(page),
     choosesAgent: (agent: string) =>
       dialog.getByRole("combobox", { name: /^Agent/ }).selectOption({ label: agent }),
     typesBaseBranch: (branch: string) => dialog.getByLabel("Base branch").fill(branch),

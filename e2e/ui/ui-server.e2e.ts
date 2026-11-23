@@ -5,7 +5,13 @@ import {
 } from "../support/expect/ui-server-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithLocalWorkspace } from "../support/setup/start-app.ts";
-import { aUiServerIsLeftRunning, theUiServerProcessIsKilled } from "../support/setup/ui-server.ts";
+import { expectProcessToBeGone } from "../support/expect/terminal-expectations.ts";
+import {
+  aUiServerIsLeftRunning,
+  theUiServerIgnoresTheQuitSignal,
+  theUiServerProcessIsKilled,
+  theUiServerProcessOf,
+} from "../support/setup/ui-server.ts";
 
 afterEach(cleanUpAfterTest);
 
@@ -43,4 +49,23 @@ test("the UI server an earlier run left behind is stopped when the app starts", 
   // ** THEN the server the earlier run left behind has been stopped
   // ********************************************************************
   await expectTheLeftoverUiServerToBeStopped(leftover);
+});
+
+test("a UI server that ignores the quit signal is killed when the app quits", async () => {
+  // ********************************************************************
+  // ** GIVEN the app is serving a UI whose server ignores the signal that asks it to quit
+  // ********************************************************************
+  await theUiServerIgnoresTheQuitSignal();
+  const app = await startAppWithLocalWorkspace({ withUi: true });
+  const pid = await theUiServerProcessOf(app);
+
+  // ********************************************************************
+  // ** WHEN the app quits
+  // ********************************************************************
+  await app.restartsTheApp();
+
+  // ********************************************************************
+  // ** THEN the UI server process is gone, killed after the grace period
+  // ********************************************************************
+  await expectProcessToBeGone(pid, "the UI server");
 });

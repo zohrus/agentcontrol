@@ -1,11 +1,10 @@
-import type { SessionId } from "@agentcontrol/protocol";
 import { hc } from "hono/client";
 import type { AppType } from "@agentcontrol/app";
 import { type AnalyticsFilter, type AnalyticsTableOptions, analyticsApi } from "./analytics.ts";
 import { configApi } from "./config.ts";
 import { authorizedFetch, tokenFromPage } from "./authorized-fetch.ts";
 import { filesApi } from "./files.ts";
-import { openTerminal, type Terminal, type OpenTerminal } from "./terminal.ts";
+import { terminalApi } from "./terminal.ts";
 import { modifyApi } from "./modify.ts";
 import { sessionsApi } from "./sessions.ts";
 import { type Listeners, subscribeTo } from "./subscribe.ts";
@@ -58,18 +57,7 @@ export function createClient({ baseUrl, fetch: sender = fetch, ...auth }: Client
     workspace: workspaceApi(api),
     workspaces: workspacesApi(api),
     agents: agentsApi(api),
-    terminal: {
-      /**
-       * Opens the user's shell in the session's folder on its workspace (a real terminal; this is
-       * the user's console, not the agent's). Returns at once: output arrives through `onData`.
-       */
-      open: (id: SessionId, options: OpenTerminal): Terminal =>
-        openTerminal({
-          connection: { baseUrl, token: () => auth.token ?? tokenFromPage() },
-          id,
-          options,
-        }),
-    },
+    terminal: terminalApi({ baseUrl, token: () => auth.token ?? tokenFromPage(), send }),
     /** Live updates. Returns a function that stops them. */
     subscribe: (listeners: Listeners): (() => void) =>
       subscribeTo({ streamUrl: `${baseUrl}/api/stream`, listeners, send }),

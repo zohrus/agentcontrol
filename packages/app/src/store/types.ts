@@ -44,6 +44,8 @@ export interface Store {
     list: SessionEvent[];
     version: number;
   }): void;
+  /** Changes whenever saved events are replaced (not when new ones are added), for what is derived from them. */
+  revision(): number;
   /** Sessions whose stored events were made with an older translation version than this. */
   sessionsNormalisedBefore(call: { workspaceId: string; version: number }): SessionId[];
   /** Highest stored seq per session of a workspace, to resume a relay subscription. */

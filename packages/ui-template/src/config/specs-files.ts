@@ -1,3 +1,4 @@
+import { countOf } from "../status/index.ts";
 import { given, idOf, kindSpec, needsName, str, valueOf } from "./kind-spec.ts";
 
 const SKILL_FILE = "SKILL.md";
@@ -31,7 +32,7 @@ export const skillSpec = kindSpec(
       const files = [{ path: SKILL_FILE, content: valueOf(form, "text") }, ...others];
       return { item: { id: idOf(base), kind: "skill", name: valueOf(form, "name").trim(), files } };
     },
-    summary: (item) => `${String(item.files.length)} file(s)`,
+    summary: (item) => countOf(item.files.length, "file"),
   },
 );
 

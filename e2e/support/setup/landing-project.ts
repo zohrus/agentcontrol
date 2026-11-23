@@ -5,6 +5,9 @@ import { onTestEnd } from "./cleanup.ts";
 
 const repoRoot = join(import.meta.dir, "../../..");
 
+/** The project's stand-in for the compiled-app smoke test. */
+export const SMOKE_SCRIPT = "scripts/smoke-binary.ts";
+
 /** A tiny project with an `origin` to land into: what `bun run integrate` works on. */
 export interface Project {
   /** The clone the person works in. */
@@ -19,11 +22,18 @@ export interface Ran {
   readonly output: string;
 }
 
+/** The caller's environment, minus the switch that turns the dependency guard off. */
+function environmentWithTheGuardOn(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(Bun.env).filter(([name]) => name !== "ALLOW_DEP_CHANGE"),
+  );
+}
+
 /** Runs a command in a folder; never throws, so a failing git command can be part of a story. */
 async function run(cwd: string, command: string[], env: Record<string, string> = {}): Promise<Ran> {
   const child = Bun.spawn(command, {
     cwd,
-    env: { ...Bun.env, ...env },
+    env: { ...environmentWithTheGuardOn(), ...env },
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -35,8 +45,20 @@ async function run(cwd: string, command: string[], env: Record<string, string> =
   return { exitCode, output: out + err };
 }
 
-async function gitIn(project: Project, ...args: string[]): Promise<Ran> {
+export async function gitIn(project: Project, ...args: string[]): Promise<Ran> {
   return run(project.work, ["git", ...args]);
+}
+
+/** What every project starts with: the scripts the queue runs, and an empty landing log. */
+async function writesTheProjectFiles(project: Project): Promise<void> {
+  const scripts = '{"check":"true","build:linux":"echo building-the-linux-app"}';
+  await Bun.write(
+    join(project.work, "package.json"),
+    `{"name":"demo","private":true,"scripts":${scripts}}\n`,
+  );
+  const smoke = 'console.log("smoke-of-the-app", ...Bun.argv.slice(2));\n';
+  await Bun.write(join(project.work, SMOKE_SCRIPT), smoke);
+  await Bun.write(join(project.work, "docs/landings.log"), "");
 }
 
 /** A project whose `main` has one commit and whose origin has it too; no hooks, no dependencies. */
@@ -48,17 +70,13 @@ export async function createProjectWithOrigin(): Promise<Project> {
   await run(root, ["git", "clone", project.origin, project.work]);
   await gitIn(project, "config", "user.name", "Test User");
   await gitIn(project, "config", "user.email", "test@example.com");
-  await Bun.write(
-    join(project.work, "package.json"),
-    '{"name":"demo","private":true,"scripts":{"check":"true"}}\n',
-  );
-  await Bun.write(join(project.work, "docs/landings.log"), "");
+  await writesTheProjectFiles(project);
   await commitAll(project, "Start the project");
   await gitIn(project, "push", "origin", "main");
   return project;
 }
 
-async function commitAll(project: Project, message: string): Promise<void> {
+export async function commitAll(project: Project, message: string): Promise<void> {
   await gitIn(project, "add", "-A");
   await gitIn(project, "commit", "-m", message);
 }

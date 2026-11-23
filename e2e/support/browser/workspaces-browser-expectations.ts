@@ -13,6 +13,14 @@ export function expectWorkspaceRowToSay(
   });
 }
 
+/** The workspace menu has no row for this workspace. */
+export function expectWorkspaceNotToBeListed(app: AppInBrowser, workspace: string): Promise<void> {
+  return pageEventually(`expected the menu not to list "${workspace}"`, async () => {
+    const shown = await app.page.workspaceRowText(workspace);
+    return shown === "" ? undefined : `the row reads ${quote(shown)}`;
+  });
+}
+
 /** The session list shows this under the workspace's name. */
 export function expectWorkspaceGroupToShow(
   app: AppInBrowser,

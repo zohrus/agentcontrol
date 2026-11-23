@@ -3,6 +3,7 @@ import { type ModifyConfig, relayClientOver, type SshSettings, startApp } from "
 import { readApiToken } from "./api-token.ts";
 import { eventually } from "./eventually.ts";
 import { inSubprocesses, type RelayHost } from "./relay-host.ts";
+import type { Wire } from "./wire.ts";
 
 const appMain = join(import.meta.dir, "../../../packages/app/src/main.ts");
 const START_TIMEOUT_MS = 30_000;
@@ -79,6 +80,8 @@ interface LaunchOptions extends ProcessLaunch {
   ssh?: Partial<SshSettings> | undefined;
   /** How long a preview link lasts after its last use; in-process runs only. */
   previewLifetimeMs?: number | undefined;
+  /** Wraps each connection the app opens to the relay; in-process runs only. */
+  relayWire?: ((wire: Wire) => Wire) | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
 }
@@ -101,7 +104,7 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     ...(options.modify && { modify: options.modify }),
     ...extraSettings(options),
     connectRelay: () => {
-      const wire = options.host.wire();
+      const wire = (options.relayWire ?? ((plain: Wire) => plain))(options.host.wire());
       void wire.closed.then(options.onRelayConnectionEnded);
       return relayClientOver(wire);
     },

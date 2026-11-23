@@ -22,10 +22,11 @@ async function fail(ctx: Ctx, options: { failure: string; checkOutput?: string }
 
 function summaryOf(ctx: Ctx, changed: string[]): string {
   const { merge } = ctx.change;
-  if (!merge) return `${String(changed.length)} file(s) changed.`;
+  if (!merge)
+    return `${String(changed.length)} ${changed.length === 1 ? "file" : "files"} changed.`;
   const { version, keptAutomatically, conflictsResolved } = merge;
   const kept = `${String(keptAutomatically)} of your changes kept automatically`;
-  return `Update ${version}: ${kept}, ${String(conflictsResolved)} conflict(s) resolved`;
+  return `Update ${version}: ${kept}, ${String(conflictsResolved)} ${conflictsResolved === 1 ? "conflict" : "conflicts"} resolved`;
 }
 
 /** The checks passed: put the change into the live UI and wait for Keep or Undo. */

@@ -57,7 +57,7 @@ test(
     // ********************************************************************
     const skill = { Name: "review", "SKILL.md": "---\nname: review\n---\nBe careful.\n" };
     await app.page.addsItem({ tab: "Skills", noun: "skill", fields: skill });
-    await expectConfigToShow(app, "review", "1 file(s)");
+    await expectConfigToShow(app, "review", "1 file");
     const command = { Name: "ship", Prompt: "Ship it." };
     await app.page.addsItem({ tab: "Commands", noun: "command", fields: command });
     await expectConfigToShow(app, "ship", "Ship it.");

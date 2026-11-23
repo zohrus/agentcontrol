@@ -1,3 +1,7 @@
+/** "1 file", "2 files": the noun with an "s" unless there is exactly one. */
+export const countOf = (count: number, noun: string): string =>
+  `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
+
 /** 1234 becomes "1.2k", 2_500_000 becomes "2.5M"; small numbers stay as they are. */
 export function formatTokens(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;

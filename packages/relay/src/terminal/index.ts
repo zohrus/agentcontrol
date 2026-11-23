@@ -1,4 +1,10 @@
-import { ErrorCode, RelayName as N, type SessionId, type TerminalId } from "@agentcontrol/protocol";
+import {
+  ErrorCode,
+  limitedOutput,
+  RelayName as N,
+  type SessionId,
+  type TerminalId,
+} from "@agentcontrol/protocol";
 import { type Client, RelayError } from "../rpc/index.ts";
 import { type HostEnvironment, loginShell, shellEnvironment } from "./environment.ts";
 import { type ShellProcess, spawnShell } from "./shell-process.ts";
@@ -52,6 +58,17 @@ function refuseTooMany(registry: Registry, client: Client): void {
   throw new RelayError(ErrorCode.invalidParams, message);
 }
 
+/** What the shell prints, passed to the client as long as the client keeps up with it. */
+function outputTo(call: { client: Client; terminalId: TerminalId }): (text: string) => void {
+  const { client, terminalId } = call;
+  return limitedOutput({
+    unread: () => client.backlog(),
+    send: (data) => {
+      client.notify(N.terminalData, { terminalId, data });
+    },
+  });
+}
+
 function startShell(call: {
   host: HostEnvironment;
   client: Client;
@@ -67,9 +84,7 @@ function startShell(call: {
       cwd: target.cwd,
       env: shellEnvironment({ host: call.host, session: target.env }),
       ...call.size,
-      onData: (data) => {
-        client.notify(N.terminalData, { terminalId, data });
-      },
+      onData: outputTo({ client, terminalId }),
       onExit: (exitCode) => {
         call.onExit();
         client.notify(N.terminalExit, { terminalId, exitCode });

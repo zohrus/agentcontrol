@@ -19,9 +19,17 @@ export function applyWorkspace(ctx: Context, info: WorkspaceInfo): void {
   if (info.state === "connected") inBackground(ctx, loadChoices(ctx, info.id));
 }
 
-/** Every workspace the app knows, after a (re)connect. */
+/** Every workspace the app knows, after a (re)connect; one the app no longer lists is dropped. */
 export async function loadWorkspaces(ctx: Context): Promise<void> {
-  for (const workspace of await ctx.client.workspaces.list()) applyWorkspace(ctx, workspace);
+  const before = new Set(ctx.store.get().workspaces.map((known) => known.id));
+  const listed = await ctx.client.workspaces.list();
+  const ids = new Set(listed.map((workspace) => workspace.id));
+  // Only a workspace that was known before the question and is missing from the answer is dropped.
+  ctx.store.update((s) => ({
+    ...s,
+    workspaces: s.workspaces.filter((known) => ids.has(known.id) || !before.has(known.id)),
+  }));
+  for (const workspace of listed) applyWorkspace(ctx, workspace);
 }
 
 function holdCheck(ctx: Context, id: string, check: WorkspaceCheck): void {
