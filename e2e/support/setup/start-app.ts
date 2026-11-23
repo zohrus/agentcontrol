@@ -90,6 +90,8 @@ export interface StartOptions {
   relayVersion?: string;
   /** Stop the relay before the app starts, so the app finds none. */
   relayStopped?: boolean;
+  /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
+  dataFolderBehindALink?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
