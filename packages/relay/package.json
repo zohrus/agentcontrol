@@ -8,7 +8,7 @@
     ".": "./src/index.ts"
   },
   "bin": {
-    "agentcontrol-relay": "./src/main.ts"
+    "agentcontrol-relay": "./bin/agentcontrol-relay.ts"
   },
   "scripts": {
     "daemon": "bun src/main.ts daemon",

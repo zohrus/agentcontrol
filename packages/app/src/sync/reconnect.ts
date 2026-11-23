@@ -2,7 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import type { RelayClient } from "../relays/index.ts";
 import type { Live } from "./link.ts";
 import { startSyncSession } from "./session.ts";
-import type { SyncDeps } from "./session.ts";
+import type { SyncDeps } from "./deps.ts";
 
 const BACKOFF_START_MS = 100;
 const BACKOFF_MAX_MS = 3000;
@@ -26,7 +26,11 @@ async function oneConnection(options: {
   signal.addEventListener("abort", () => void client.close());
   try {
     const session = await startSyncSession(client, deps);
-    hooks.attach({ client, refreshSessions: session.refreshSessions });
+    hooks.attach({
+      client,
+      refreshSessions: session.refreshSessions,
+      relayVersion: session.hello.relayVersion,
+    });
     await client.closed;
     hooks.detach();
     session.flush();

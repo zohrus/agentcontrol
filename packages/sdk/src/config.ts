@@ -46,11 +46,16 @@ function configFilesApi(api: Api) {
     /** Writes a plan to disk after backing the files up. Throws ApiError "config-plan-stale" if files moved since the plan. */
     apply: (planId: string): Promise<ApplyResult> =>
       read(api.config.apply.$post({ json: { planId } })),
-    /** Puts every file of an earlier apply back byte for byte, and removes the ones it created. */
-    rollback: async (backupId: string): Promise<string[]> => {
-      const { restored } = await read(api.config.rollback.$post({ json: { backupId } }));
-      return restored;
-    },
+    /**
+     * Puts every file of an earlier apply back byte for byte, and removes the ones it created. When
+     * files changed after that apply nothing is restored and `changedSince` lists them: show them,
+     * and call again with `force: true` to overwrite them anyway.
+     */
+    rollback: (
+      backupId: string,
+      options: { force?: boolean } = {},
+    ): Promise<{ restored: string[]; changedSince: string[] }> =>
+      read(api.config.rollback.$post({ json: { backupId, ...options } })),
     /** Compares every managed entry on disk with what the app last wrote: in-sync, drift or missing. */
     drift: (): Promise<DriftReport> => read(api.config.drift.$get()),
   };

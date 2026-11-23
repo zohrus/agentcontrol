@@ -1,7 +1,7 @@
 import type { RelayClient } from "../relays/index.ts";
 import { createLink, type Link } from "./link.ts";
 import { runConnections } from "./reconnect.ts";
-import type { SyncDeps } from "./session.ts";
+import type { SyncDeps } from "./deps.ts";
 
 export type { Hub, HubMessage } from "./hub.ts";
 export { createHub } from "./hub.ts";
@@ -9,8 +9,6 @@ export type { Link } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";
 
 export interface Sync extends Link {
-  /** Resolves once the first connection has handshaken, resumed its events and listed sessions. */
-  ready: Promise<void>;
   /** Stops reconnecting and closes the relay connection (the relay daemon keeps running). */
   stop: () => Promise<void>;
 }
@@ -26,25 +24,14 @@ export function startSync(options: SyncOptions): Sync {
     hub: options.hub,
     workspaceId: options.workspace.id,
   });
-  let signalReady = (): void => undefined;
-  const ready = new Promise<void>((resolve) => {
-    signalReady = resolve;
-  });
   const abort = new AbortController();
   const running = runConnections({
     options,
     signal: abort.signal,
-    hooks: {
-      attach: (live) => {
-        attach(live);
-        signalReady();
-      },
-      detach,
-    },
+    hooks: { attach, detach },
   });
   return {
     ...link,
-    ready,
     stop: async () => {
       abort.abort();
       await running;

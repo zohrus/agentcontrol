@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { methods } from "@agentclientprotocol/sdk";
+import { methods, type SessionUpdate } from "@agentclientprotocol/sdk";
 import { processSteps, writeFile } from "./file-steps.ts";
 import type { Step, StopReason } from "./script.ts";
 import { ALLOW_OR_REJECT, type Handler, send, type TurnContext } from "./turn.ts";
@@ -100,6 +100,12 @@ const compactContext: Handler<"compactContext"> = async (_step, turn) => {
   return undefined;
 };
 
+/** Sends the update exactly as scripted, shaped like a real adapter's or a misbehaving one's. */
+const sendUpdate: Handler<"sendUpdate"> = async (step, turn) => {
+  await send(turn, step.update as SessionUpdate);
+  return undefined;
+};
+
 const finish: Handler<"finish"> = (step) => Promise.resolve(step.stopReason);
 
 const waitUntilCancelled: Handler<"waitUntilCancelled"> = async (_step, turn) => {
@@ -128,6 +134,7 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   writeFile,
   ...processSteps,
   compactContext,
+  sendUpdate,
   finish,
   waitUntilCancelled,
   reportUsage,

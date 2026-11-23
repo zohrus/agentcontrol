@@ -17,11 +17,14 @@ export function spawnRelayBridge(options: {
     output: bridge.stdout,
     closed: bridge.exited,
     send: (line) => {
-      void bridge.stdin.write(line);
-      void bridge.stdin.flush();
+      // The bridge may already have exited: `closed` says so, a failed write needs no other answer.
+      void Promise.try(async () => {
+        void bridge.stdin.write(line);
+        await bridge.stdin.flush();
+      }).catch(() => undefined);
     },
     close: async () => {
-      void bridge.stdin.end();
+      await Promise.try(() => bridge.stdin.end()).catch(() => undefined);
       await bridge.exited;
     },
   };

@@ -12,10 +12,12 @@ type Props = {
   onPreview: (path: string) => void;
 };
 
-function matching(entries: readonly FsEntry[], filter: string): FsEntry[] {
+/** The files whose name contains the filter: the first MAX_SHOWN to list, and how many there are. */
+function matching(entries: readonly FsEntry[], filter: string) {
   const wanted = filter.trim().toLowerCase();
   const files = entries.filter((entry) => entry.kind === "file");
-  return files.filter((entry) => entry.path.toLowerCase().includes(wanted)).slice(0, MAX_SHOWN);
+  const found = files.filter((entry) => entry.path.toLowerCase().includes(wanted));
+  return { shown: found.slice(0, MAX_SHOWN), total: found.length };
 }
 
 function FileRow({
@@ -63,6 +65,7 @@ function FilterInput({ value, onChange }: { value: string; onChange: (text: stri
 /** Every file of the worktree, filterable by name; picking one opens it in the editor. */
 export function FileTree({ entries, selectedPath, onSelect, onPreview }: Props) {
   const [filter, setFilter] = useState("");
+  const { shown, total } = matching(entries, filter);
   return (
     <div className="flex flex-col gap-1.5 border-b border-line p-2">
       <FilterInput value={filter} onChange={setFilter} />
@@ -70,7 +73,7 @@ export function FileTree({ entries, selectedPath, onSelect, onPreview }: Props) 
         data-testid="file-tree"
         className="m-0 flex max-h-32 list-none flex-col overflow-y-auto p-0"
       >
-        {matching(entries, filter).map(({ path }) => (
+        {shown.map(({ path }) => (
           <FileRow
             key={path}
             path={path}
@@ -82,6 +85,11 @@ export function FileTree({ entries, selectedPath, onSelect, onPreview }: Props) 
           />
         ))}
       </ul>
+      {total > shown.length && (
+        <p data-testid="file-tree-notice" className="m-0 text-[11px] text-muted">
+          Showing {shown.length} of {total.toLocaleString("en-US")} files. Filter to find the rest.
+        </p>
+      )}
     </div>
   );
 }

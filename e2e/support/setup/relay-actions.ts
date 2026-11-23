@@ -27,6 +27,13 @@ function appConnection(home: RelayHome) {
   };
 }
 
+async function setUpRepo(call: { home: RelayHome; client: RelayClient; script: string }) {
+  const { home, client, script } = call;
+  const repo = await client.call(RelayName.reposAdd, { path: home.repoPath });
+  const setup = { copyFiles: [".env*"], setupScript: script };
+  await client.call(RelayName.reposSetSetup, { repoId: repo.repoId, setup });
+}
+
 /** What a person does to the app and the relay around the connection, as relay calls. */
 export function actionsOf(home: RelayHome) {
   const connection = appConnection(home);
@@ -44,13 +51,16 @@ export function actionsOf(home: RelayHome) {
       await home.host.start();
       connection.reconnect();
     },
+    /** Stops the relay while the app is still connected, as when the machine shuts down. */
+    stopsTheRelayWhileTheAppIsConnected: () => home.host.stop(),
+    /** Starts the relay again and connects the app to it. */
+    startsTheRelayAndConnectsTheApp: async (): Promise<void> => {
+      await home.host.start();
+      connection.reconnect();
+    },
     followsSessionAfter: async (session: Session, afterSeq: number) => {
       await current().call(RelayName.eventsSubscribe, { sessionId: session.id, afterSeq });
     },
-    repoSetupScriptIs: async (script: string) => {
-      const repo = await current().call(RelayName.reposAdd, { path: home.repoPath });
-      const setup = { copyFiles: [".env*"], setupScript: script };
-      await current().call(RelayName.reposSetSetup, { repoId: repo.repoId, setup });
-    },
+    repoSetupScriptIs: (script: string) => setUpRepo({ home, client: current(), script }),
   };
 }
