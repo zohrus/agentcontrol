@@ -12,7 +12,7 @@ type Registry = ReturnType<typeof createRegistry>;
 const FIRST_CONNECTION_WAIT_MS = 30_000;
 const SSH_BACKOFF_MAX_MS = 15_000;
 
-export type SshOperations = Pick<Workspaces, "addSsh" | "remove" | "check" | "restartRelay">;
+type SshOperations = Pick<Workspaces, "addSsh" | "remove" | "check" | "restartRelay">;
 
 interface Context {
   store: Store;

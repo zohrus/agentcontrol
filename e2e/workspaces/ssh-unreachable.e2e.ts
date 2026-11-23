@@ -2,6 +2,7 @@ import { afterEach, test } from "bun:test";
 import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
 import { expectAppToRefuse } from "../support/expect/app-refusal-expectations.ts";
 import {
+  expectChecklistStepToBe,
   expectRefusalToSay,
   expectWorkspaceListedAs,
   expectWorkspaceToBe,
@@ -73,4 +74,30 @@ test("an app that starts while a saved host is unreachable comes up, and connect
   // ** THEN the app connects to the workspace on its own
   // ********************************************************************
   await expectWorkspaceListedAs(app, { workspace, state: "connected" });
+});
+
+test("the checklist of an unreachable host says it could not connect and skips the rest", async () => {
+  // ********************************************************************
+  // ** GIVEN an ssh workspace whose host has become unreachable
+  // ********************************************************************
+  const { host, user } = await startAppWithSshHost();
+  const workspace = await user.addsTheHost();
+  host.network.goesDown();
+
+  // ********************************************************************
+  // ** WHEN the user runs the workspace check
+  // ********************************************************************
+  const steps = await user.checksTheWorkspace(workspace);
+
+  // ********************************************************************
+  // ** THEN connecting failed, saying the machine refused the connection
+  // ********************************************************************
+  expectChecklistStepToBe(steps, {
+    id: "connect",
+    status: "failed",
+    saying: "refused the connection",
+  });
+  // AND the steps that need the host were skipped
+  expectChecklistStepToBe(steps, { id: "install", status: "skipped" });
+  expectChecklistStepToBe(steps, { id: "relay", status: "skipped" });
 });

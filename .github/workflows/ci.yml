@@ -60,6 +60,12 @@ jobs:
           git config --global user.name ci
           git config --global user.email ci@example.invalid
           git config --global init.defaultBranch main
+      # The ssh workspace tests start a private sshd on 127.0.0.1 as the CI user, with its own keys.
+      - name: OpenSSH server for the ssh workspace tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server
+          sudo mkdir -p /run/sshd
       # `check` runs the end-to-end suite once, through the coverage gate (test:coverage).
       - run: bun run check
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -98,6 +104,11 @@ jobs:
           git config --global user.name ci
           git config --global user.email ci@example.invalid
           git config --global init.defaultBranch main
+      - name: OpenSSH server for the ssh workspace tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server
+          sudo mkdir -p /run/sshd
       - run: bun run test:coverage-stable
 
   prove-gates:

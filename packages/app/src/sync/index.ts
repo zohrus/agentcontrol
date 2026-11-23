@@ -9,7 +9,6 @@ export { createHub } from "./hub.ts";
 export type { Link } from "./link.ts";
 export { RelayUnavailableError } from "./link.ts";
 export type { ReplaceRelay } from "./reconnect.ts";
-export { RelayVersionMismatch } from "./version.ts";
 
 const DEFAULT_BACKOFF_MAX_MS = 3000;
 

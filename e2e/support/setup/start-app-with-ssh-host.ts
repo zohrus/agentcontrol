@@ -11,8 +11,10 @@ export interface AppWithSshHost {
 }
 
 /** Starts a private ssh host and an app that is set up to reach it (and nothing else over ssh). */
-export async function startAppWithSshHost(): Promise<AppWithSshHost> {
-  const host = await startSshHost();
+export async function startAppWithSshHost(
+  options: { relayBinaryMissing?: boolean } = {},
+): Promise<AppWithSshHost> {
+  const host = await startSshHost(options);
   await host.mockAgent.writeScript();
   const app = await startAppWithLocalWorkspace({ ssh: host.appSettings });
   return { app, host, user: sshUserOf(app, host) };

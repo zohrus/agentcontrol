@@ -15,6 +15,7 @@ function workspaceUserOf(app: RunningApp, host: SshHost) {
       attemptApi(app.sdk.workspaces.add({ kind: "ssh", host: hostName })),
     readsTheHostAliases: () => app.sdk.workspaces.hosts(),
     checksTheWorkspace: (info: WorkspaceInfo) => app.sdk.workspaces.check(info.id),
+    triesToCheck: (id: string) => attemptApi(app.sdk.workspaces.check(id)),
     removesTheWorkspace: (info: WorkspaceInfo) => app.sdk.workspaces.remove(info.id),
     triesToRemove: (id: string) => attemptApi(app.sdk.workspaces.remove(id)),
     restartsTheRelayOn: (info: WorkspaceInfo) => app.sdk.workspaces.restartRelay(info.id),

@@ -41,6 +41,3 @@ export async function writeRelayBinary(spec: RelayBinarySpec): Promise<void> {
   await Bun.write(spec.path, lines.join("\n"));
   await chmod(spec.path, 0o755);
 }
-
-/** The relay main file, for tests that start a host's relay directly. */
-export const relayMainFile = relayMain;

@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { homedir } from "node:os";
 import { type AgentKind, type CheckStep as CheckStepSchema } from "@agentcontrol/protocol";
 import type { z } from "zod";
@@ -5,7 +6,11 @@ import { availableAgents, type HostEnv, startAgent } from "../agents/index.ts";
 
 type CheckStep = z.infer<typeof CheckStepSchema>;
 
-const HANDSHAKE_TIMEOUT_MS = 20_000;
+const DEFAULT_TIMEOUT_MS = 20_000;
+
+/** How long an agent may take to answer: 20 seconds, or AGENTCONTROL_AGENT_CHECK_TIMEOUT_MS. */
+const timeoutIn = (env: HostEnv): number =>
+  Number(env["AGENTCONTROL_AGENT_CHECK_TIMEOUT_MS"] ?? DEFAULT_TIMEOUT_MS);
 
 const LABELS: Record<AgentKind, string> = {
   "claude-code": "Claude Code",
@@ -15,11 +20,6 @@ const LABELS: Record<AgentKind, string> = {
 
 /** Starts the agent and stops it again: it must answer ACP `initialize` and `session/new`. */
 async function handshake(kind: AgentKind, hostEnv: HostEnv): Promise<void> {
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error("it did not answer within 20 seconds"));
-    }, HANDSHAKE_TIMEOUT_MS).unref();
-  });
   const started = startAgent({
     kind,
     cwd: homedir(),
@@ -28,7 +28,15 @@ async function handshake(kind: AgentKind, hostEnv: HostEnv): Promise<void> {
     onMessage: () => undefined,
     onPermissionRequest: () => Promise.resolve({ cancelled: true }),
   });
-  const agent = await Promise.race([started, timeout]);
+  const limit = timeoutIn(hostEnv);
+  const timedOut = once(AbortSignal.timeout(limit), "abort").then(() => {
+    throw new Error(`it did not answer within ${String(limit / 1000)} seconds`);
+  });
+  void started.then(
+    (late) => late.stop(),
+    () => undefined,
+  );
+  const agent = await Promise.race([started, timedOut]);
   await agent.stop();
 }
 

@@ -35,7 +35,7 @@ export interface SshHost {
   /** Where the relay of the app's version is installed on the host. */
   readonly installedRelay: string;
   /** What to give `startApp` so that it reaches this host and installs the relay from here. */
-  readonly appSettings: Pick<SshSettings, "configFile" | "relayBinaryFor" | "remoteRoot"> & {
+  readonly appSettings: Pick<SshSettings, "configFile" | "relayBinaryFor"> & {
     backoffMaxMs: number;
   };
   /** The pid of the relay daemon running on the host, if one is. */
@@ -50,7 +50,7 @@ export interface SshHost {
 
 async function prepareRemoteSide(folder: string) {
   const home = join(folder, "remote", "home");
-  const remoteRoot = join(folder, "remote", "agentcontrol");
+  const remoteRoot = join(home, ".agentcontrol");
   await mkdir(home, { recursive: true });
   await Bun.write(
     join(home, ".gitconfig"),
@@ -72,8 +72,9 @@ function stopRelayOnHostAtTestEnd(options: { built: string; relayDataDir: string
 const ALIAS = "test-host";
 
 /** The ssh server, the network in front of it, and the config file that reaches it. */
-async function startReachableMachine(folder: string) {
-  const sshd = await startSshd(folder);
+async function startReachableMachine(options: { folder: string; home: string }) {
+  const { folder } = options;
+  const sshd = await startSshd(options);
   onTestEnd(() => sshd.stop());
   const network = startSshNetwork(sshd.port);
   onTestEnd(() => {
@@ -82,7 +83,12 @@ async function startReachableMachine(folder: string) {
   });
   const configFile = join(folder, "ssh_config");
   const block = sshd.hostBlock({ alias: ALIAS, viaPort: network.port });
-  await Bun.write(configFile, `${block}\n\nHost *.wildcard.example\n  User nobody\n`);
+  await Bun.write(
+    join(folder, "config.d", "more"),
+    "Host other-host\n  HostName example.invalid\n",
+  );
+  const text = `Include ${join(folder, "config.d", "*")}\n\n${block}\n\nHost *.wildcard.example\n  User nobody\n`;
+  await Bun.write(configFile, text);
   return { network, configFile };
 }
 
@@ -111,10 +117,13 @@ interface Parts {
   folder: string;
   machine: { network: SshNetwork; configFile: string };
   side: Awaited<ReturnType<typeof prepareRemoteSide>>;
+  /** The app has no relay binary to install for this host. */
+  relayBinaryMissing: boolean;
 }
 
 /** The host as tests use it, from the parts that were started. */
-async function hostOf({ folder, machine, side }: Parts): Promise<SshHost> {
+async function hostOf(parts: Parts): Promise<SshHost> {
+  const { folder, machine, side, relayBinaryMissing } = parts;
   const relayDataDir = join(side.remoteRoot, "relay-data");
   const releaseFile = join(folder, "release");
   const { configFile, network } = machine;
@@ -132,8 +141,7 @@ async function hostOf({ folder, machine, side }: Parts): Promise<SshHost> {
     installedRelay: join(side.remoteRoot, "relay", APP_VERSION, "agentcontrol-relay"),
     appSettings: {
       configFile,
-      remoteRoot: side.remoteRoot,
-      relayBinaryFor: () => side.built,
+      relayBinaryFor: () => (relayBinaryMissing ? "/nonexistent/agentcontrol-relay" : side.built),
       backoffMaxMs: 300,
     },
     relayPid: () => readRelayPid(relayDataDir),
@@ -141,14 +149,16 @@ async function hostOf({ folder, machine, side }: Parts): Promise<SshHost> {
 }
 
 /** Starts a host: sshd, a proxy in front of it, a home folder, a repo and a mock agent. */
-export async function startSshHost(): Promise<SshHost> {
+export async function startSshHost(
+  options: { relayBinaryMissing?: boolean } = {},
+): Promise<SshHost> {
   const folder = await realpath(await mkdtemp(join(tmpdir(), "agentcontrol-ssh-")));
   onTestEnd(() => rm(folder, { recursive: true, force: true }));
-  const machine = await startReachableMachine(folder);
   const side = await prepareRemoteSide(folder);
+  const machine = await startReachableMachine({ folder, home: side.home });
   stopRelayOnHostAtTestEnd({
     built: side.built,
     relayDataDir: join(side.remoteRoot, "relay-data"),
   });
-  return hostOf({ folder, machine, side });
+  return hostOf({ folder, machine, side, relayBinaryMissing: options.relayBinaryMissing === true });
 }

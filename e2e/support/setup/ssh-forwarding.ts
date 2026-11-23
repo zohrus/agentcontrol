@@ -57,3 +57,21 @@ export async function connectsAndReadsGreeting(port: number): Promise<string> {
   });
   return heard.promise;
 }
+
+/** What came of forwarding a port: it is reachable here, or the reason it could not be. */
+export type ForwardOutcome =
+  | { readonly forwarded: true; readonly localPort: number }
+  | { readonly forwarded: false; readonly reason: string };
+
+/** Tries to forward a port of the host and reports a failure as an outcome. */
+export async function triesToForwardPortOfHost(
+  host: SshHost,
+  remotePort: number,
+): Promise<ForwardOutcome> {
+  try {
+    const { localPort } = await forwardsPortOfHost(host, remotePort);
+    return { forwarded: true, localPort };
+  } catch (error) {
+    return { forwarded: false, reason: error instanceof Error ? error.message : String(error) };
+  }
+}

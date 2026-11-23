@@ -5,10 +5,10 @@ import {
   expectSessionWaitingForReply,
 } from "../support/expect/app-expectations.ts";
 import {
-  expectHostToHaveFinishedTheTurn,
   expectWorkspaceListedAs,
   expectWorkspaceToBecome,
 } from "../support/expect/ssh-expectations.ts";
+import { expectHostToHaveFinishedTheTurn } from "../support/expect/ssh-session-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 

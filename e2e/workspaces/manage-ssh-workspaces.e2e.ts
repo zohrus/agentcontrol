@@ -3,10 +3,10 @@ import { expectSessionWaitingForReply } from "../support/expect/app-expectations
 import { expectAppToRefuse } from "../support/expect/app-refusal-expectations.ts";
 import {
   expectHostAliasesToBe,
-  expectPastSessionToStayReadable,
   expectRefusalToSay,
   expectWorkspaceListedAs,
 } from "../support/expect/ssh-expectations.ts";
+import { expectPastSessionToStayReadable } from "../support/expect/ssh-session-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 
@@ -91,9 +91,9 @@ test("a host that is already a workspace cannot be added twice", async () => {
   expectAppToRefuse(outcome, { status: 409, code: "workspace-exists" });
 });
 
-test("the host names offered for adding are the ones in the ssh config, without patterns", async () => {
+test("the host names offered for adding are the ones in the ssh config, included files too, without patterns", async () => {
   // ********************************************************************
-  // ** GIVEN an ssh config with one host and one wildcard pattern
+  // ** GIVEN an ssh config with a host, a host in an included file and a wildcard pattern
   // ********************************************************************
   const { host, user } = await startAppWithSshHost();
 
@@ -103,7 +103,43 @@ test("the host names offered for adding are the ones in the ssh config, without 
   const aliases = await user.readsTheHostAliases();
 
   // ********************************************************************
-  // ** THEN only the host is offered
+  // ** THEN both hosts are offered and the pattern is not
   // ********************************************************************
-  expectHostAliasesToBe(aliases, [host.alias]);
+  expectHostAliasesToBe(aliases, [host.alias, "other-host"]);
+});
+
+test("checking a workspace that does not exist is refused", async () => {
+  // ********************************************************************
+  // ** GIVEN the app is running
+  // ********************************************************************
+  const { user } = await startAppWithSshHost();
+
+  // ********************************************************************
+  // ** WHEN the user runs the check of a workspace that is not there
+  // ********************************************************************
+  const outcome = await user.triesToCheck("no-such-workspace");
+
+  // ********************************************************************
+  // ** THEN the app refuses
+  // ********************************************************************
+  expectAppToRefuse(outcome, { status: 404, code: "workspace-not-found" });
+});
+
+test("a workspace that was removed cannot be removed again", async () => {
+  // ********************************************************************
+  // ** GIVEN a workspace that was added and then removed
+  // ********************************************************************
+  const { user } = await startAppWithSshHost();
+  const workspace = await user.addsTheHost();
+  await user.removesTheWorkspace(workspace);
+
+  // ********************************************************************
+  // ** WHEN the user removes it again
+  // ********************************************************************
+  const outcome = await user.triesToRemove(workspace.id);
+
+  // ********************************************************************
+  // ** THEN the app refuses, saying it was removed
+  // ********************************************************************
+  expectAppToRefuse(outcome, { status: 409, code: "workspace-removed" });
 });

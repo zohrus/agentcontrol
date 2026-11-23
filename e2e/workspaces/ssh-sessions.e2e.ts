@@ -8,7 +8,7 @@ import {
   expectListToHold,
   expectSessionOnThisMac,
   expectSessionOnWorkspace,
-} from "../support/expect/ssh-expectations.ts";
+} from "../support/expect/ssh-session-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 

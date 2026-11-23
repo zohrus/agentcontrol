@@ -1,11 +1,14 @@
 import { afterEach, test } from "bun:test";
 import {
-  expectHostRelayToBeUntouched,
-  expectHostRelayToHaveBeenReplaced,
+  expectChecklistStepToBe,
   expectWorkspaceListedAs,
   expectWorkspaceToBe,
   expectWorkspaceToExplain,
 } from "../support/expect/ssh-expectations.ts";
+import {
+  expectHostRelayToBeUntouched,
+  expectHostRelayToHaveBeenReplaced,
+} from "../support/expect/ssh-host-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startOldRelayOnHost } from "../support/setup/ssh-old-relay.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
@@ -97,4 +100,26 @@ test("the user can restart a busy old relay at once instead of waiting for its s
   // ********************************************************************
   await expectWorkspaceListedAs(app, { workspace, state: "connected" });
   await expectHostRelayToHaveBeenReplaced(host, old);
+});
+
+test("the checklist says the relay cannot run while an old relay's session is still working", async () => {
+  // ********************************************************************
+  // ** GIVEN a workspace that needs a relay update because the old relay's agent is working
+  // ********************************************************************
+  const { host, user } = await startAppWithSshHost();
+  const old = await startOldRelayOnHost(host, "0.0.1");
+  await old.startsWorkingSession();
+  const workspace = await user.addsTheHost();
+
+  // ********************************************************************
+  // ** WHEN the user runs the workspace check
+  // ********************************************************************
+  const steps = await user.checksTheWorkspace(workspace);
+
+  // ********************************************************************
+  // ** THEN the relay step failed, saying a session is still working
+  // ********************************************************************
+  expectChecklistStepToBe(steps, { id: "relay", status: "failed", saying: "still working" });
+  // AND the relay was installed
+  expectChecklistStepToBe(steps, { id: "install", status: "ok" });
 });

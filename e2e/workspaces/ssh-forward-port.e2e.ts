@@ -1,10 +1,14 @@
 import { afterEach, test } from "bun:test";
-import { expectGreetingToBe } from "../support/expect/ssh-expectations.ts";
+import {
+  expectForwardingToFail,
+  expectGreetingToBe,
+} from "../support/expect/ssh-host-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
   connectsAndReadsGreeting,
   forwardsPortOfHost,
   startDevServerOnHost,
+  triesToForwardPortOfHost,
 } from "../support/setup/ssh-forwarding.ts";
 import { startSshHost } from "../support/setup/ssh-host.ts";
 
@@ -26,4 +30,22 @@ test("a port of a dev server on the host can be reached from this machine", asyn
   // ** THEN connecting to the forwarded port on this machine reaches the dev server
   // ********************************************************************
   expectGreetingToBe(await connectsAndReadsGreeting(forwarded.localPort), devServer.greeting);
+});
+
+test("forwarding a port of a host that cannot be reached fails with the reason", async () => {
+  // ********************************************************************
+  // ** GIVEN a host that cannot be reached over the network
+  // ********************************************************************
+  const host = await startSshHost();
+  host.network.goesDown();
+
+  // ********************************************************************
+  // ** WHEN the app tries to forward a port of the host
+  // ********************************************************************
+  const outcome = await triesToForwardPortOfHost(host, 3000);
+
+  // ********************************************************************
+  // ** THEN forwarding fails
+  // ********************************************************************
+  expectForwardingToFail(outcome, "could not be forwarded");
 });

@@ -7,5 +7,4 @@ export { spawnBridge, spawnRelayBridge } from "./spawn-bridge.ts";
 export { sshConfigHosts } from "./ssh-hosts.ts";
 export { isSafeHost } from "./ssh-quote.ts";
 export { sshTarget } from "./ssh-target.ts";
-export type { SshTargetOptions } from "./ssh-target.ts";
 export type { ForwardedPort, HostInfo, WorkspaceTarget } from "./target.ts";

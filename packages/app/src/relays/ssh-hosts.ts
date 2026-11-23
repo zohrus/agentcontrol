@@ -4,7 +4,7 @@ import { basename, dirname, isAbsolute, join } from "node:path";
 const MAX_INCLUDE_DEPTH = 3;
 
 /** Host aliases from the `Host` lines of one ssh config text, skipping patterns (`*`, `?`, `!`). */
-export function hostsInConfig(text: string): string[] {
+function hostsInConfig(text: string): string[] {
   const hosts = text.split("\n").flatMap((line) => {
     const match = /^\s*Host\s+(.+?)\s*$/i.exec(line);
     return match?.[1]?.split(/\s+/) ?? [];

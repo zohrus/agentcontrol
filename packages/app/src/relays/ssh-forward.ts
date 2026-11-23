@@ -20,29 +20,22 @@ function freeLocalPort(): Promise<number> {
   });
 }
 
-/** Whether something accepts connections on 127.0.0.1:port. */
-function accepts(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    void Bun.connect({
-      hostname: "127.0.0.1",
-      port,
-      socket: {
-        open: (socket) => {
-          socket.end();
-          resolve(true);
-        },
-        data: () => undefined,
-        error: () => {
-          resolve(false);
-        },
-        connectError: () => {
-          resolve(false);
-        },
+/** Whether something accepts connections on 127.0.0.1:port; a refused connection is just "no". */
+async function accepts(port: number): Promise<boolean> {
+  const open = Bun.connect({
+    hostname: "127.0.0.1",
+    port,
+    socket: {
+      data: () => undefined,
+      open: (socket) => {
+        socket.end();
       },
-    }).catch(() => {
-      resolve(false);
-    });
+    },
   });
+  return open.then(
+    () => true,
+    () => false,
+  );
 }
 
 async function waitUntilListening(port: number, ended: Promise<unknown>): Promise<void> {

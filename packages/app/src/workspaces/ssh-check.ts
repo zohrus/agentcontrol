@@ -28,15 +28,10 @@ async function connectionOf(entry: Entry) {
   return (await waiter.next(CONNECT_WAIT_MS)) ?? sync.status();
 }
 
+/** What the host is; whether a relay exists for it is the install step's finding. */
 function platformStep(machine: HostInfo): CheckStep {
   const detail = `${machine.os} ${machine.arch}`;
-  const supported = machine.os === "linux" || machine.os === "darwin";
-  return supported
-    ? step("platform", LABELS.platform, { status: "ok", detail })
-    : step("platform", LABELS.platform, {
-        status: "failed",
-        detail: `${detail} is not supported.`,
-      });
+  return step("platform", LABELS.platform, { status: "ok", detail });
 }
 
 /** Installs (or finds in place) the relay, reporting it as a step. */
