@@ -27,8 +27,8 @@ locally and on a host; only the way the app reaches it differs.
 
 ## Version rule
 
-One relay daemon per data dir. The app checks `relay/hello` against `VERSION` (the root
-`package.json` version, `protocol/src/version/`, one constant for app and relay). On a mismatch:
+One relay daemon per data dir. The app checks `relay/hello` against `VERSION` (the
+`packages/protocol/package.json` version, which the build requires to equal the root one; `protocol/src/version/`, one constant for app and relay). On a mismatch:
 
 1. `sessions.list` on the old daemon (read only). If no session has a running turn or a pending
    permission, the app runs `<binary of this version> stop --data-dir ...` over ssh (`relay stop`

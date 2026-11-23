@@ -24,9 +24,10 @@ Pre-release. There is no installer yet. **Running from source is the supported w
   it on first open. Open it through System Settings > Privacy & Security > Open Anyway, or run
   `xattr -dr com.apple.quarantine /Applications/AgentControl.app`.
 - No Homebrew install and no automatic updates yet.
-- Not finished: the screens for remote (SSH) workspaces (the backend works, the picker and add dialog
-  are in progress), the Config screen, the Terminal tab and the Analytics screen (all in progress).
-  The "Modify this UI" panel and the Preview tab exist but have not been tried by hand much.
+- Not finished: every planned screen exists (Workspaces menu and Add workspace, Config, the Terminal
+  tab and Analytics), but none has been tried by hand much, nor have the "Modify this UI" panel and
+  the Preview tab. The Terminal tab has not been run on a Mac. No real remote host has been tried.
+  Analytics does not show usage against plan limits for subscription logins yet.
 
 ## Requirements
 
@@ -65,14 +66,18 @@ only when these variables are set.
 
 1. Click **Add a repository** (or **New session**). In the dialog, choose **Add repository...** in
    the Repository list, type the full path of a git repository, and press **Add**.
-2. Optional: open **Config** to see the machine check and set which files (default `.env*`) are
-   copied into each session's worktree and a setup script (for example `npm install`).
+2. Optional: open **Workspaces** > **Check and repair** to see the machine check and set which files
+   (default `.env*`) are copied into each session's worktree and a setup script (for example
+   `npm install`). The same menu adds a remote (SSH) workspace. **Config** opens the settings shared
+   by your agents (MCP servers, instructions, hooks, skills); nothing is written to an agent's own
+   files until you review the changes and press Apply.
 3. Pick the agent, write what it should do, and press **Start**. The first start of a real agent
    downloads its adapter.
 4. When the session shows **approve**, press **Approve** in the list or **Allow** in the
    conversation.
 5. Open the **Changes** tab to see the diff since the base branch, the **Editor** tab to edit a file
-   (Ctrl/Cmd+S saves), and **Archive** when done. Archive keeps the branch
+   (Ctrl/Cmd+S saves), the **Terminal** tab for a shell in the session's folder, and **Archive** when
+   done. Archive keeps the branch
    (`agentcontrol/<session id>`) and the conversation, and removes the worktree. It warns first if
    files are not committed: those are lost.
 
@@ -161,10 +166,11 @@ reach `main` through `bun run integrate`, not pull requests. Read [AGENTS.md](AG
 | Modify agent (backend, `/_safe`, panel) | Working; the panel has browser tests but little hand use |
 | Preview tab (HTML and Markdown) | Working |
 | Mac app and `.dmg` | Built and smoke-tested on a CI Mac runner (Apple Silicon); unsigned; not yet tried by a person |
-| Remote (SSH) workspaces | Backend done and tested against a local `sshd`; UI in progress; no real remote host tried |
-| Harness config (MCP, skills, hooks) | Backend done; Config screen in progress |
-| Console (Terminal tab) | In progress |
-| Analytics | In progress; the Analytics button only says it is not ready until it lands |
+| Remote (SSH) workspaces | Backend and UI (Workspaces menu, Add workspace) done, tested against a local `sshd`; no real remote host tried |
+| Harness config (MCP, skills, hooks) | Backend and Config screen done; secrets storage, per-session MCP servers and subagents not yet |
+| Console (Terminal tab) | Working on Linux, also in the compiled app; not run on a Mac; no output backpressure yet |
+| Analytics | Screen done (tokens, costs where the agent reports them, rule-based insights); no usage against plan limits yet |
+| AI gateway, browser VS Code | Not started; optional |
 
 Live status: [docs/status.html](docs/status.html). The full plan: [docs/plan.html](docs/plan.html).
 
