@@ -7,7 +7,7 @@ function holdConfig(ctx: Context, change: Partial<ConfigState>): void {
 }
 
 /** Compares every managed entry on disk with what the app last wrote. */
-export async function loadDrift(ctx: Context): Promise<void> {
+async function loadDrift(ctx: Context): Promise<void> {
   holdConfig(ctx, { drift: await ctx.client.config.drift() });
 }
 

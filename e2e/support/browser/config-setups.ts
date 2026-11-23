@@ -32,15 +32,28 @@ export function startConfigAppWithAnExistingSetup(): Promise<ConfigAppInBrowser>
   });
 }
 
-/** The user added an MCP server "docs" in the Config screen, reviewed the changes and applied them. */
-export async function startConfigAppAfterApplyingAServerInTheScreen(): Promise<ConfigAppInBrowser> {
+/** The user opened Config and added an MCP server "docs" there; nothing is reviewed yet. */
+export async function startConfigAppWithAServerAddedInTheScreen(): Promise<ConfigAppInBrowser> {
   const app = await startConfigAppInBrowser();
   await app.page.opensConfig();
   await app.page.addsMcpServer({ name: "docs", command: "npx" });
   await expectConfigToShow(app, "docs");
+  return app;
+}
+
+/** The user added an MCP server "docs" in the Config screen, reviewed the changes and applied them. */
+export async function startConfigAppAfterApplyingAServerInTheScreen(): Promise<ConfigAppInBrowser> {
+  const app = await startConfigAppWithAServerAddedInTheScreen();
   await app.page.reviewsTheChanges();
   await app.page.appliesTheChanges();
   await expectConfigToShow(app, "Applied.");
+  return app;
+}
+
+/** An applied MCP server "docs" that the user then edited by hand in Claude Code's file. */
+export async function startConfigAppWithAServerEditedByHand(): Promise<ConfigAppInBrowser> {
+  const app = await startConfigAppWithAnAppliedServer();
+  await app.home.edits(".claude.json", { replace: '"npx"', with: '"node"' });
   return app;
 }
 

@@ -6,7 +6,7 @@ import { itemTitle } from "./item-title.ts";
 import { kindSpecs } from "./kind-specs.ts";
 
 /** What one agent already has configured. */
-export type Found = { agent: ConfigAgent; items: readonly ScopedItem[] };
+type Found = { agent: ConfigAgent; items: readonly ScopedItem[] };
 
 export type ImportViewProps = {
   found: readonly Found[];

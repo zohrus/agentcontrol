@@ -27,26 +27,40 @@ function AgentChanges({ agent, plan }: { agent: ConfigAgent; plan: ConfigPlan })
   );
 }
 
+function Footer({
+  none,
+  onApply,
+  onBack,
+}: Pick<ReviewViewProps, "onApply" | "onBack"> & { none: boolean }) {
+  return (
+    <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
+      <Button onClick={onBack}>Back to editing</Button>
+      <Button variant="primary" onClick={onApply}>
+        {none ? "Apply (record the current files)" : "Apply"}
+      </Button>
+    </div>
+  );
+}
+
 /** What applying would write, file by file and agent by agent, before anything is written. */
 export function ReviewView({ plan, agents, titles, onApply, onBack }: ReviewViewProps) {
   const none = plan.changes.length === 0;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-      <p className="m-0 text-sm font-medium">
-        {none ? "No files need to change." : `${String(plan.changes.length)} file(s) will change.`}
-      </p>
-      {allAgents
-        .filter((agent) => agents.includes(agent))
-        .map((agent) => (
-          <AgentChanges key={agent} agent={agent} plan={plan} />
-        ))}
-      <PlanNotes plan={plan} titles={titles} />
-      <div className="flex justify-end gap-2">
-        <Button onClick={onBack}>Back to editing</Button>
-        <Button variant="primary" onClick={onApply}>
-          {none ? "Apply (record the current files)" : "Apply"}
-        </Button>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <p className="m-0 text-sm font-medium">
+          {none
+            ? "No files need to change."
+            : `${String(plan.changes.length)} file(s) will change.`}
+        </p>
+        {allAgents
+          .filter((agent) => agents.includes(agent))
+          .map((agent) => (
+            <AgentChanges key={agent} agent={agent} plan={plan} />
+          ))}
+        <PlanNotes plan={plan} titles={titles} />
       </div>
+      <Footer none={none} onApply={onApply} onBack={onBack} />
     </div>
   );
 }

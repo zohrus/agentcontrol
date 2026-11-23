@@ -1,2 +1,1 @@
-export { ConfigScreen, type ConfigScreenProps } from "./config-screen.tsx";
-export type { ConfigActions } from "./types.ts";
+export { ConfigScreen } from "./config-screen.tsx";

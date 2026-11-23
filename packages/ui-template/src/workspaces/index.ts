@@ -1,12 +1,8 @@
-export {
-  AddWorkspaceDialog,
-  type AddStage,
-  type AddWorkspaceDialogProps,
-} from "./add-workspace-dialog.tsx";
+export { type AddStage, AddWorkspaceDialog } from "./add-workspace-dialog.tsx";
 export {
   canTakeCommands,
   connectionDetail,
   connectionName,
   readOnlyNote,
 } from "./connection-text.ts";
-export { WorkspaceMenu, type WorkspaceMenuProps } from "./workspace-menu.tsx";
+export { WorkspaceMenu } from "./workspace-menu.tsx";

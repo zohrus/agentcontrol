@@ -39,7 +39,7 @@ export type Choices = {
 export type WorkspaceCheck = { steps: readonly CheckStep[]; running: boolean };
 
 /** What the agents already have configured, per agent, as found by "Import existing setup". */
-export type FoundSetup = { agent: ConfigAgent; items: readonly ScopedItem[] };
+type FoundSetup = { agent: ConfigAgent; items: readonly ScopedItem[] };
 
 /** Harness configuration: the items, the last review, the last apply and what is out of step. */
 export type ConfigState = {
@@ -83,7 +83,7 @@ export type DataState = {
   versions: readonly UiVersionEntry[];
 };
 
-export const initialConfig: ConfigState = {
+const initialConfig: ConfigState = {
   loaded: false,
   items: [],
   plan: undefined,

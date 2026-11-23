@@ -33,7 +33,7 @@ const stepsOf = (ctx: Context, id: string): Promise<CheckStep[]> =>
   id === LOCAL_WORKSPACE ? ctx.client.workspace.check() : ctx.client.workspaces.check(id);
 
 /** Runs the workspace's checklist (and repairs what it can); `running` is true meanwhile. */
-export async function checkWorkspace(ctx: Context, id: string): Promise<void> {
+async function checkWorkspace(ctx: Context, id: string): Promise<void> {
   const before = ctx.store.get().checks[id]?.steps ?? [];
   holdCheck(ctx, id, { steps: before, running: true });
   try {
@@ -48,7 +48,7 @@ export async function checkWorkspace(ctx: Context, id: string): Promise<void> {
 export type AddOutcome = { workspace: WorkspaceInfo } | { refusal: string };
 
 /** Adds an ssh workspace; a refusal (bad host, already added, no answer) comes back as text for the form. */
-export async function addWorkspace(
+async function addWorkspace(
   ctx: Context,
   call: { host: string; label?: string },
 ): Promise<AddOutcome> {
@@ -62,17 +62,17 @@ export async function addWorkspace(
 }
 
 /** The host aliases of the user's ssh config; none when they cannot be read. */
-export async function listHosts(ctx: Context): Promise<string[]> {
+async function listHosts(ctx: Context): Promise<string[]> {
   return (await attempt(ctx, () => ctx.client.workspaces.hosts())) ?? [];
 }
 
 /** Removes a workspace; its sessions stay readable. */
-export async function removeWorkspace(ctx: Context, id: string): Promise<void> {
+async function removeWorkspace(ctx: Context, id: string): Promise<void> {
   applyWorkspace(ctx, await ctx.client.workspaces.remove(id));
 }
 
 /** Replaces the relay of a workspace with the app's version. */
-export async function restartRelay(ctx: Context, id: string): Promise<void> {
+async function restartRelay(ctx: Context, id: string): Promise<void> {
   applyWorkspace(ctx, await ctx.client.workspaces.restartRelay(id));
 }
 

@@ -3,8 +3,10 @@ import {
   expectConfigToShow,
   expectUndoWarningToName,
 } from "../support/browser/config-browser-expectations.ts";
-import { startConfigAppInBrowser } from "../support/browser/start-config-app-in-browser.ts";
-import { startConfigAppAfterApplyingAServerInTheScreen } from "../support/browser/config-setups.ts";
+import {
+  startConfigAppAfterApplyingAServerInTheScreen,
+  startConfigAppWithAServerAddedInTheScreen,
+} from "../support/browser/config-setups.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
 import { expectFileToContain, expectNoFile } from "../support/expect/config-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -19,10 +21,7 @@ test(
     // ********************************************************************
     // ** GIVEN the user added an MCP server called docs and is looking at the review
     // ********************************************************************
-    const app = await startConfigAppInBrowser();
-    await app.page.opensConfig();
-    await app.page.addsMcpServer({ name: "docs", command: "npx" });
-    await expectConfigToShow(app, "docs");
+    const app = await startConfigAppWithAServerAddedInTheScreen();
     await app.page.reviewsTheChanges();
 
     // ********************************************************************

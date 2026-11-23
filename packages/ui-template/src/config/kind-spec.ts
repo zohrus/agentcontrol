@@ -1,7 +1,7 @@
 import type { ConfigItem } from "@agentcontrol/protocol";
 
 export type Kind = ConfigItem["kind"];
-export type Of<K extends Kind> = Extract<ConfigItem, { kind: K }>;
+type Of<K extends Kind> = Extract<ConfigItem, { kind: K }>;
 
 /** One input of an item's form. */
 export type Field = {

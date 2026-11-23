@@ -5,8 +5,10 @@ import {
   expectReviewToExplain,
   expectReviewToListFile,
 } from "../support/browser/config-browser-expectations.ts";
-import { startConfigAppWithACommand } from "../support/browser/config-setups.ts";
-import { startConfigAppInBrowser } from "../support/browser/start-config-app-in-browser.ts";
+import {
+  startConfigAppWithACommand,
+  startConfigAppWithAServerAddedInTheScreen,
+} from "../support/browser/config-setups.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
@@ -16,16 +18,13 @@ test(
   "a new MCP server is reviewed file by file for both agents before anything is written",
   async () => {
     // ********************************************************************
-    // ** GIVEN the Config screen is open on a home folder with no agent setup
+    // ** GIVEN the user added an MCP server called docs in the Config screen
     // ********************************************************************
-    const app = await startConfigAppInBrowser();
-    await app.page.opensConfig();
+    const app = await startConfigAppWithAServerAddedInTheScreen();
 
     // ********************************************************************
-    // ** WHEN the user adds an MCP server called docs and asks to review the changes
+    // ** WHEN the user asks to review the changes
     // ********************************************************************
-    await app.page.addsMcpServer({ name: "docs", command: "npx" });
-    await expectConfigToShow(app, "docs");
     await app.page.reviewsTheChanges();
 
     // ********************************************************************

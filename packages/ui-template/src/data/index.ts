@@ -22,7 +22,7 @@ export {
 } from "./hooks.ts";
 export type { ConfigState } from "./model.ts";
 export { useModify } from "./modify-hooks.ts";
-export { keyOf, LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
+export { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 export { DataProvider, useController } from "./provider.tsx";
 export { createStore, useStoreValue } from "./store.ts";
 export { reloadOnceWhenUnauthorized } from "./recover.ts";

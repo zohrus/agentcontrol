@@ -7,6 +7,7 @@ import {
 } from "../support/browser/config-browser-expectations.ts";
 import {
   startConfigAppWithAnAppliedServer,
+  startConfigAppWithAServerEditedByHand,
   startConfigAppWithAnExistingSetup,
 } from "../support/browser/config-setups.ts";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
@@ -46,8 +47,7 @@ test(
     // ********************************************************************
     // ** GIVEN an applied MCP server that the user then edited by hand in Claude Code's file
     // ********************************************************************
-    const app = await startConfigAppWithAnAppliedServer();
-    await app.home.edits(".claude.json", { replace: '"npx"', with: '"node"' });
+    const app = await startConfigAppWithAServerEditedByHand();
 
     // ********************************************************************
     // ** WHEN the user opens Config and chooses Overwrite
@@ -80,8 +80,7 @@ test(
     // ********************************************************************
     // ** GIVEN an applied MCP server that the user edited by hand in Claude Code's file
     // ********************************************************************
-    const app = await startConfigAppWithAnAppliedServer();
-    await app.home.edits(".claude.json", { replace: '"npx"', with: '"node"' });
+    const app = await startConfigAppWithAServerEditedByHand();
 
     // ********************************************************************
     // ** WHEN the user opens Config and chooses Keep my manual edit
