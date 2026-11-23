@@ -146,7 +146,7 @@ dev tools that never ship), with few dependencies. Pin exact versions and commit
 
 Approved: `@agentclientprotocol/sdk`, `claude-agent-acp`, `codex-acp`, `hono`, `drizzle-orm`,
 `drizzle-kit`, `zod`, `isomorphic-git`, `react`, `vite`, `@vitejs/plugin-react`, `tailwindcss`,
-`monaco-editor` (used directly), shadcn/ui code copied in with individual `@radix-ui/react-*`
+`monaco-editor` (used directly), `marked` and `dompurify` (Markdown preview), shadcn/ui code copied in with individual `@radix-ui/react-*`
 primitives, `lucide-react`, `clsx`, `tailwind-merge`, `class-variance-authority`; dev:
 `playwright` (pinned to the version whose browser CI installs), `typescript`, `eslint`, `typescript-eslint`, `eslint-plugin-sonarjs`,
 `@eslint-community/eslint-plugin-eslint-comments`, `dependency-cruiser`, `knip`, `jscpd`,

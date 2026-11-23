@@ -5,10 +5,13 @@ import { applyModify } from "./modify-data.ts";
 import { forgetReload } from "./recover.ts";
 import { applyEvent, applySummaries } from "./sessions-data.ts";
 
+/** Paths that changed in a session's worktree. */
+export type FileChange = { sessionId: SessionId; paths: readonly string[] };
+
 type Handlers = {
   /** The stream (re)connected: refetch what is shown, since messages may have been missed. */
   resync: () => void;
-  filesChanged: (sessionId: SessionId) => void;
+  filesChanged: (change: FileChange) => void;
 };
 
 function setConnection(ctx: Context, connection: DataState["connection"]): void {
@@ -35,8 +38,8 @@ export function startLive(ctx: Context, handlers: Handlers): () => void {
     onModify: (state) => {
       applyModify(ctx, state);
     },
-    onFilesChanged: ({ sessionId }) => {
-      handlers.filesChanged(sessionId);
+    onFilesChanged: ({ sessionId, paths }) => {
+      handlers.filesChanged({ sessionId, paths });
     },
   });
 }

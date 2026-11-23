@@ -67,6 +67,8 @@ interface LaunchOptions {
   ui?: { root?: string; dist?: string };
   /** The default UI and Modify agent; in-process runs only. */
   modify?: ModifyConfig | undefined;
+  /** How long a preview link lasts after its last use; in-process runs only. */
+  previewLifetimeMs?: number | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
 }
@@ -78,6 +80,9 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     port: options.port ?? 0,
     ...(options.ui && { ui: options.ui }),
     ...(options.modify && { modify: options.modify }),
+    ...(options.previewLifetimeMs !== undefined && {
+      previewLifetimeMs: options.previewLifetimeMs,
+    }),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

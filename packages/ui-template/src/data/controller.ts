@@ -8,7 +8,7 @@ import {
   startSession,
 } from "./commands.ts";
 import { attempt, type Context, inBackground } from "./context.ts";
-import { startLive } from "./live.ts";
+import { type FileChange, startLive } from "./live.ts";
 import { initialState } from "./model.ts";
 import { loadModify, modifyActions } from "./modify-data.ts";
 import { createSelection } from "./selection.ts";
@@ -41,11 +41,28 @@ function userActions(ctx: Context) {
   };
 }
 
+/** Who wants to hear about every change to a session's files, and how to tell them. */
+function fileChangeListeners() {
+  const listeners = new Set<(change: FileChange) => void>();
+  return {
+    tell: (change: FileChange): void => {
+      for (const listener of [...listeners]) listener(change);
+    },
+    add: (listener: (change: FileChange) => void): (() => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
 /** What the UI can ask for: the state to read, and the actions the user can take. */
 export function createController({ client, report }: ControllerOptions) {
   const store = createStore(initialState);
   const ctx: Context = { client, store, report };
   const selection = createSelection(ctx);
+  const changes = fileChangeListeners();
   const resync = (): void => {
     inBackground(ctx, Promise.all([loadSessions(ctx), loadChoices(ctx)]));
     inBackground(ctx, loadModify(ctx));
@@ -55,7 +72,18 @@ export function createController({ client, report }: ControllerOptions) {
     ...userActions(ctx),
     store,
     /** Starts the live connection; returns the function that stops it. */
-    connect: () => startLive(ctx, { resync, filesChanged: selection.filesChanged }),
+    connect: () =>
+      startLive(ctx, {
+        resync,
+        filesChanged: (change) => {
+          selection.filesChanged(change.sessionId);
+          changes.tell(change);
+        },
+      }),
+    /** Calls `listener` for every change to a session's files; returns the function that stops it. */
+    watchFileChanges: changes.add,
+    /** The address that shows a worktree file as a page (a new `?v=` each time, on the session's one preview ticket). */
+    previewUrl: (id: SessionId, path: string) => client.files.previewUrl(id, path),
     select: selection.select,
     openFile: selection.openFile,
   };

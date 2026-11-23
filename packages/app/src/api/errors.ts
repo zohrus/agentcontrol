@@ -22,6 +22,7 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
   [ErrorCode.staleFile]: { status: 409, code: "stale-file" },
   [ErrorCode.setupFailed]: { status: 422, code: "setup-failed" },
   [ErrorCode.fileNotFound]: { status: 404, code: "file-not-found" },
+  [ErrorCode.fileTooLarge]: { status: 413, code: "file-too-large" },
   [ErrorCode.configStale]: { status: 409, code: "config-plan-stale" },
   [ErrorCode.invalidParams]: { status: 400, code: "invalid-request" },
 };
@@ -52,7 +53,8 @@ function intended(error: Error): ApiFailure | undefined {
   return error instanceof ModifyRefusal ? fromModify(error) : undefined;
 }
 
-function failureOf(error: Error): ApiFailure {
+/** The API failure a thrown error stands for (an unknown one is a 500). */
+export function failureOf(error: Error): ApiFailure {
   const known = intended(error);
   if (known) return known;
   const gone =

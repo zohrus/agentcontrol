@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
+import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
@@ -21,6 +22,8 @@ export interface AppOptions {
   modify?: ModifyConfig;
   /** The UI to serve besides the API; none by default. */
   ui?: UiSource;
+  /** How long a preview link stays valid after its last use, in milliseconds; an hour by default. */
+  previewLifetimeMs?: number;
 }
 
 export interface RunningApp {
@@ -59,7 +62,17 @@ function explainStartFailure(error: unknown, port: number): unknown {
   );
 }
 
+function previewsOf(options: AppOptions) {
+  const { previewLifetimeMs } = options;
+  return createPreviews(previewLifetimeMs === undefined ? {} : { lifetimeMs: previewLifetimeMs });
+}
+
 const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };
+
+/** What the API serves besides the store, hub and Modify: the workspace, its relay, the previews. */
+function serving(options: AppOptions, sync: Sync) {
+  return { workspace: LOCAL, relay: sync, previews: previewsOf(options) };
+}
 
 /** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the relay is synced. */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
@@ -74,7 +87,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     await sync.ready;
     const modify = modifyOf(options, { store, hub, sync });
     if (options.modify) await modify.ready();
-    const deps = { store, hub, workspace: LOCAL, relay: sync, modify };
+    const deps = { store, hub, modify, ...serving(options, sync) };
     return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
   }).catch(async (error: unknown) => {
     await ui?.close();
