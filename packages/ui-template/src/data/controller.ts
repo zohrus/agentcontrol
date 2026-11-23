@@ -38,6 +38,8 @@ function userActions(ctx: Context) {
       attempt(ctx, () => saveSetup(ctx, { repoId, setup })),
     checkWorkspace: () => attempt(ctx, () => checkWorkspace(ctx)),
     modify: modifyActions(ctx),
+    /** What the sessions cost and how they went (the SDK's analytics). */
+    analytics: ctx.client.analytics,
   };
 }
 

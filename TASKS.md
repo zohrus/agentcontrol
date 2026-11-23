@@ -144,8 +144,12 @@ Later:
 - [ ] Write down the telemetry policy (proposed: none).
 
 ## Analytics
-- [ ] The Analytics screen (phase 7) is in progress: durable usage table, summary, sessions and insights API, rule-based insights, plain SVG charts, no chart library.
-- [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead.
+- [x] The Analytics screen (phase 7): durable `usage` table, summary, sessions and insights API, `analytics.*` in the SDK, rule-based insights, plain SVG charts (no chart library), session table, filters, light and dark. Screenshots: `docs/ui-analytics-light.png`, `docs/ui-analytics-dark.png`.
+- [x] Sub-cent costs show as "<$0.01" in the chip and status bar, and with four decimals in Analytics.
+- [x] Sessions with tokens and no reported cost are marked "no cost reported", never counted as $0.
+- [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead (needs the plan's limits from the agent; the Analytics screen only says "no cost reported" for now).
+- [ ] Analytics reads every event of every session on each request, and the app reads all usage from the relay on each connection. Cache per session (by last seq) and read usage incrementally if it gets slow.
+- [ ] Analytics: the Modify agent's sessions are not counted; a chart library is not needed so far (the three charts are about 250 lines of SVG).
 
 ## Decisions made
 - [x] Local server lock-down (22 Nov 2026): Host and Origin checks and a secret token sent as a header, never a cookie (cookies are not isolated by port). `docs/decisions/2026-11-22-local-server-security.md`.

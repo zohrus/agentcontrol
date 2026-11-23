@@ -43,6 +43,13 @@
       "when": 1795470000000,
       "tag": "0005_workspace_removed",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795480000000,
+      "tag": "0006_woozy_union_jack",
+      "breakpoints": true
     }
   ]
 }

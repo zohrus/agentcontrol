@@ -128,7 +128,7 @@ const reportUsage: Handler<"reportUsage"> = async (step, turn) => {
     sessionUpdate: "usage_update",
     used: step.inputTokens + step.outputTokens,
     size: 200000,
-    cost: { amount: step.costUsd, currency: "USD" },
+    ...(step.costUsd === undefined ? {} : { cost: { amount: step.costUsd, currency: "USD" } }),
     _meta: { "_claude/model": step.model },
   });
   return undefined;

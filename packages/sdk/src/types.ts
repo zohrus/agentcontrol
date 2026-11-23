@@ -58,6 +58,17 @@ export type {
 } from "@agentcontrol/protocol";
 
 export type {
+  AnalyticsSessionSort,
+  AnalyticsSummary,
+  AnalyticsTotals,
+  Breakdown,
+  Insight,
+  SessionAnalytics,
+  SessionFacts,
+  TokenCounts,
+} from "@agentcontrol/app";
+
+export type {
   ModifyGate,
   ModifyState,
   ModifyStatus,

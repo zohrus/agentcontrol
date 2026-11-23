@@ -1,3 +1,4 @@
+import { analyticsPage } from "./analytics-page.ts";
 import { changesPage } from "./changes-page.ts";
 import { dialogsPage } from "./dialogs-page.ts";
 import { previewContent, previewPage } from "./preview-page.ts";
@@ -11,6 +12,7 @@ import { workspacePage } from "./workspace-page.ts";
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
   return {
+    ...analyticsPage(page),
     ...sessionListPage(page),
     ...sessionPage(page),
     ...changesPage(page),
