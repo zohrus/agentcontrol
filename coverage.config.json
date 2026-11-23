@@ -1,7 +1,7 @@
 {
   "thresholds": {
     "rule": "Numbers only go up. Never lower a threshold, never exclude a file to pass: write the end-to-end test, or delete the dead code.",
-    "totalLines": 95,
+    "totalLines": 98,
     "newLines": 95
   },
   "include": ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"],

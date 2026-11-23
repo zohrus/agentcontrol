@@ -29,6 +29,7 @@ const stepSchema = z.discriminatedUnion("kind", [
     title: z.string(),
     description: z.string().optional(),
   }),
+  z.object({ kind: z.literal("sendUpdate"), update: z.record(z.string(), z.unknown()) }),
   z.object({ kind: z.literal("finish"), stopReason }),
   z.object({ kind: z.literal("waitUntilCancelled") }),
   z.object({

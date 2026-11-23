@@ -1,5 +1,4 @@
 import { ErrorCode, type JsonRpcErrorBody } from "@agentcontrol/protocol";
-import { ZodError } from "zod";
 
 /** A failure the app should see as a specific JSON-RPC error code. */
 export class RelayError extends Error {
@@ -17,9 +16,6 @@ export class RelayError extends Error {
 export function toErrorBody(error: unknown): JsonRpcErrorBody {
   if (error instanceof RelayError) {
     return { code: error.code, message: error.message, data: error.data };
-  }
-  if (error instanceof ZodError) {
-    return { code: ErrorCode.invalidParams, message: error.message };
   }
   const message = error instanceof Error ? error.message : String(error);
   return { code: ErrorCode.internalError, message };

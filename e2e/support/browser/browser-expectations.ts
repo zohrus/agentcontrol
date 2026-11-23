@@ -75,6 +75,14 @@ export function expectChangesTabToList(app: AppInBrowser, path: string): Promise
   });
 }
 
+/** The note under the file list says how many of the files it shows, in plain words. */
+export function expectFileListToSay(app: AppInBrowser, text: string): Promise<void> {
+  return pageEventually(`expected the file list to say ${quote(text)}`, async () => {
+    const notice = await app.page.fileListNotice();
+    return notice.includes(text) ? undefined : `it says ${quote(notice)}`;
+  });
+}
+
 /** The diff of the open file shows this text. */
 export function expectDiffToShow(app: AppInBrowser, text: string): Promise<void> {
   return pageEventually(`expected the diff to show ${quote(text)}`, async () => {

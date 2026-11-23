@@ -2,6 +2,7 @@ import { afterEach, test } from "bun:test";
 import {
   expectChangesTabToList,
   expectDiffToShow,
+  expectFileListToSay,
   expectFileToBeSaved,
 } from "../support/browser/browser-expectations.ts";
 import { opensReadmeInTheEditor } from "../support/browser/more-session-setups.ts";
@@ -59,6 +60,28 @@ test(
     // AND the page has taken the save in: the Changes tab shows the new text
     await app.page.opensChangesTab();
     await expectDiffToShow(app, "edited by the user");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "a worktree with more files than the list shows says how many it lists",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a repo of 252 files and a session on it, open in the browser
+    // ********************************************************************
+    const app = await startAppInBrowser({ repoFiles: 250 });
+    await opensSessionWithUncommittedEdit(app, "Reword the readme");
+
+    // ********************************************************************
+    // ** WHEN the user opens the Editor tab and its file list
+    // ********************************************************************
+    await app.page.opensEditorTab();
+
+    // ********************************************************************
+    // ** THEN the file list says it shows 200 of the 252 files
+    // ********************************************************************
+    await expectFileListToSay(app, "Showing 200 of 252 files");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

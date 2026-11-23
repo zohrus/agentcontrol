@@ -90,9 +90,21 @@ export function refresh(ctx: Ctx): void {
   publishState(ctx, { ...ctx.state, ...(sessionId === undefined ? {} : { sessionId }) });
 }
 
-/** After a restart: shows the change that was waiting for Keep or Undo, or nothing in progress. */
-export function restoreWaiting(ctx: Ctx): void {
+/**
+ * The change an earlier run left waiting for Keep or Undo, unless its Keep was committed just
+ * before the app died: then the history has a newer version than when the change began to wait.
+ */
+async function stillWaiting(ctx: Ctx) {
   const saved = ctx.persist.load();
+  if (!saved) return undefined;
+  const [newest] = await ctx.versions.history();
+  const { baseCommit } = saved.change;
+  return baseCommit === undefined || newest?.commit === baseCommit ? saved : undefined;
+}
+
+/** After a restart: shows the change that was waiting for Keep or Undo, or nothing in progress. */
+export async function restoreWaiting(ctx: Ctx): Promise<void> {
+  const saved = await stillWaiting(ctx);
   if (!saved) {
     showIdle(ctx);
     return;

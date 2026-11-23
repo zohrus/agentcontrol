@@ -5,7 +5,9 @@ import { runBridge, runDaemon, stopDaemon } from "./daemon/index.ts";
 const commands: Record<string, (dataDir: string) => Promise<void>> = {
   daemon: runDaemon,
   "--stdio": runBridge,
-  stop: stopDaemon,
+  stop: async (dataDir) => {
+    if (!(await stopDaemon(dataDir))) process.exit(1);
+  },
 };
 
 function dataDirFrom(args: string[]): string {

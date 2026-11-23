@@ -20,13 +20,17 @@ textarea{width:100%;font:inherit;box-sizing:border-box}pre{background:#eee;paddi
 
 /** Runs in the browser; knows nothing of the UI bundle or the SDK package, only the app's API. */
 const SCRIPT = `
-const status = document.body.dataset.status;
+const KEY = "agentcontrol-safe-reloaded";
 const secret = document.querySelector('meta[name="agentcontrol-token"]');
 const authorized = (headers) => ({ ...headers, authorization: "Bearer " + (secret ? secret.content : "") });
+/** Private windows may refuse session storage; then there is no memory, so it counts as "already reloaded". */
+function stored(use) {
+  try { return use(sessionStorage); } catch { return "1"; }
+}
 function expired(response) {
   // The app restarted and made a new secret: reload once to get the page that holds it.
-  if (response.status !== 401 || sessionStorage.getItem("agentcontrol-safe-reloaded")) return false;
-  sessionStorage.setItem("agentcontrol-safe-reloaded", "1");
+  if (response.status !== 401 || stored((s) => s.getItem(KEY))) return false;
+  stored((s) => s.setItem(KEY, "1"));
   location.reload();
   return true;
 }
@@ -40,7 +44,17 @@ async function call(path, body) {
     document.getElementById("error").textContent = (data.error && data.error.message) || "That did not work.";
     return;
   }
-  location.reload();
+  if (body && body.request) document.getElementById("request").value = "";
+  await refresh();
+}
+/** Swaps in the status and version parts of a fresh page; the request box is left as it is. */
+async function refresh() {
+  const html = await fetch("/_safe").then((r) => r.text()).catch(() => undefined);
+  if (!html) return;
+  const next = new DOMParser().parseFromString(html, "text/html");
+  if (!next.getElementById("status") || !next.getElementById("versions")) return;
+  for (const id of ["status", "versions"]) document.getElementById(id).replaceWith(next.getElementById(id));
+  document.body.dataset.status = next.body.dataset.status;
 }
 document.addEventListener("click", (event) => {
   const button = event.target.closest("button[data-action]");
@@ -55,9 +69,9 @@ document.addEventListener("click", (event) => {
 setInterval(async () => {
   const response = await fetch("/api/modify", { headers: authorized({}) }).catch(() => undefined);
   if (!response || expired(response)) return;
-  sessionStorage.removeItem("agentcontrol-safe-reloaded");
+  stored((s) => s.removeItem(KEY));
   const state = await response.json().catch(() => undefined);
-  if (state && state.status !== status) location.reload();
+  if (state && state.status !== document.body.dataset.status) await refresh();
 }, 2000);
 `;
 
@@ -108,12 +122,16 @@ export function renderSafePage(options: { state: ModifyState; versions: UiVersio
 <p>This page is served by the app itself, so it works even when your UI is broken.</p>
 <p id="error"></p>
 <h2>Modify agent</h2>
+<div id="status">
 ${stateSection(state)}
 <p>${undo}</p>
+</div>
 <textarea id="request" rows="3" placeholder="Describe a change to the UI"></textarea>
 <p>${button("send", "Send")}</p>
+<div id="versions">
 <h2>Versions</h2>
 <ul>${versions.map(versionItem).join("\n")}</ul>
+</div>
 <script>${SCRIPT}</script>
 </body></html>`;
 }

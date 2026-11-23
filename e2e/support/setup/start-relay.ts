@@ -21,6 +21,10 @@ export interface RunningRelay extends RelayAccess {
   opensTheApp(): void;
   /** Stops the relay daemon and starts it again; sessions are read back from their logs. */
   restartsTheRelay(options?: { whileDown?: () => Promise<void> }): Promise<void>;
+  /** Stops the relay daemon without first disconnecting the app, which stays connected to it. */
+  stopsTheRelayWhileTheAppIsConnected(): Promise<void>;
+  /** Starts the relay daemon again and opens a new connection for the app. */
+  startsTheRelayAndConnectsTheApp(): Promise<void>;
   /** Follows one session on the current connection, receiving only events after `afterSeq`. */
   followsSessionAfter(session: Session, afterSeq: number): Promise<void>;
   /** Makes the repo's worktree setup run this script (it runs in each new session's worktree). */

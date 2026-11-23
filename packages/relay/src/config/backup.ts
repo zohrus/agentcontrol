@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { isMissing, writeAtomic } from "./fs.ts";
@@ -6,6 +6,37 @@ import { StalePlanError } from "./plan.ts";
 
 interface BackupMeta {
   files: { path: string; blob: string | null }[];
+  /** What each file held right after the apply (a hash; null for none), to see later changes. */
+  after?: { path: string; hash: string | null }[];
+}
+
+const hashOf = (bytes: Buffer | undefined): string | null =>
+  bytes ? createHash("sha256").update(bytes).digest("hex") : null;
+
+async function readMeta(dir: string, backupId: string): Promise<BackupMeta> {
+  const text = await readFile(join(dir, "meta.json"), "utf8").catch(() => undefined);
+  if (text === undefined) throw new StalePlanError(`there is no backup "${backupId}"`);
+  return JSON.parse(text) as BackupMeta;
+}
+
+/** Notes what the files hold now, right after the apply, so a rollback can tell later changes. */
+export async function recordApplied(input: { homeDir: string; backupId: string }): Promise<void> {
+  const dir = backupDir(input.homeDir, input.backupId);
+  const meta = await readMeta(dir, input.backupId);
+  const after = await Promise.all(
+    meta.files.map(async ({ path }) => ({ path, hash: hashOf(await readBytes(path)) })),
+  );
+  await writeFile(join(dir, "meta.json"), JSON.stringify({ ...meta, after }, null, 2));
+}
+
+/** The files that no longer hold what the apply left in them. */
+async function changedSince(meta: BackupMeta): Promise<string[]> {
+  const changed = await Promise.all(
+    (meta.after ?? []).map(async ({ path, hash }) =>
+      hashOf(await readBytes(path)) === hash ? undefined : path,
+    ),
+  );
+  return changed.filter((path) => path !== undefined);
 }
 
 const backupDir = (homeDir: string, backupId: string): string =>
@@ -37,14 +68,16 @@ export async function createBackup(input: { homeDir: string; paths: string[] }):
 export async function rollbackConfig(input: {
   backupId: string;
   homeDir: string;
-}): Promise<string[]> {
+  /** Overwrite files that changed after the apply; without it they are listed and nothing is restored. */
+  force: boolean;
+}): Promise<{ restored: string[]; changedSince: string[] }> {
   const dir = backupDir(input.homeDir, input.backupId);
-  const text = await readFile(join(dir, "meta.json"), "utf8").catch(() => undefined);
-  if (text === undefined) throw new StalePlanError(`there is no backup "${input.backupId}"`);
-  const meta = JSON.parse(text) as BackupMeta;
+  const meta = await readMeta(dir, input.backupId);
+  const changed = input.force ? [] : await changedSince(meta);
+  if (changed.length > 0) return { restored: [], changedSince: changed };
   for (const { path, blob } of meta.files) {
     if (blob === null) await rm(path, { force: true });
     else await writeAtomic(path, await readFile(join(dir, blob)));
   }
-  return meta.files.map((f) => f.path);
+  return { restored: meta.files.map((f) => f.path), changedSince: [] };
 }

@@ -28,7 +28,7 @@ export const eventsReadThroughSdk =
   () =>
     app.sdk.sessions.events(session.id);
 
-async function expectUpdate(
+export async function expectUpdate(
   source: EventSource,
   want: { describe: string; matches: (update: AgentUpdate) => boolean },
 ): Promise<void> {

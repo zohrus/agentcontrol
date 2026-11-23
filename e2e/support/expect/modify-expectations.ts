@@ -1,3 +1,4 @@
+import type { SessionSummary } from "@agentcontrol/protocol";
 import type { ModifyState, SessionEvent } from "@agentcontrol/sdk";
 import type { AppAccess } from "../setup/app.ts";
 import { eventually } from "../setup/eventually.ts";
@@ -34,6 +35,18 @@ export function expectUiChangeFailed(app: AppAccess): Promise<ModifyState> {
 /** Nothing is being changed and nothing waits for Keep or Undo. */
 export function expectNoChangeInProgress(app: AppAccess): Promise<ModifyState> {
   return waitForStatus(app, "idle");
+}
+
+/** The relay lists a Modify agent session (a directory session), and none of them is still running. */
+export function expectNoModifyAgentLeftRunning(sessions: SessionSummary[]): Promise<void> {
+  const modify = sessions.filter((session) => session.kind === "directory");
+  const running = modify.filter((session) => session.archivedAt === undefined);
+  if (modify.length === 0 || running.length > 0) {
+    throw new Error(
+      `expected the Modify agent's session to be ended, but the relay lists ${String(running.length)} of ${String(modify.length)} Modify sessions as still open`,
+    );
+  }
+  return Promise.resolve();
 }
 
 const describeVersion = (version: { kind: string; message: string } | undefined): string =>

@@ -1,6 +1,12 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["packages/*/src/**/*.ts", "e2e/**/*.ts", "spike/**/*.ts", "scripts/**/*.ts"],
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/bin/*.ts",
+    "e2e/**/*.ts",
+    "spike/**/*.ts",
+    "scripts/**/*.ts"
+  ],
   "exclude": ["packages/ui-template"],
   "compilerOptions": { "allowImportingTsExtensions": true }
 }

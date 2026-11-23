@@ -44,11 +44,11 @@ export class Peer {
 
   request(method: string, params: unknown): Promise<unknown> {
     const id = this.nextId++;
-    const answered = new Promise<unknown>((resolve, reject) => {
+    // A send that throws (the relay process is already gone) rejects this call, never leaves it unhandled.
+    return new Promise<unknown>((resolve, reject) => {
+      this.send(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
       this.waiting.set(id, { resolve, reject });
     });
-    this.send(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
-    return answered;
   }
 
   onNotification(listener: (notification: Notification) => void): void {

@@ -87,6 +87,30 @@ test("a message after a failed attempt continues the same Modify session", async
   await expectLiveUiFileToContain(app, { path: table, text: '"Cost"' });
 });
 
+test("a message after the Modify agent died starts a fresh agent that makes the change", async () => {
+  // ********************************************************************
+  // ** GIVEN the Modify agent crashed during its first attempt
+  // ********************************************************************
+  const app = await startAppWithModifiableUi();
+  app.mockAgent.willExitUnexpectedly();
+  await app.user.asksToModifyTheUi("add a cost column");
+  await expectUiChangeFailed(app);
+  // AND a fresh agent will make the change
+  app.mockAgent.startsNewScript();
+  app.mockAgent.willWriteFile(table, sessionTableWith("Title", "Cost"));
+
+  // ********************************************************************
+  // ** WHEN the user sends another message
+  // ********************************************************************
+  await app.user.asksToModifyTheUi("try again");
+
+  // ********************************************************************
+  // ** THEN the change is ready to keep
+  // ********************************************************************
+  await expectUiChangeReadyToKeep(app);
+  await expectLiveUiFileToContain(app, { path: table, text: '"Cost"' });
+});
+
 test("discarding while the Modify agent is working stops it", async () => {
   // ********************************************************************
   // ** GIVEN the Modify agent works on a turn that does not end by itself

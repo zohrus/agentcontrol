@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 11:00 UTC";
+const UPDATED = "23 Nov 2026, 12:20 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -263,17 +263,14 @@ const C = [
 ];
 
 const NOW = [
-  "Mac build on GitHub: make the job green with the new release folder (signing nested files, smoke test, dmg)",
-  "Follow-up fixes: app start when the relay is down, relay shutdown order, weak coverage spots, version numbers",
+  "Remote SSH workspaces (Phase 5): final merge, compiled relay over ssh, finding agents on a real host",
   "UI under the coverage rule: browser coverage and the missing browser tests",
-  "Paused until the machine has room: remote SSH workspaces",
   "UI connected to live data, served by the app, with browser tests (Phase 3)",
   "Modify agent backend: fenced agent session, check gate, Keep and Undo, default-UI updates, /_safe (Phase 4)",
   "Harness config: verify formats against the real agents, wire into relay, app and SDK, tests (Phase 6)",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
-  "Mac build on GitHub: red on one step only. The compiled app cannot find its database setup files; being fixed by the compiled-app work",
   "Codex in the spike: needs an OpenAI API key and api.openai.com allowed in this environment, or your Mac attached",
 ];
 const LOG = [
@@ -297,6 +294,7 @@ const LOG = [
   ["23 Nov 2026 08:35", "CI on GitHub is green on main for the first time. The Swift menu bar app builds on a real Mac for both chip types and the app bundle is assembled and ad-hoc signed there. Modify panel in the UI landed with 10 browser tests. Fixed: tests run from a git hook were changing this repository's own git settings. Decision: first Mac release is unsigned; Apple Developer ID parked."],
   ["23 Nov 2026 10:10", "Landed: real Claude Code working through the whole app (it never asked for permission before; fixed), README and first-run fixes, and the Preview tab with sandboxed HTML and Markdown. 82 test runs pass, coverage 98.4%."],
   ["23 Nov 2026 11:00", "Compiled app landed: it runs end to end with no source tree and no Bun installed (9 of 9 smoke steps on Linux, now in CI). bun dev opens the browser. Plan page brought up to date with everything since yesterday. 13 follow-up fixes are done on their branch and merging."],
+  ["23 Nov 2026 12:20", "Landed: 13 follow-up fixes (app starts when the relay is down, relay shutdown keeps the last events, relay stop reports what it did, stale updates re-read, coverage floor raised to 98%) and the Mac build fix. On a real Mac runner the compiled app passed all 9 smoke steps, from the app bundle and from the mounted disk image; unsigned disk images are built for both chip types (about 320 MB each). Three Mac-only bugs found and fixed."],
 ];
 /* ===== END DATA ===== */
 

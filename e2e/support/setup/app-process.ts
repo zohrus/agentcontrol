@@ -1,5 +1,7 @@
 import { join } from "node:path";
 import { type ModifyConfig, relayClientOver, startApp } from "@agentcontrol/app";
+import { readApiToken } from "./api-token.ts";
+import { eventually } from "./eventually.ts";
 import { inSubprocesses, type RelayHost } from "./relay-host.ts";
 
 const appMain = join(import.meta.dir, "../../../packages/app/src/main.ts");
@@ -33,13 +35,13 @@ export function afterTimeout(): Promise<never> {
   });
 }
 
-function uiFlags(ui: LaunchOptions["ui"]): string[] {
+function uiFlags(ui: ProcessLaunch["ui"]): string[] {
   const { root, dist } = ui ?? {};
   return [...(root ? ["--ui-root", root] : []), ...(dist ? ["--ui-dist", dist] : [])];
 }
 
 /** Starts `main.ts` on a free port with its own data folder and waits for its "listening" line. */
-async function launchAppProcess(options: LaunchOptions): Promise<AppProcess> {
+export async function launchAppProcess(options: ProcessLaunch): Promise<AppProcess> {
   const port = String(options.port ?? 0);
   const args = ["--port", port, "--data-dir", options.dataDir, ...uiFlags(options.ui)];
   const child = Bun.spawn(["bun", appMain, ...args], {
@@ -57,14 +59,20 @@ async function launchAppProcess(options: LaunchOptions): Promise<AppProcess> {
   };
 }
 
-interface LaunchOptions {
+/** What starting the app as its own process takes. */
+interface ProcessLaunch {
   dataDir: string;
   env: Record<string, string>;
-  host: RelayHost;
   /** The port to come back on after a restart (so a browser can find the app); free port if left out. */
   port?: number;
   /** Serve the UI: a project folder with Vite, or a folder of built files. */
   ui?: { root?: string; dist?: string };
+}
+
+interface LaunchOptions extends ProcessLaunch {
+  host: RelayHost;
+  /** The relay is stopped on purpose: do not wait for the app to connect to it. */
+  relayDown?: boolean | undefined;
   /** The default UI and Modify agent; in-process runs only. */
   modify?: ModifyConfig | undefined;
   /** How long a preview link lasts after its last use; in-process runs only. */
@@ -92,7 +100,24 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
   return { baseUrl: app.url, stop: () => app.stop() };
 }
 
-/** Starts the app on a free port, as a subprocess when asked for, otherwise in this process. */
-export function launchApp(options: LaunchOptions): Promise<AppProcess> {
-  return inSubprocesses ? launchAppProcess(options) : launchAppInProcess(options);
+/** Polls the app's health check until it reports the relay connected: the app starts without it. */
+async function waitUntilRelayConnected(app: AppProcess, dataDir: string): Promise<void> {
+  const token = await readApiToken(dataDir);
+  await eventually("expected the started app to connect to the relay", async () => {
+    const response = await fetch(`${app.baseUrl}/api/health`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const { relay } = (await response.json()) as { relay: string };
+    return relay === "disconnected" ? "the relay is still disconnected" : undefined;
+  });
+}
+
+/**
+ * Starts the app on a free port, as a subprocess when asked for, otherwise in this process. Returns
+ * once the app is connected to its relay, unless the relay is meant to be down.
+ */
+export async function launchApp(options: LaunchOptions): Promise<AppProcess> {
+  const app = await (inSubprocesses ? launchAppProcess(options) : launchAppInProcess(options));
+  if (!options.relayDown) await waitUntilRelayConnected(app, options.dataDir);
+  return app;
 }

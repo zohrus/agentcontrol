@@ -11,6 +11,8 @@ final class ServerProcess {
         let process = Process()
         process.executableURL = resources.appendingPathComponent("agentcontrol")
         process.environment = environment()
+        // The same folder the menu bar reads `api-token` from (see DataFolder).
+        process.arguments = ["--data-dir", DataFolder.url().path]
         if let log = openLog() {
             process.standardOutput = log
             process.standardError = log

@@ -21,6 +21,8 @@ export type BrowserOptions = {
   controllableClock?: boolean;
   /** The browser refuses to store anything, as in a locked-down private window. */
   storageBlocked?: boolean;
+  /** The repo holds this many files besides its readme. */
+  repoFiles?: number;
 };
 
 async function waitUntilConnected(page: Page): Promise<void> {
@@ -60,7 +62,11 @@ export async function openInBrowser<A extends RunningApp>(
 
 /** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
 export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
-  const { relayEnv } = options;
-  const app = await startAppWithLocalWorkspace({ withUi: true, ...(relayEnv && { relayEnv }) });
+  const { relayEnv, repoFiles } = options;
+  const app = await startAppWithLocalWorkspace({
+    withUi: true,
+    ...(relayEnv && { relayEnv }),
+    ...(repoFiles === undefined ? {} : { repoFiles }),
+  });
   return openInBrowser(app, options);
 }

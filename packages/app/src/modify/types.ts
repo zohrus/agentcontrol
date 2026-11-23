@@ -66,6 +66,8 @@ export interface Change {
   title: string;
   /** Bumped when the change is discarded, so a turn or check still running knows to stop. */
   generation: number;
+  /** The newest saved version when the change began to wait for Keep or Undo; Keep adds a newer one. */
+  baseCommit?: string;
   /** For an update: the default-UI version being merged and what the merge did. */
   merge?: { version: string; keptAutomatically: number; conflictsResolved: number };
 }

@@ -1,6 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SessionSummary } from "@agentcontrol/protocol";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
 import type { ModifyConfig } from "@agentcontrol/app";
 import type { AppAccess, FileChange } from "./app.ts";
@@ -9,13 +8,12 @@ import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
 import { readApiToken } from "./api-token.ts";
 import { aBrowser, type Browser } from "./browser.ts";
-import { createLocalRepo } from "./local-repo.ts";
-import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
 import { type Outsiders, outsidersOf } from "./outsiders.ts";
-import { type RelayHost, startRelayHost } from "./relay-host.ts";
+import { sessionsOfRelay } from "./relay-peek.ts";
+import type { RelayHost } from "./relay-host.ts";
 import { Timeline } from "./timeline.ts";
+import { prepareWorkspace } from "./workspace-parts.ts";
 
-const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 const STREAM_WAIT_MS = 5000;
 
 /** The app running with one local workspace, driven the way a user's browser drives it. */
@@ -26,10 +24,15 @@ export interface RunningApp extends AppAccess, Outsiders {
   readonly user: AppUser;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
+  /** The sessions the relay itself lists, whatever the app knows of them. */
+  readsTheRelaySessions(): Promise<SessionSummary[]>;
   /** Stops the relay daemon while the app keeps running. */
   theRelayStops(): Promise<void>;
-  /** Starts the relay daemon again; the app is expected to find it on its own. */
-  theRelayStartsAgain(): Promise<void>;
+  /**
+   * Starts the relay daemon again; the app is expected to find it on its own. The new relay may be
+   * one that translates the agents' messages differently (a higher version).
+   */
+  theRelayStartsAgain(options?: { normaliserVersion?: number }): Promise<void>;
 }
 
 /** What the live stream has delivered so far. */
@@ -38,6 +41,7 @@ interface Heard {
   fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   relayConnectionsEnded: Timeline<number>;
+  workspaceConnections: Timeline<string>;
 }
 
 /** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
@@ -50,6 +54,9 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
       onFilesChanged: (change) => {
         heard.fileChanges.record(change);
       },
+      onWorkspaceConnection: ({ state }) => {
+        heard.workspaceConnections.record(state);
+      },
       onOpen: () => {
         resolve(stop);
       },
@@ -57,18 +64,12 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
   });
 }
 
-function mockAgentEnvironment(mockAgent: MockAgent): Record<string, string> {
-  return {
-    AGENTCONTROL_AGENT_MOCK_CMD: JSON.stringify(["bun", mockAgentMain]),
-    MOCK_AGENT_SCRIPT: mockAgent.scriptPath,
-  };
-}
-
 function newHeard(): Heard {
   return {
     streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
     fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
     relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
+    workspaceConnections: new Timeline<string>(STREAM_WAIT_MS),
   };
 }
 
@@ -83,6 +84,14 @@ export interface StartOptions {
   previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  /** The repo holds this many files besides its readme, so a worktree has plenty. */
+  repoFiles?: number;
+  /** The version the relay reports it is (in-process runs only), for a relay that is not this release. */
+  relayVersion?: string;
+  /** Stop the relay before the app starts, so the app finds none. */
+  relayStopped?: boolean;
+  /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
+  dataFolderBehindALink?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -90,18 +99,6 @@ const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
 function uiOf(options: StartOptions): { root?: string; dist?: string } {
   if (options.uiDist !== undefined) return { dist: options.uiDist };
   return options.withUi ? { root: uiRoot } : {};
-}
-
-/** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
-async function prepareWorkspace(relayEnv: Record<string, string> = {}) {
-  const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
-  onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
-  const repoPath = await createLocalRepo();
-  const mockAgent = await createMockAgent();
-  const env = { ...mockAgentEnvironment(mockAgent), ...relayEnv };
-  const host = await startRelayHost({ dataDir: join(dataDir, "relay"), env });
-  onTestEnd(() => host.stop());
-  return { dataDir, repoPath, mockAgent, env, host };
 }
 
 /** The parts of the access every helper uses, reading the SDK and URL of the app as it is now. */
@@ -126,12 +123,14 @@ function accessOf(options: {
 
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
-  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options);
+  if (options.relayStopped) await host.stop();
   const heard = newHeard();
   const ui = uiOf(options);
-  const { previewLifetimeMs } = options;
+  const fixed = { dataDir, env, host, heard, ui, relayDown: options.relayStopped };
+  const lifetime = { previewLifetimeMs: options.previewLifetimeMs };
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, previewLifetimeMs, ...extra });
+    openApp({ ...fixed, ...lifetime, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -147,8 +146,9 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
       await current.close();
       current = await open({ port, modify: restart.modify ?? options.modify });
     },
+    readsTheRelaySessions: () => sessionsOfRelay(host),
     theRelayStops: () => host.stop(),
-    theRelayStartsAgain: () => host.start(),
+    theRelayStartsAgain: (relay?: { normaliserVersion?: number }) => host.start(relay),
   });
 }
 
@@ -159,12 +159,20 @@ interface Opened {
   close(): Promise<void>;
 }
 
+/** Records, each time the app sees a relay connection end, how many have ended so far. */
+function countEndedConnections(heard: Heard): () => void {
+  return () => {
+    heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
+  };
+}
+
 async function openApp(options: {
   dataDir: string;
   env: Record<string, string>;
   host: RelayHost;
   heard: Heard;
   ui: { root?: string; dist?: string };
+  relayDown: boolean | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
   previewLifetimeMs?: number | undefined;
@@ -172,9 +180,7 @@ async function openApp(options: {
   const { heard } = options;
   const app: AppProcess = await launchApp({
     ...options,
-    onRelayConnectionEnded: () => {
-      heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
-    },
+    onRelayConnectionEnded: countEndedConnections(heard),
   });
   const token = await readApiToken(options.dataDir);
   const sdk = createClient({ baseUrl: app.baseUrl, token });

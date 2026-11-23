@@ -59,8 +59,9 @@ export async function createDirectorySession(
     payload: { ...created, worktreePath: cwd, title, kind: "directory" },
   });
   await ctx.log.append(sessionId, { kind: "setup-finished", payload: { exitCode: 0 } });
-  runDirectorySession(ctx, { sessionId, cwd, params, policy }).catch((error: unknown) => {
-    console.error(`Session ${sessionId} failed unexpectedly: ${String(error)}`);
-  });
+  const unexpected = `Session ${sessionId} failed unexpectedly:`;
+  runDirectorySession(ctx, { sessionId, cwd, params, policy }).catch(
+    console.error.bind(console, unexpected),
+  );
   return sessionId;
 }

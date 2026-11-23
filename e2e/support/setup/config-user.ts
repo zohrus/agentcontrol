@@ -63,8 +63,10 @@ function changingFiles({ sdk, repoPath }: { sdk: Client; repoPath: string }) {
       return { plan, result: await sdk.config.apply(plan.planId) };
     },
     /** Rolls back the apply that returned this backup. */
-    rollsBack: (applied: Applied): Promise<string[]> =>
-      sdk.config.rollback(applied.result.backupId),
+    rollsBack: (applied: Applied) => sdk.config.rollback(applied.result.backupId),
+    /** Rolls back although files changed after the apply, as the user confirms. */
+    rollsBackAnyway: (applied: Applied) =>
+      sdk.config.rollback(applied.result.backupId, { force: true }),
   };
 }
 

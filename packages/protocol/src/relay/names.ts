@@ -4,6 +4,7 @@ export const RelayName = {
   sessionsList: "relay/sessions.list",
   sessionsCreate: "relay/sessions.create",
   eventsSubscribe: "relay/events.subscribe",
+  eventsRead: "relay/events.read",
   prompt: "relay/prompt",
   permissionRespond: "relay/permission.respond",
   cancel: "relay/cancel",

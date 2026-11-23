@@ -77,7 +77,29 @@ else
   sign_options=(--force --entitlements "$entitlements")
 fi
 
-# Inner binaries first, then the bundle that contains them.
+# Nested native code first (every Mach-O file under Resources: the .node addons and any .dylib or
+# helper executable of node_modules), then the app's own binaries, then the bundle that holds them.
+# codesign signs a bundle's nested code only when told to; unsigned nested code fails --strict.
+# A file is Mach-O when it starts with one of the Mach-O or universal-binary magic numbers.
+is_macho() {
+  case "$(head -c 4 "$1" | od -An -tx1 | tr -d ' \n')" in
+    cffaedfe | cefaedfe | feedfacf | feedface | cafebabe | bebafeca) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+sign_nested() {
+  local count=0 nested
+  # Candidates: addons and libraries by name, anything else that is executable.
+  while IFS= read -r -d '' nested; do
+    is_macho "$nested" || continue
+    codesign "${sign_options[@]}" --sign "$identity" "$nested"
+    count=$((count + 1))
+  done < <(find "$app/Contents/Resources" -type f \
+    \( -name '*.node' -o -name '*.dylib' -o -name '*.so' -o -perm -u+x \) -print0)
+  echo "signed $count nested Mach-O files"
+}
+sign_nested
 for binary in "$app/Contents/Resources/agentcontrol" "$app/Contents/Resources/agentcontrol-relay" \
   "$app/Contents/MacOS/AgentControlMenu"; do
   codesign "${sign_options[@]}" --sign "$identity" "$binary"

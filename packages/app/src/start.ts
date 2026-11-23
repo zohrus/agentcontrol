@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
+import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
 import { createToken } from "./security/index.ts";
@@ -74,17 +74,23 @@ function serving(options: AppOptions, sync: Sync) {
   return { workspace: LOCAL, relay: sync, previews: previewsOf(options) };
 }
 
+/** Ends what a started app holds, in order: the Modify agent's session first, the database last. */
 async function closeParts(parts: {
+  modify: Modify;
   ui: UiHandler | undefined;
   sync: Sync;
   store: Store;
 }): Promise<void> {
+  await parts.modify.stop();
   await parts.ui?.close();
   await parts.sync.stop();
   parts.store.close();
 }
 
-/** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the relay is synced. */
+/**
+ * Starts the app on 127.0.0.1 with its own database under `dataDir`. It does not wait for the
+ * relay: it keeps trying in the background, and the workspace reads as disconnected until it is up.
+ */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
   const token = createToken();
@@ -92,23 +98,22 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const hub = createHub();
   const sync = startSync({ store, hub, workspace: LOCAL, connect: options.connectRelay });
   let ui: UiHandler | undefined;
+  const modify = modifyOf(options, { store, hub, sync });
   const server = await Promise.try(async () => {
-    await sync.ready;
-    const modify = modifyOf(options, { store, hub, sync });
     // The live UI folder is made from the default UI first, because the UI may be served from it.
     if (options.modify) await modify.ready();
     ui = await startUi(options.ui ?? {}, options.dataDir);
     const deps = { store, hub, modify, ...serving(options, sync) };
     return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
   }).catch(async (error: unknown) => {
-    await closeParts({ ui, sync, store });
+    await closeParts({ modify, ui, sync, store });
     throw explainStartFailure(error, options.port);
   });
   return {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
-      await closeParts({ ui, sync, store });
+      await closeParts({ modify, ui, sync, store });
     },
   };
 }
