@@ -42,8 +42,8 @@ bun install
 bun dev
 ```
 
-`bun dev` prints one line, `AgentControl listening on http://127.0.0.1:4747`. Open that address in
-a browser. It does not open the browser for you yet.
+`bun dev` prints one line, `AgentControl listening on http://127.0.0.1:4747`, and opens that
+address in your browser the first time. Set `AGENTCONTROL_NO_OPEN=1` to stop it opening one.
 
 If the port is taken, `bun dev` says so and exits. Pick another: `bun dev --port 4748`.
 

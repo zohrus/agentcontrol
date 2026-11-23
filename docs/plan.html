@@ -157,7 +157,7 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
   <span class="eyebrow">Project plan · working draft</span>
   <h1>AgentControl</h1>
   <p class="lede">A local-first web app that runs Claude Code, Codex and other coding agents on your own machine or on SSH workspaces, shows which sessions are waiting on you, and lets each user rewrite the interface itself by asking a built-in agent.</p>
-  <div class="meta"><span>Updated 22 Nov 2026</span><span>Status: building</span><span>Agents: Claude Code, Codex, Gemini CLI, OpenCode</span></div>
+  <div class="meta"><span>Updated 23 Nov 2026</span><span>Status: building</span><span>Agents: Claude Code, Codex, Gemini CLI, OpenCode</span></div>
   <p class="callout"><b>Live status.</b> What is done, in progress and not started is on the <a href="https://claude.ai/artifact/A88MyfyQ1j1KEUSjRidmRU">live status page</a>, also kept in the repo as <code>docs/status.html</code>. Smaller deferred tasks are in <code>TASKS.md</code>. This plan holds the decisions and the reasons for them.</p>
 </header>
 
@@ -181,7 +181,8 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
       <tr><td>Deployment</td><td>Self-contained app on the user's laptop. No central server, no accounts.</td><td>Privacy, zero ops, each user owns their data.</td></tr>
       <tr><td>Interface</td><td>Web UI on <code>localhost</code>, fully customizable.</td><td>Any browser, and web code is what agents edit best.</td></tr>
       <tr><td>Agent protocol</td><td>ACP (Agent Client Protocol) for every agent. Agents that do not speak ACP are not in scope.</td><td>One protocol for streaming, thinking, tool calls, diffs and permissions.</td></tr>
-      <tr><td>Agent events</td><td>The raw ACP message is stored unchanged in the relay's log. The relay also attaches normalised, agent-neutral updates to each event, and the UI, usage and analytics read those. <i>This replaces the earlier decision that the UI sees the raw message.</i></td><td>The UI is user code that the Modify agent rewrites. If it parsed raw ACP, every adapter quirk would end up inside each user's copy, where we cannot fix it. The raw log stays the source of truth.</td></tr>
+      <tr><td>Agent events</td><td>The raw ACP message is stored unchanged in the relay's log. The relay also attaches normalised, agent-neutral updates to each event, and the UI, usage and analytics read those. <i>This replaces the earlier decision that the UI sees the raw message.</i></td><td>The UI is user code that the Modify agent rewrites. If it parsed raw ACP, every adapter quirk would end up inside each user's copy, where we cannot fix it. The raw log stays the source of truth. <b>Built.</b> The updates are computed when an event is served, never stored, so old logs get better translation for free. A build gate (<code>bun run acp-leaks</code>) fails when raw ACP names appear outside the relay.</td></tr>
+      <tr><td>Live session state</td><td>The relay keeps a summary of every session in memory and pushes changes to the app, including the permission requests the agent is waiting on. Every live message names its workspace, and the store keys a session by workspace plus id.</td><td>One place works out "waiting on you", the UI no longer derives it from events, and several workspaces fit later without a rewrite. Listing 50 large sessions went from about 350 ms to 2 ms.</td></tr>
       <tr><td>Remote execution</td><td>A small relay on each workspace keeps sessions alive. The local machine runs the same relay.</td><td>Sessions survive laptop sleep, SSH drops and closing the app.</td></tr>
       <tr><td>Relay process model</td><td>The relay is a daemon on a unix socket with owner-only permissions. It keeps running when the app closes. <code>relay --stdio</code> is a thin bridge that starts the daemon when needed and passes messages to the socket. Over SSH (phase 5) the app runs the same bridge command.</td><td>Agents keep working while the app is closed, and local and remote workspaces share one code path.</td></tr>
       <tr><td>Storage</td><td>Embedded SQLite file in the app folder.</td><td>Embedded, no server, one file to back up.</td></tr>
@@ -193,12 +194,17 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
       <tr><td>Code editor</td><td>Monaco in the app to view and edit a session's worktree; one click opens it in VS Code, in the browser or on the desktop.</td><td>Reuse VS Code's editor instead of building one.</td></tr>
       <tr><td>Harness config</td><td>One canonical config in the app, edited in the UI, translated and deployed to each agent by the relay.</td><td>Configure once instead of per tool and per machine.</td></tr>
       <tr><td>Language</td><td>TypeScript end to end on Bun: app, relay, SDK and UI.</td><td>One toolchain to install, and shared types from the relay protocol to the UI.</td></tr>
-      <tr><td>Distribution</td><td>Run from source with <code>bun install &amp;&amp; bun dev</code>. Signed Mac <code>.dmg</code> and Homebrew cask for users.</td><td>Contributors start in one command; users install like any Mac app.</td></tr>
-      <tr><td>Code quality</td><td>SOLID (single responsibility first) and KISS, written in <code>AGENTS.md</code>; aggressive complexity and size limits that break the build.</td><td>Code stays easy to change, whoever or whatever wrote it.</td></tr>
-      <tr><td>Testing</td><td>End-to-end tests only, in given / when / then form with readable setup and assertion helpers. No unit tests. The end-to-end suite must cover at least 95% of lines, in total and on the lines a change touches. The number must be deterministic, and it is required before any push. Tests run the relay and the app inside the test process, so the coverage tool can see them, and a few tests use the real separate processes.</td><td>Tests check what users see and survive refactoring. Code that no test runs does not ship.</td></tr>
-      <tr><td>How work lands</td><td>No pull requests. An orchestrator (Claude) splits work into briefs for parallel coding subagents (Sonnet) and research subagents (Opus). Each works in its own git worktree. Checked work is pushed straight to <code>main</code>. <code>main</code> must stay green; when it is not, revert first, then fix.</td><td>Fast, small steps with no review queue, and one red commit never blocks everyone else.</td></tr>
+      <tr><td>Distribution</td><td>Run from source with <code>bun install &amp;&amp; bun dev</code>. For users, a Mac <code>.dmg</code>. <b>The first release is unsigned:</b> the owner parked the Apple Developer ID (23 Nov 2026), so the app is ad-hoc signed only and macOS asks for a manual "Open Anyway". Notarisation, a Homebrew cask and in-app updates wait for the Developer ID.</td><td>Contributors start in one command. Shipping unsigned lets the first release go out without a 99 USD a year account; the release workflow signs by itself once the secrets exist.</td></tr>
+      <tr><td>Release layout</td><td>One folder per platform: the app, the relay, the Linux relays that remote workspaces are installed from, and the default UI with its own <code>node_modules</code>. The app binary also acts as its own <code>bun</code> (started with <code>BUN_BE_BUN=1</code>), so it runs Vite, <code>vite build</code>, <code>tsc</code> and the agent adapters on a Mac with no tools installed. Database migrations are embedded in the binary. Nothing is ever written into the shipped folder. About 700 MB per platform today.</td><td>A user's Mac has no <code>bun</code>, <code>bunx</code> or source tree. Running Vite inside the app process was rejected: a Vite crash would take the app down. Details: <code>docs/decisions/2026-11-23-release-layout.md</code>.</td></tr>
+      <tr><td>Code quality</td><td>SOLID (single responsibility first) and KISS, written in <code>AGENTS.md</code>; aggressive complexity and size limits that break the build. Duplication limit is zero: any repeated block of 50 or more tokens fails. 25 deliberately bad samples (gate proofs) check that every gate still fails, and they run in CI too.</td><td>Code stays easy to change, whoever or whatever wrote it. A percentage limit let seven clones through and four proofs had silently stopped failing, so the limit went to zero and the proofs went into CI.</td></tr>
+      <tr><td>Testing</td><td>End-to-end tests only, in given / when / then form with readable setup and assertion helpers. No unit tests. The end-to-end suite must cover at least 95% of lines, in total and on the lines a change touches. <b>The gate is real:</b> it runs inside <code>bun run check</code>, before every push (lefthook) and in CI, the number is deterministic (five identical runs, and a nightly check), and the total is about 98% today. The relay and the app run inside the test process so the coverage tool can see them, and a few tests use the real separate processes. Files excluded from the count, with a written reason each, are listed in <code>coverage.config.json</code> and may only shrink: the browser UI and the Swift app among them.</td><td>Tests check what users see and survive refactoring. Code that no test runs does not ship.</td></tr>
+      <tr><td>How work lands</td><td>No pull requests. An orchestrator (Claude) splits work into briefs for parallel coding subagents (Sonnet) and research subagents (Opus). Each works in its own isolated git worktree. Checked work lands on <code>main</code> only through <code>bun run integrate</code> (rebase in a scratch worktree, full check, then fast-forward). <code>main</code> must stay green; when it is not, revert first, then fix.</td><td>Fast, small steps with no review queue, and one red commit never blocks everyone else.</td></tr>
       <tr><td>Code review</td><td>Every agent runs the <code>/code-review</code> skill on its own diff and fixes what it finds before it pushes or hands work back.</td><td>With no pull requests, the review has to happen before the push.</td></tr>
       <tr><td>Dependency freshness</td><td>Newest versions that are at least 14 days old (Bun's <code>minimumReleaseAge</code>, checked and working). TypeScript is pinned to 6.0.x because typescript-eslint does not support 7 yet. All versions are exact. Overrides for <code>esbuild</code>, <code>minimatch</code> and <code>dompurify</code> clear known audit advisories.</td><td>A new release is rarely a bad one after two weeks, and exact pins make builds repeatable.</td></tr>
+      <tr><td>Local server security</td><td>The app listens on <code>127.0.0.1</code> only. Every request must pass a Host check and an Origin check (other websites and rebinding tricks get 403), and every <code>/api</code> call needs a random secret, new at every start, sent as an <code>Authorization: Bearer</code> header. The app puts the secret into the pages it serves itself (a meta tag). It is never a cookie.</td><td>Any website open in the browser can make it send requests to <code>localhost</code>. A cookie is not isolated by port, so the browser would also send it to every other server on <code>127.0.0.1</code>, such as a dev server an agent started. A header goes only where our own code sends it. Other programs running as the same user can still read the token file; that is the operating system's boundary. <code>docs/decisions/2026-11-22-local-server-security.md</code>.</td></tr>
+      <tr><td>Claude Code asks first</td><td>Right after a session starts, the relay switches real Claude Code to its Manual mode. If the adapter refuses the switch, the session does not start and says why.</td><td>Claude Code starts in whatever mode the user's own settings pick (<code>auto</code> on the test machine), where it never asks. Then no session could be "waiting on you", and the Modify agent's fence would never see an edit. A session that looks safe and is not is worse than one that fails loudly. Read-only commands and reads still run without asking.</td></tr>
+      <tr><td>Previewing files</td><td>A Preview tab shows HTML and Markdown files from a session's worktree inside the app, in a sandboxed <code>iframe</code>. The app serves the page from <code>/preview/&lt;ticket&gt;/</code>, outside the API, with a strict Content-Security-Policy and a <code>sandbox</code> without <code>allow-same-origin</code>. A ticket is a random capability for one session, kept in memory, valid an hour after last use, and dead once the session is archived. Markdown is rendered in the browser with <code>marked</code> and cleaned with DOMPurify.</td><td>The page is code an agent wrote. It must not reach the API, the secret, another session's files or the app around it. <code>marked</code> was chosen over <code>markdown-it</code> and <code>micromark</code>: no dependencies, MIT, tables and task lists built in. <code>docs/decisions/2026-11-22-preview-sandbox.md</code>, <code>2026-11-22-markdown-preview.md</code>.</td></tr>
+      <tr><td>Harness config ownership</td><td>The app writes into Claude Code's and Codex's own config files but owns only the entries it created. Each is marked (a comment block in Markdown, one key path in JSON, one table in TOML) and listed in a manifest with the hash of what was written. Hand-written entries win and are left alone. Every apply shows a plan first, backs files up and can be rolled back.</td><td>A whole-file owner would destroy what the user wrote and fight the agents that also write the file (<code>~/.claude.json</code> is rewritten often). <code>docs/decisions/0001-harness-config-ownership.md</code>.</td></tr>
       <tr><td>Platform</td><td>The app runs on macOS only (Apple Silicon and Intel). Remote workspaces are Linux.</td><td>One desktop platform to build, sign and test.</td></tr>
       <tr><td>License</td><td>Open source under MIT.</td><td>Short, standard, and provides the software "as is", without warranty or liability for the authors.</td></tr>
       <tr><td>Out of scope</td><td>Linux and Windows as the laptop, Pi, terminal UIs, hosted multi-tenant service.</td><td>Not needed for the first version.</td></tr>
@@ -283,7 +289,17 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
         <li>Opens each workspace with the system <code>ssh</code> so <code>~/.ssh/config</code>, keys and jump hosts just work.</li>
         <li>Copies relay events into SQLite, keyed by workspace, session and sequence number. On reconnect it asks for "everything after N".</li>
         <li>Exposes commands and queries over HTTP, and one live stream (SSE or WebSocket). History and live events use the same shape, so the UI renders both with one code path.</li>
-        <li>Mounts Vite in middleware mode under <code>/</code> and serves the built-in <code>/_safe</code> page itself.</li>
+        <li>Serves the UI under <code>/</code> from a Vite dev server that runs as a supervised child process (restarted if it dies, stopped when the app is gone), and serves the built-in <code>/_safe</code> page itself.</li>
+      </ul>
+      <p><b>Built today, all with end-to-end tests:</b></p>
+      <ul>
+        <li><b>Security guard</b> (<code>security/</code>): one middleware on the root app checks Host and Origin and the secret token for every route, the live stream and every page. It puts the token into the pages the app serves itself. See Key decisions.</li>
+        <li><b>Preview route</b> (<code>preview/</code>): <code>GET /preview/&lt;ticket&gt;/&lt;path&gt;</code>, outside <code>/api</code>. A ticket is minted by <code>POST /api/sessions/:id/preview</code>. File bytes come from <code>relay/fs.readBytes</code>, so images and fonts arrive intact. Every response carries the sandbox Content-Security-Policy.</li>
+        <li><b>Modify feature</b> (<code>modify/</code>, <code>ui-workspace/</code>, <code>ui-versions/</code>, <code>safe/</code>): the Modify agent runs as a relay directory session. A small state machine moves a request through <code>working</code>, <code>checking</code>, <code>fixing</code> and <code>ready</code> (or <code>failed</code>); the app runs the typecheck and build itself and sends failures back to the agent. A promoted change that waits for Keep or Undo survives an app restart. Default-UI updates merge <code>upstream</code> into <code>main</code> and use the same machine. <code>/_safe</code> is a page of the app's own that needs neither the UI folder nor the SDK.</li>
+        <li><b>Config feature</b> (<code>api/config.ts</code>, <code>store/config-items.ts</code>): the canonical harness-config items and where they apply live in two SQLite tables; import, plan, apply, rollback and drift go to the relay. The SDK has the calls. There is no screen for it yet.</li>
+        <li><b>Usage route</b>: <code>GET /api/sessions/:id/usage</code> asks the relay for tokens and cost per finished turn.</li>
+        <li><b>Resources and embedded migrations</b> (<code>resources/</code>, <code>store/migrations.generated.ts</code>): one function finds the release folder, the relay and the default UI (environment variable, next to the binary, a Mac bundle, or the source checkout). Database migrations are compiled into the binary, and a test fails when the generated file is behind the <code>drizzle/</code> folder.</li>
+        <li><b>Workspace routing seam</b> (<code>api/routing.ts</code>): routes ask for a workspace's relay link here and nowhere else. Today there is one local workspace.</li>
       </ul>
     </div>
   </details>
@@ -298,8 +314,8 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
         <li>Creates a git worktree per session, prepared by the repo's setup (below), and serves its diff on request.</li>
         <li><b>Session diff</b> = every change since the branch left its base, committed or not, new files included: the relay takes <code>git merge-base &lt;base&gt; HEAD</code> and diffs the working tree against it, staging untracked files into a throwaway index (<code>GIT_INDEX_FILE</code>) so the real index is never touched.</li>
         <li><b>Archive</b>: stops the agent if it is running, then removes the worktree but keeps its branch, so commits survive. If there are uncommitted changes, the user is warned first. The event log is kept, so archived sessions stay readable under an Archived filter.</li>
-        <li>Reads agent logs (<code>~/.claude/projects</code>, <code>~/.codex/sessions</code>) or gateway logs for token and cost data.</li>
-        <li>Writes skills, hooks and MCP config into each agent's native locations.</li>
+        <li>Works out tokens and cost per finished turn from the agent's own usage messages (built). Reading agent logs (<code>~/.claude/projects</code>, <code>~/.codex/sessions</code>) or gateway logs is planned.</li>
+        <li>Writes skills, hooks, MCP servers, instructions, commands, permissions and env into each agent's native files, entry by entry (built, <code>relay/src/config/</code>; see Harness configuration).</li>
       </ul>
       <p class="muted">Decided: our own thin relay. Rivet's sandbox-agent runs Claude Code and Codex behind a daemon too, but it is young (v0.5, first release Jan 2026, one npm maintainer) and speaks HTTP + SSE with its own event model, so we would need an adapter for every relay method. We do not build that.</p>
     </div>
@@ -309,24 +325,27 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
     <div class="det">
       <p>The relay runs on the laptop as the local workspace. Every item below has end-to-end tests that run against the mock agent.</p>
       <ul>
-        <li><b>Agents.</b> One adapter process per session, started over stdio. The relay answers as the ACP client. A tap on the stream records every raw message in both directions, unchanged. The agent kinds today are <code>claude-code</code>, <code>codex</code> and the test-only <code>mock</code>.</li>
+        <li><b>Agents.</b> One adapter process per session, started over stdio. The relay answers as the ACP client. A tap on the stream records every raw message in both directions, unchanged. The agent kinds today are <code>claude-code</code>, <code>codex</code> and the test-only <code>mock</code>. Adapter versions are pinned in <code>agents/adapters.ts</code> and downloaded into the relay's own folder on first use. Real Claude Code is switched to Manual mode right after <code>session/new</code>, so it asks before acting.</li>
+        <li><b>Agent updates.</b> A dispatch table in <code>acp-normalise/</code> is the only code that knows ACP update shapes. It turns each message into agent-neutral updates (text, thought, plan, tool, mode, notice, usage, turn end) that are attached when an event is served, never stored.</li>
         <li><b>Permission holding.</b> A permission request waits until the user answers, however long that takes. A restart closes anything the dead process left open.</li>
         <li><b>Event log.</b> One append-only JSONL file per session. Every event gets the next sequence number for that session. The log survives crashes: a half-written last line is skipped, and the app resumes with "events after N".</li>
-        <li><b>Sessions.</b> Created, prompted, cancelled and archived through the relay. The status (starting, running, waiting, idle, done, failed, archived) is derived from the events, never stored separately.</li>
+        <li><b>Sessions.</b> Created, prompted, cancelled and archived through the relay. The status (starting, running, waiting, idle, done, failed, archived) is derived from the events, never stored separately. The relay folds each log once at start-up and then keeps a live summary per session in memory (with <code>turnRunning</code> and the pending permission requests), and pushes changes as <code>relay/sessions.changed</code>. A restart kills the agents, so a request left open can never be answered: recovery appends <code>agent-exited</code>, and the session reads <code>failed</code> or <code>idle</code>.</li>
+        <li><b>Two kinds of session.</b> The relay's folder operations sit behind a <code>Workdir</code> (<code>workdirs/</code>). A <b>worktree</b> session works in its own git worktree. A <b>directory</b> session works in a plain folder with no git: nothing to remove, no diff. The Modify agent is a directory session. The relay itself answers every permission request of a directory session: only a file edit whose paths all resolve (symlinks followed) inside the allowed folder is approved, everything else is refused. Both outcomes are logged as automatic answers.</li>
         <li><b>Worktrees.</b> One per session, with the repo's files copied in, a setup script run, and a port block assigned. The diff since the base branch uses a throwaway git index, so the real one is never touched.</li>
-        <li><b>Files.</b> Tree, read (at base, head or working copy) and write. A save must carry the hash the user last saw, or it is refused. Any path that would escape the worktree is refused.</li>
+        <li><b>Files.</b> Tree, read (at base, head or working copy), <code>readBytes</code> (the working copy as base64, up to 10 MiB, for images and the Preview tab) and write. A save must carry the hash the user last saw, or it is refused. Any path that would escape the worktree is refused, so is any <code>.git</code> segment, and <code>readBytes</code> also refuses <code>.env*</code>, <code>.npmrc</code> and <code>.netrc</code>.</li>
         <li><b>Repos store.</b> The repositories the relay knows about, each with its copy-files and setup-script settings.</li>
         <li><b>Workspace check.</b> A checklist of what works on this machine (git, agents, repos) for the setup screen.</li>
-        <li><b>Usage.</b> Tokens and cost per finished turn, worked out from the events.</li>
-        <li><b>JSON-RPC over the socket.</b> The 18 request methods and 2 notifications below, each with a zod schema in <code>packages/protocol</code>. The bridge and the daemon also work from a compiled binary.</li>
+        <li><b>Usage.</b> <code>relay/usage</code>: tokens and cost per finished turn, worked out from the events. A cancelled turn's tokens are read from the agent's quota data, because its own usage is all zeros.</li>
+        <li><b>Config.</b> <code>relay/config.*</code>: inspect what Claude Code and Codex have today, plan, apply, rollback and drift, with a manifest, backups and byte-for-byte rollback.</li>
+        <li><b>JSON-RPC over the socket.</b> The 24 request methods and 3 notifications below, each with a zod schema in <code>packages/protocol</code>. The bridge and the daemon also work from a compiled binary.</li>
       </ul>
-      <p>The app side is built too: it connects to the relay and reconnects with backoff, copies events into SQLite, serves the HTTP API and one live SSE stream with Hono, and keeps UI versions in a hidden git repository. The default UI, the Modify agent and the Mac shell are still being built.</p>
+      <p>The app side is built too: it connects to the relay and reconnects with backoff, copies events and live summaries into SQLite, serves the HTTP API and one live SSE stream with Hono, keeps UI versions in a hidden git repository, and runs the Modify agent. The default UI is connected to it. The Mac menu bar shell is written and builds on a Mac runner, but nobody has run it (see Getting started).</p>
     </div>
   </details>
   <details>
     <summary>What the ACP spike taught us <small>from docs/acp-notes.md</small></summary>
     <div class="det">
-      <p>Tested with <code>@agentclientprotocol/sdk</code> 2.9.1, <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0. Claude Code is confirmed by real runs. Codex is not yet verified end to end: the OpenAI key we had has no quota, so only start-up and sign-in were seen.</p>
+      <p>Tested with <code>@agentclientprotocol/sdk</code> 2.9.1, <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0. Claude Code is confirmed by real runs, including nine scenarios through the whole app (edit with approval, reject, cancel, a second prompt, usage, restarts, archive, Modify). Codex is not yet verified end to end: the OpenAI key we had has no quota, so only start-up and sign-in were seen.</p>
       <ul>
         <li><b>The adapters bring their agent.</b> Both packages bundle the agent binary, so no separate <code>claude</code> or <code>codex</code> install is needed. Claude's package is about 430 MB.</li>
         <li><b>No <code>session/set_model</code>.</b> The SDK has no such method. The model and thinking level are config options, set with <code>session/set_config_option</code>.</li>
@@ -336,6 +355,10 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
         <li><b>Loading a session replays it, coalesced.</b> Both adapters can load a session, but the replay merges small chunks into whole messages. Replayed messages must not be appended to our log. Our own log of live messages stays the record; <code>session/resume</code> may suit better than <code>load</code>.</li>
         <li><b>Codex reconnects quietly.</b> It reports network trouble as a <code>session_info_update</code> and keeps retrying, so the relay needs its own turn timeout.</li>
         <li><b>Thinking is unconfirmed.</b> No thought chunks appeared in two small prompts, even at high effort.</li>
+        <li><b>Claude starts in the user's own mode.</b> It was <code>auto</code> on the test machine, where it never asks. The relay switches it to Manual (see Key decisions). Only edits and commands that change something ask; read-only commands and reads do not.</li>
+        <li><b>A cancelled turn reports zero tokens.</b> The real numbers are in <code>_meta.quota</code>, which the relay reads.</li>
+        <li><b>Resume after a relay restart is possible, not built.</b> A new adapter can <code>session/load</code> the old session id and the next turn remembers the work. Today such a session reads as idle and a new prompt says its agent is not running.</li>
+        <li><b>Modify launch limits were accepted</b> by the real Claude adapter: the agent never had a Bash tool, and the user's own slash commands were gone. Codex gets no launch limits; for it the relay's permission answers are the only fence.</li>
       </ul>
     </div>
   </details>
@@ -347,29 +370,29 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
         <thead><tr><th>Area</th><th>What we have</th><th>Verdict</th><th>What we should have</th></tr></thead>
         <tbody>
           <tr><td>Where the relay runs, how we reach it</td><td>One connection that starts the relay, and a sync that reconnects.</td><td><span class="pill opt">good enough until SSH</span></td><td>A "workspace target" (how to start the bridge, install the relay, forward a port) and a version check, at the start of phase 5.</td></tr>
-          <tr><td>Agent and protocol</td><td>One agent interface, but raw ACP everywhere above it.</td><td><span class="pill build">missing, needed now</span></td><td>Normalised updates made by the relay. The UI, usage and tests read only those.</td></tr>
+          <tr><td>Agent and protocol</td><td>One agent interface. The relay normalises ACP into agent-neutral updates; the UI, usage and tests read only those. A build gate fails on raw ACP names outside the relay.</td><td><span class="pill">done</span></td><td>Interpret more adapter messages (<code>session_info_update</code>, <code>config_option_update</code>) when the UI wants them. The app stores the updates it received, so sessions synced before a normaliser change keep the old form until a version number and re-sync exist.</td></tr>
           <tr><td>Where session history comes from</td><td>The relay's log and the app's store.</td><td><span class="pill opt">good enough until import</span></td><td>When import is decided, read-only sources become extra workspaces in the app, and the status logic is shared.</td></tr>
-          <tr><td>Storage</td><td>Interfaces for the log, the repos and the store. Drizzle stays inside the store.</td><td><span class="pill">good as is</span></td><td>A format version on events, and migrations that also work in the compiled binary.</td></tr>
-          <tr><td>Working copy of a session</td><td>Nothing: a git worktree is assumed everywhere.</td><td><span class="pill build">missing, needed now</span></td><td>A "workdir" with two kinds: git worktree and plain directory. The Modify agent needs the plain directory.</td></tr>
+          <tr><td>Storage</td><td>Interfaces for the log, the repos and the store. Drizzle stays inside the store. Migrations are embedded, so they work in the compiled binary.</td><td><span class="pill">good as is</span></td><td>A format version on events (not built; phase 5).</td></tr>
+          <tr><td>Working copy of a session</td><td>A <code>Workdir</code> with two kinds: git worktree and plain directory. The Modify agent runs in the plain directory.</td><td><span class="pill">done</span></td><td>Nothing more until a third kind exists.</td></tr>
           <tr><td>Commit, push, PR</td><td>Nothing built.</td><td><span class="pill opt">do not abstract</span></td><td>One relay feature that uses git and <code>gh</code>. No interface for other hosts.</td></tr>
           <tr><td>Model routing and cost</td><td>Environment passed to the agent; one usage source. The chosen model is accepted, then dropped.</td><td><span class="pill opt">good enough until phase 7</span></td><td>Pass the model through. Later, usage readers as a list.</td></tr>
-          <tr><td>Harness config</td><td>Nothing built.</td><td><span class="pill">plan is right</span></td><td>One translator per agent, in one agent registry.</td></tr>
-          <tr><td>App to UI</td><td>A typed SDK over Hono. The UI still runs on example data.</td><td><span class="pill">good, one gap</span></td><td>The SDK takes a custom <code>fetch</code>, and the UI reads all data through one injected client.</td></tr>
+          <tr><td>Harness config</td><td>The config feature has one adapter per agent (Claude Code, Codex) behind one small interface. Agent kinds are still a plain list, and MCP servers are not yet passed in <code>session/new</code>.</td><td><span class="pill">plan is right</span></td><td>One agent registry (label, command, instructions file, translator), when a third agent arrives.</td></tr>
+          <tr><td>App to UI</td><td>A typed SDK over Hono. It takes a custom <code>fetch</code>, and the UI reads all its data through one injected client.</td><td><span class="pill">done</span></td><td>Nothing more. The SDK imports only the app's route types (a type-only import the dependency rules allow), never its code.</td></tr>
           <tr><td>Clock, ids, spawning, environment</td><td>The clock is injected where tests need it. The rest is direct.</td><td><span class="pill opt">good enough</span></td><td>In phase 5, build the agent's environment explicitly, because the daemon keeps the environment of whichever app first started it.</td></tr>
-          <tr><td>Waiting on you</td><td>The relay works it out; the app re-reads everything; the UI works it out again.</td><td><span class="pill build">partly missing</span></td><td>The relay keeps live summaries and pushes changes, including the pending permission request.</td></tr>
-          <tr><td>Several workspaces</td><td>The store supports them. The API and sync assume one relay.</td><td><span class="pill build">needed by phase 5, cheap now</span></td><td>A workspace id on every live message now; routing in phase 5.</td></tr>
-          <tr><td>Modify agent</td><td>UI versions and the staging workspace are built but not wired.</td><td><span class="pill build">blocked on two items above</span></td><td>Run it as a relay session in a plain directory.</td></tr>
+          <tr><td>Waiting on you</td><td>The relay keeps live summaries and pushes changes, including the pending permission requests. The app stores and republishes them; the UI reads them.</td><td><span class="pill">done</span></td><td>Nothing more.</td></tr>
+          <tr><td>Several workspaces</td><td>The store keys sessions by workspace plus id, every live message names its workspace, and routes reach a relay only through one routing seam. Sync and the API still run one local workspace.</td><td><span class="pill build">ready for phase 5</span></td><td>The real routing and one sync per workspace in phase 5.</td></tr>
+          <tr><td>Modify agent</td><td>Runs as a relay session in a plain directory, fenced by the relay's permission answers.</td><td><span class="pill">done</span></td><td>Nothing more.</td></tr>
         </tbody>
       </table></div>
-      <p><b>Five changes in progress now,</b> before more code sits on top:</p>
+      <p><b>The five changes that had to land before more code sat on top: all five are done.</b></p>
       <ol>
-        <li><b>Normalised agent updates.</b> The relay attaches agent-neutral updates (text, tool, plan, mode, notice, usage) to each event. Raw ACP stays in the log.</li>
-        <li><b>A workdir with two kinds</b>, git worktree and plain directory, so the Modify agent can run as an ordinary relay session.</li>
-        <li><b>Live session summaries</b> pushed by the relay, including pending permission requests. This also ends the full-log re-reads on every file or diff request.</li>
-        <li><b>A workspace id on every live message</b>, and a store key of workspace plus session.</li>
-        <li><b>The UI reads all data through one client</b>, which can be given a different <code>fetch</code>, for example one that replays a recorded session.</li>
+        <li><b>Normalised agent updates.</b> Done. The relay attaches agent-neutral updates (text, tool, plan, mode, notice, usage) to each event. Raw ACP stays in the log.</li>
+        <li><b>A workdir with two kinds</b>, git worktree and plain directory. Done: the Modify agent runs as an ordinary relay session.</li>
+        <li><b>Live session summaries</b> pushed by the relay, including pending permission requests. Done. This also ended the full-log re-reads on every file or diff request.</li>
+        <li><b>A workspace id on every live message</b>, and a store key of workspace plus session. Done (migration 0001).</li>
+        <li><b>The UI reads all data through one client</b>, which can be given a different <code>fetch</code>, for example one that replays a recorded session. Done: the client and its <code>fetch</code> option exist and the UI uses them. Nothing replays a recorded session through it yet.</li>
       </ol>
-      <p><b>What waits.</b> Phase 5: the workspace target, a version check on <code>relay/hello</code>, an event format version, an explicit agent environment, one sync per workspace, the suite run over SSH to a local <code>sshd</code>, and a test with two local relays. Phase 6: the agent registry with one translator per agent, and MCP servers passed in <code>session/new</code>. Phase 7: usage readers as a list, prices in the app, and analytics that read normalised updates, never raw ACP.</p>
+      <p><b>What waits.</b> Phase 5: the workspace target, a version check on <code>relay/hello</code>, an event format version, an explicit agent environment, one sync per workspace, the suite run over SSH to a local <code>sshd</code>, and a test with two local relays. Phase 6: the agent registry, and MCP servers passed in <code>session/new</code>. Also still open: the relay accepts a <code>model</code> on <code>sessions.create</code> and drops it; the relay's version strings are the literal <code>0.0.0</code>, so a version check has nothing to compare. Phase 7: usage readers as a list, prices in the app, and analytics that read normalised updates, never raw ACP.</p>
       <p><b>Never build:</b> a transport or plugin framework; a dependency-injection container or injected id and clock generators nobody asserts on; other backends for the log or store without a requirement; an interface for other git hosts before a second host exists; an adapter that makes sandbox-agent look like our relay; dropping raw ACP from the log; a git abstraction for jj.</p>
     </div>
   </details>
@@ -405,27 +428,30 @@ footer{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padd
     <summary>Data layer <small>what lives in SQLite</small></summary>
     <div class="det">
       <p>Append-only events are the source of truth; everything else is derived and can be rebuilt.</p>
-<p><b>Built today</b> (<code>packages/app/src/store/schema.ts</code>, three tables, with Drizzle migrations):</p>
-<pre>workspaces   (id, label, kind: local|ssh, ssh_host, last_seen_at)
-sessions     (id, workspace_id, agent, status, waiting_reason, title,
-              repo_path, branch, base_branch, last_seq,
-              created_at, archived_at)
-events       (workspace_id, session_id, seq, ts, kind, payload_json)
-             -- primary key (workspace_id, session_id, seq); the raw ACP
-             -- message is kept inside payload_json</pre>
+<p><b>Built today</b> (<code>packages/app/src/store/schema.ts</code>, five tables, four Drizzle migrations in <code>packages/app/drizzle/</code>, embedded in the binary):</p>
+<pre>workspaces     (id, label, kind: local|ssh, ssh_host, last_seen_at)
+sessions       (workspace_id, id, agent, status, waiting_reason, title,
+                kind: worktree|directory, repo_path, branch, base_branch,
+                last_seq, created_at, archived_at,
+                turn_running, pending_permissions_json)
+               -- primary key (workspace_id, id)
+events         (workspace_id, session_id, seq, ts, kind, payload_json)
+               -- primary key (workspace_id, session_id, seq); the raw ACP
+               -- message is kept inside payload_json
+config_items   (id, kind, body_json)
+config_scopes  (item_id, scope: global|workspace|repo, repo_path, enabled)
+               -- primary key (item_id, scope, repo_path)</pre>
       <p><b>Still planned:</b></p>
-<pre>sessions     + model, workdir kind (worktree|directory)
-             -- key becomes (workspace_id, id)
+<pre>sessions     + model
 tool_calls   (session_id, tool_call_id, kind, title, status, ...)
 usage        (session_id, ts, model, input_tok, output_tok,
               cache_read_tok, cost_usd, source)
              -- today the relay works usage out from events on request
-config_items (id, kind: mcp|skill|hook|instructions|agent|command|
-              permission|env, name, body_json, version)
-config_scope (item_id, scope: global|workspace|repo, target, enabled)
 secrets      (name, keychain_ref)        -- values stay in OS keychain
-config_state (workspace_id, agent, item_id, deployed_hash,
-              observed_hash, status: in_sync|drift|failed)</pre>
+             -- today a ${secret:NAME} placeholder is written as is
+             -- and listed as needing a secret
+config_state -- deployed vs observed hash: not needed in SQLite, the
+             -- relay keeps a manifest file (see Harness configuration)</pre>
       <p>UI versions are not in SQLite. They live in the hidden git repository (<code>ui.git</code>), so the earlier <code>ui_versions</code> table is dropped.</p>
       <p><b>Waiting on you</b> is derived: a session is waiting when it has an unanswered <code>session/request_permission</code>, or its last prompt returned <code>end_turn</code> with nothing sent since.</p>
     </div>
@@ -440,19 +466,19 @@ config_state (workspace_id, agent, item_id, deployed_hash,
     <thead><tr><th>Boundary</th><th>Use</th><th>Status</th></tr></thead>
     <tbody>
       <tr><td>Relay ↔ agent</td><td>ACP (JSON-RPC 2.0 over stdio) with official adapters: <code>@agentclientprotocol/claude-agent-acp</code>, <code>@agentclientprotocol/codex-acp</code>; Gemini CLI and OpenCode are native. Client library: <code>@agentclientprotocol/sdk</code>.</td><td><span class="pill">reuse</span></td></tr>
-      <tr><td>Laptop ↔ relay</td><td>JSON-RPC 2.0, one message per line. On the same machine it goes over the relay's unix socket through the <code>relay --stdio</code> bridge; over SSH (phase 5) the app runs <code>ssh host relay --stdio</code>, which is the same bridge. Same framing as ACP, plus our methods for resume, diff, usage and config deploy. We chose our own relay over sandbox-agent.</td><td><span class="pill build">thin, ours, built</span></td></tr>
+      <tr><td>Laptop ↔ relay</td><td>JSON-RPC 2.0, one message per line. On the same machine it goes over the relay's unix socket through the <code>relay --stdio</code> bridge; over SSH (phase 5) the app runs <code>ssh host relay --stdio</code>, which is the same bridge. Same framing as ACP, plus our methods for resume, diff, usage and config deploy (all built except the SSH transport). We chose our own relay over sandbox-agent.</td><td><span class="pill build">thin, ours, built</span></td></tr>
       <tr><td>Browser ↔ local app</td><td>HTTP + SSE via Hono, whose typed client becomes the SDK. Hono has no dependencies and runs on Bun's own server.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>UI SDK</td><td><code>@agentcontrol/sdk</code>: typed functions over the API, with doc comments the Modify agent reads.</td><td><span class="pill build">ours</span></td></tr>
       <tr><td>Storage</td><td>SQLite (<code>bun:sqlite</code>) with Drizzle for queries and migrations.</td><td><span class="pill">reuse</span></td></tr>
-      <tr><td>UI runtime</td><td>Vite + React, Tailwind, shadcn/ui components (copied into the repo, pulling in only the Radix primitives we use). A chart library is chosen in phase 7.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>UI runtime</td><td>Vite + React, Tailwind, shadcn/ui components (copied into the repo, pulling in only the Radix primitives we use). Markdown is rendered by <code>marked</code> and cleaned by DOMPurify. A chart library is chosen in phase 7.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>Layout as data</td><td>A plain <code>layout.json</code> validated by a <code>zod</code> schema, read by a small renderer of our own.</td><td><span class="pill build">thin, ours</span></td></tr>
       <tr><td>Validation</td><td><code>zod</code> for relay messages, API input and <code>layout.json</code>: one schema gives both the type and the runtime check.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>Code editor and diffs</td><td><code>monaco-editor</code> (Microsoft, MIT, the editor inside VS Code) used directly through a small React component, including its diff editor. Full IDE on demand: code-server on the workspace, or a <code>vscode://vscode-remote/ssh-remote+…</code> link to desktop VS Code.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>UI versions</td><td><code>isomorphic-git</code>: git in pure JavaScript, bundled, for commits, history, diffs and three-way merges.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>Cost data</td><td>Our own parser for agent logs, using ccusage as the reference for the formats; Claude Code and Codex OpenTelemetry export; or LiteLLM gateway logs.</td><td><span class="pill">reuse</span></td></tr>
       <tr><td>Model gateway</td><td>LiteLLM proxy on each workspace; agents pointed at it with <code>ANTHROPIC_BASE_URL</code> and a Codex custom provider.</td><td><span class="pill">reuse, optional</span></td></tr>
-      <tr><td>Skills, hooks, MCP</td><td>One small TypeScript translator per agent, using crossby's mappings as the reference; MCP servers also passed in <code>session/new</code>.</td><td><span class="pill build">thin, ours</span></td></tr>
-      <tr><td>Packaging</td><td><code>bun build --compile</code> for the app and the relay (cross-compiled for Linux); <code>codesign</code>, <code>notarytool</code> and <code>create-dmg</code> for the Mac installer; GitHub Actions and Releases to publish.</td><td><span class="pill">reuse</span></td></tr>
+      <tr><td>Skills, hooks, MCP</td><td>One small TypeScript translator per agent (Claude Code and Codex built), using crossby's mappings as the reference and the real CLIs as the check; MCP servers also passed in <code>session/new</code> (not built).</td><td><span class="pill build">thin, ours, backend built</span></td></tr>
+      <tr><td>Packaging</td><td><code>bun build --compile</code> for the app and the relay (cross-compiled for Linux); <code>codesign</code> and <code>hdiutil</code> for the Mac app and dmg today, <code>notarytool</code> once there is a Developer ID; GitHub Actions and Releases to publish.</td><td><span class="pill">reuse</span></td></tr>
     </tbody>
   </table></div>
 
@@ -470,23 +496,23 @@ config_state (workspace_id, agent, item_id, deployed_hash,
       <div class="tablewrap"><table class="deps">
         <thead><tr><th>Library</th><th>Why it's trusted</th><th>Verdict</th></tr></thead>
         <tbody>
-          <tr><td><code>@agentclientprotocol/sdk</code> 2.9.1 (installed in the relay); <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0 (not installed: started with <code>bunx --bun &lt;package&gt;@&lt;exact version&gt;</code>)</td><td>Official ACP organisation, Apache-2.0, released weekly. They replace the older <code>@zed-industries</code> adapters. They move fast, so versions are exact.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>@agentclientprotocol/sdk</code> 2.9.1 (installed in the relay); <code>claude-agent-acp</code> 0.109.1 and <code>codex-acp</code> 2.9.0 (not installed: the relay starts them with <code>bun x --bun &lt;package&gt;@&lt;exact version&gt;</code> and caches them in its own folder; a compiled release uses the app binary itself as <code>bun</code>)</td><td>Official ACP organisation, Apache-2.0, released weekly. They replace the older <code>@zed-industries</code> adapters. They move fast, so versions are exact.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>hono</code> 4.13.17 (app and SDK)</td><td>Since 2021, MIT, zero dependencies, released this week.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>drizzle-orm</code> 0.45.4 + <code>drizzle-kit</code> 0.31.11 (dev)</td><td>Since 2021, very widely used, zero runtime dependencies. Still 0.x, so exact pins.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>zod</code> 4.6.7</td><td>Since 2020, MIT, zero dependencies, the de facto TypeScript schema library. Version 4 is the one in use.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>isomorphic-git</code> 1.44.11 (app)</td><td>Since 2017, MIT, active, 10 dependencies. Replaces <code>jsdiff</code> and <code>node-diff3</code>.</td><td><span class="pill">keep</span></td></tr>
           <tr><td><code>react</code> and <code>react-dom</code> 19.3.1, <code>vite</code> 8.3.6, <code>@vitejs/plugin-react</code> 6.2.1, <code>tailwindcss</code> and <code>@tailwindcss/vite</code> 4.3.5 (default UI)</td><td>Industry standards, MIT, few dependencies. Tailwind 4 is configured through the Vite plugin.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td>Markdown renderer for the Preview tab: <code>marked</code>, <code>markdown-it</code> or <code>micromark</code></td><td>Planned, none chosen. Each is evaluated against the bar above (known owner, release in the last 12 months, permissive license, few dependencies) when the task starts. Output is sanitised with DOMPurify, which is already in the tree through Monaco (pinned by an override). If none passes, there is no Markdown preview.</td><td><span class="pill build">to be decided</span></td></tr>
-          <tr><td><code>@xterm/xterm</code> (xterm.js) for the Console tab</td><td>Planned. The terminal used by VS Code: MIT, zero dependencies, released this month. The shell side uses Bun's built-in pseudo-terminal support, so no <code>node-pty</code>.</td><td><span class="pill build">later</span></td></tr>
+          <tr><td><code>marked</code> 18.1.3 and <code>dompurify</code> 3.4.17 (default UI, Preview tab)</td><td><code>marked</code> was checked against <code>markdown-it</code> and <code>micromark</code> on 22 Nov 2026: markedjs organisation, MIT, zero dependencies, tables and task lists built in, weekly releases. 18.1.3 is the newest release that is 14 days old. DOMPurify (Cure53, one type-only dependency) cleans the output; it was already in the tree through Monaco, and is now declared because knip rejects an undeclared import.</td><td><span class="pill">keep</span></td></tr>
+          <tr><td><code>@xterm/xterm</code> (xterm.js) for the Console tab</td><td>Planned, not installed. The terminal used by VS Code: MIT, zero dependencies, released this month. The shell side uses Bun's built-in pseudo-terminal support, so no <code>node-pty</code>.</td><td><span class="pill build">later</span></td></tr>
           <tr><td><code>monaco-editor</code> 0.57.0 (default UI)</td><td>Microsoft, MIT, the editor inside VS Code.</td><td><span class="pill">keep</span></td></tr>
-          <tr><td>shadcn/ui pieces: <code>@radix-ui/react-dialog</code> 1.3.1, <code>-scroll-area</code> 1.4.0, <code>-slot</code> 1.5.0, <code>-tabs</code> 1.2.1; <code>lucide-react</code> 1.70.0, <code>clsx</code>, <code>tailwind-merge</code>, <code>class-variance-authority</code></td><td>Code is copied into the repo, not installed. Only the individual <code>@radix-ui/react-*</code> primitives in use are installed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
-          <tr><td><code>@playwright/test</code></td><td>Not a dependency of the repo today. Browser tests will use a Playwright that is already installed on the machine. Whether to add it as a pinned dev dependency is still to be decided, when the browser tests are written.</td><td><span class="pill build">to be decided</span></td></tr>
-          <tr><td><code>typescript</code> 6.0.3, <code>eslint</code> 10.14.0, <code>typescript-eslint</code> 8.72.1, <code>@types/bun</code></td><td>Industry standards. TypeScript is pinned to 6.0.x because typescript-eslint does not support 7 (the native compiler) yet. Dependabot is told to skip TypeScript major versions until it does.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td>shadcn/ui pieces: <code>@radix-ui/react-dialog</code> 1.3.1, <code>-scroll-area</code> 1.4.0, <code>-slot</code> 1.5.0, <code>-tabs</code> 1.2.1; <code>lucide-react</code> 1.70.0, <code>clsx</code> 2.1.1, <code>tailwind-merge</code> 3.7.0, <code>class-variance-authority</code> 0.7.1</td><td>Code is copied into the repo, not installed. Only the individual <code>@radix-ui/react-*</code> primitives in use are installed, never the <code>radix-ui</code> bundle (55 dependencies).</td><td><span class="pill">keep, minimal</span></td></tr>
+          <tr><td><code>playwright</code> 1.63.0 (dev, in <code>e2e/package.json</code>)</td><td>Microsoft, Apache-2.0. The library, not <code>@playwright/test</code>: the browser tests run under <code>bun test</code>. Pinned to the version whose Chromium CI installs; an unpinned <code>bunx playwright install</code> once fetched a different Chromium and failed the build.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>typescript</code> 6.0.3, <code>eslint</code> 10.14.0, <code>typescript-eslint</code> 8.72.1, <code>@types/bun</code> 1.4.5</td><td>Industry standards. TypeScript is pinned to 6.0.x because typescript-eslint does not support 7 (the native compiler) yet. Dependabot is told to skip TypeScript major versions until it does.</td><td><span class="pill">keep, dev</span></td></tr>
           <tr><td>Overrides: <code>esbuild</code> 0.25.12, <code>minimatch</code> 11.0.9, <code>dompurify</code> 3.4.17</td><td>Transitive packages (through Vite, the lint tools and Monaco) that had audit advisories. The root <code>package.json</code> forces a fixed version so <code>bun audit</code> passes. Remove each override when its parent catches up.</td><td><span class="pill build">override</span></td></tr>
-          <tr><td><code>eslint-plugin-sonarjs</code></td><td>SonarSource, since 2018, for cognitive complexity. LGPL-3.0, which is fine for a dev tool that never ships.</td><td><span class="pill">keep, dev</span></td></tr>
-          <tr><td><code>@eslint-community/eslint-plugin-eslint-comments</code></td><td>ESLint community organisation, two dependencies.</td><td><span class="pill">keep, dev</span></td></tr>
-          <tr><td><code>dependency-cruiser</code>, <code>knip</code>, <code>jscpd</code></td><td>Each the reference tool for its job (layering, dead code, duplication), active for years, released this month.</td><td><span class="pill">keep, dev</span></td></tr>
-          <tr><td><code>@biomejs/biome</code> (formatting), <code>lefthook</code></td><td>Zero dependencies each, native binaries, active.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>eslint-plugin-sonarjs</code> 4.2.2</td><td>SonarSource, since 2018, for cognitive complexity. LGPL-3.0, which is fine for a dev tool that never ships.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>@eslint-community/eslint-plugin-eslint-comments</code> 4.8.1</td><td>ESLint community organisation, two dependencies.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>dependency-cruiser</code> 18.7.2, <code>knip</code> 6.44.2, <code>jscpd</code> 5.4.3</td><td>Each the reference tool for its job (layering, dead code, duplication), active for years, released this month.</td><td><span class="pill">keep, dev</span></td></tr>
+          <tr><td><code>@biomejs/biome</code> 2.6.5 (formatting), <code>lefthook</code> 2.2.2</td><td>Zero dependencies each, native binaries, active.</td><td><span class="pill">keep, dev</span></td></tr>
           <tr><td>code-server, LiteLLM</td><td>Optional tools started on the workspace, not dependencies of our code. Both active and widely used; pin versions.</td><td><span class="pill opt">optional</span></td></tr>
           <tr><td>Chart library, <code>size-limit</code></td><td>Not needed yet; chosen in phases 7 and 3 with the same bar.</td><td><span class="pill build">later</span></td></tr>
           <tr><td><code>json-render</code></td><td>Vercel Labs experiment, 0.x, first release Jan 2026. A <code>zod</code>-checked <code>layout.json</code> is enough.</td><td><span class="pill opt">dropped</span></td></tr>
@@ -523,12 +549,17 @@ config_state (workspace_id, agent, item_id, deployed_hash,
   <details>
     <summary>Relay protocol sketch <small>our methods on top of ACP framing</small></summary>
     <div class="det">
-<pre>BUILT (names in packages/protocol/src/relay/names.ts, shapes in map.ts)
+<pre>BUILT: 24 request methods and 3 notifications (names in
+packages/protocol/src/relay/names.ts, shapes in map.ts)
 → relay/hello              { clientVersion }              ← { relayVersion, agents[] }
 → relay/sessions.list      {}                             ← { sessions[] }   id, agent, status,
-                                                            waitingReason, title, repoPath, branch,
-                                                            baseBranch, lastSeq, createdAt, archivedAt
-→ relay/sessions.create    { agent, repoPath, baseBranch, prompt, title?, model? }
+                                                            waitingReason, title, kind?, repoPath,
+                                                            branch, baseBranch, lastSeq, createdAt,
+                                                            archivedAt, turnRunning,
+                                                            pendingPermissions[]
+→ relay/sessions.create    worktree: { agent, repoPath, baseBranch, prompt, title?, model? }
+                           directory: { kind: "directory", agent, cwd, prompt, title?,
+                                        permissionPolicy: { allowEditsUnder } }
                                                           ← { sessionId }
 → relay/events.subscribe   { sessionId, afterSeq }  or  { afterSeq: { [sessionId]: seq } }
                                                           ← events follow as relay/event
@@ -544,21 +575,27 @@ config_state (workspace_id, agent, item_id, deployed_hash,
 → relay/usage              { sessionId? }                 ← { rows[] }, one per finished turn
 → relay/fs.tree            { sessionId }                  ← { entries[] } with git status
 → relay/fs.read            { sessionId, path, ref }       ← { content, hash }; ref is base|head|working
+→ relay/fs.readBytes       { sessionId, path }            ← { base64 }; working copy, 10 MiB cap
 → relay/fs.write           { sessionId, path, content, expectedHash }  ← { hash }, or stale file
 → relay/fs.watch           { sessionId }                  ← changes follow as relay/fs.changed
+→ relay/config.inspect     { agents[], repoPath? }        ← { items[] } what each agent has today
+→ relay/config.plan        { items[], agents[], repoPath? }
+                                                          ← { planId, changes[], unsupported[],
+                                                              needsSecret[] }
+→ relay/config.apply       { planId }                     ← { backupId, written[] }
+→ relay/config.rollback    { backupId }                   ← { restored[] }
+→ relay/config.drift       {}                             ← { entries[] }: in-sync, drift, missing
 
 NOTIFICATIONS (relay to app)
 ← relay/event              { event }                      one session event
+← relay/sessions.changed   { sessions[] }                 changed live summaries, coalesced;
+                                                          only for sessions the client follows
 ← relay/fs.changed         { sessionId, paths[] }
 
 PLANNED, NOT BUILT
 → relay/ide.open           { sessionId }                  ← port of a browser VS Code to tunnel
-→ relay/config.inspect     { agents[] }                   ← what each agent has today
-→ relay/config.plan        { items[], scope }             ← per-agent file changes
-→ relay/config.apply       { planId }                     ← per-agent result + backup id
-→ relay/config.rollback    { backupId }
-← relay/sessions.changed   live session summaries, with pending permission requests</pre>
-      <p>Events keep the raw ACP message unchanged in the relay's log. The relay also attaches normalised, agent-neutral updates to each event, and the UI, usage and analytics read those. All fields are camelCase.</p>
+→ relay/terminal.*         console on the workspace (phase 5)</pre>
+      <p>Events keep the raw ACP message unchanged in the relay's log. The relay also attaches normalised, agent-neutral updates to each event when it serves it, and the UI, usage and analytics read those. All fields are camelCase. The directory-session fence is explained under Relay as built.</p>
     </div>
   </details>
   <details>
@@ -575,9 +612,9 @@ PLANNED, NOT BUILT
 </section>
 
 <section>
-  <span class="eyebrow">Default UI · tentative</span>
+  <span class="eyebrow">Default UI · built, design still tentative</span>
   <h2>What users see on first launch</h2>
-  <p>A first pass at the default interface, to iterate on. Sessions from every workspace on the left, with the ones waiting on you flagged. The selected session's stream in the middle. Its changes on the right, as a diff or in a full code editor.</p>
+  <p>The default interface now runs on live data (the mockup below is the original design; the real screens are close to it, see the pictures in <code>docs/</code>). Sessions from every workspace on the left, with the ones waiting on you flagged. The selected session's stream in the middle. Its changes on the right, as a diff or in a full code editor.</p>
   <div class="mock-out">
   <div class="mock-scroll" role="img" aria-label="Mockup of the default AgentControl interface: session list, session stream with a pending permission, and a diff of the worktree.">
   <div class="mock" aria-hidden="true">
@@ -659,6 +696,23 @@ PLANNED, NOT BUILT
   <p class="m-cap">Tentative mockup, built in HTML. Every part of it is user code the Modify agent can change.</p>
   </div>
 
+  <details open>
+    <summary>What is built today <small>live data, Modify panel, Preview tab; Console and Analytics are not</small></summary>
+    <div class="det">
+      <p>The UI reads all its data through the SDK, served by the app with hot reload. It has 38 browser tests (Playwright, in Chromium).</p>
+      <ul>
+        <li><b>Sessions.</b> The list with waiting-on-you flags and an Archived filter, a New session dialog (it can add a repository by typed path), the conversation with messages, plan, tool cards and permission cards (Approve and Deny also from the list), cancel, archive with the uncommitted-files warning, and a usage chip and status bar. The UI reads only normalised updates and the live row fields (<code>turnRunning</code>, <code>pendingPermissions</code>).</li>
+        <li><b>Changes and Editor.</b> Monaco diff of the worktree against the base branch, a file tree, an editor that saves with Ctrl or Cmd+S and shows the new version when a save is stale, and an Open in VS Code link.</li>
+        <li><b>Preview tab.</b> Built: see the next block.</li>
+        <li><b>Config button.</b> Opens the workspace setup: the machine check and, per repository, the files to copy and the setup script. It is not the harness configuration (no screen for that yet).</li>
+        <li><b>Modify panel</b>, connected to the backend (⌘. opens it): ask for a change, watch the checks (checking, fixing, ready or failed), see the changed files, then Keep, Undo or Discard; a version history with Restore; and a banner when a new default UI is available, with the merge result before Keep or Undo. If the UI itself breaks, <code>/_safe</code> offers Undo last change and Restore.</li>
+        <li><b>Recovery.</b> After an app restart the secret token changes; the UI reloads once to pick up the new one, and shows a plain message when the app or relay is not reachable.</li>
+        <li><b>Not built:</b> the <b>Console</b> tab (below), the <b>Analytics</b> screen (the button only says it is not ready), a harness Config screen, notifications and the phone layout. Browser coverage is not counted yet (see Quality).</li>
+      </ul>
+      <p><b>Rough edges that remain</b> (from the README troubleshooting and <code>TASKS.md</code>): the first session of a real agent downloads its adapter and can take a minute with no progress bar; adding a repository means typing its full path; a turn costing under one cent shows as $0.00; <code>bun dev</code> serves the UI straight from <code>packages/ui-template</code>, and nobody has checked whether Modify changes show up there (a release serves the copy in the data folder); long sessions are not virtualised, so a very long stream may stall the browser; and the Modify panel has been tested by the browser tests and one real run, not yet by a person for a day.</p>
+    </div>
+  </details>
+
   <details>
     <summary>Code editor for the worktree <small>Monaco built in, VS Code on demand</small></summary>
     <div class="det">
@@ -673,17 +727,19 @@ PLANNED, NOT BUILT
     </div>
   </details>
   <details>
-    <summary>Preview tab <small>planned: HTML and Markdown files, shown inside the app</small> <span class="pill opt">not started</span></summary>
+    <summary>Preview tab <small>HTML and Markdown files, shown inside the app</small> <span class="pill">built</span></summary>
     <div class="det">
-      <p>A Preview tab next to Changes and Editor shows a file from the session's worktree, the way an HTML artifact is shown beside a chat. Two parts, both planned.</p>
-      <p><b>1. HTML files.</b> The page is shown inside the app and is fenced in:</p>
+      <p>A Preview tab next to Changes and Editor shows a file from the session's worktree, the way an HTML artifact is shown beside a chat. Design and reasons: <code>docs/decisions/2026-11-22-preview-sandbox.md</code> and <code>2026-11-22-markdown-preview.md</code>.</p>
+      <p><b>HTML files.</b> The page runs in an <code>iframe</code> with <code>sandbox="allow-scripts allow-forms"</code> (never <code>allow-same-origin</code>), so it has no access to the app's storage or API. The app serves it from <code>/preview/&lt;ticket&gt;/</code> with a Content-Security-Policy that lets it load only its own folder, <code>data:</code> and <code>blob:</code>. A ticket is a random capability for one session: it lives in memory, ends an hour after last use, on archive and on restart. Bytes are read through <code>relay/fs.readBytes</code>, so images and fonts are not damaged. A page with its own CSS, scripts and images in the same folder works. The preview reloads when files in the page's folder change (250 ms pause) and on Reload.</p>
+      <p><b>Markdown files.</b> Rendered in the browser with <code>marked</code>, cleaned with DOMPurify (scripts, event handlers, forms, SVG and more are removed), and shown in the same kind of frame but with a stricter sandbox: no scripts at all. Relative images and links are rewritten to the file's folder.</p>
+      <p><b>Limits, on purpose or not fixed yet:</b></p>
       <ul>
-        <li>It renders in an <code>iframe</code> with the <code>sandbox</code> attribute.</li>
-        <li>The app serves it from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions.</li>
-        <li>It reloads when the agent edits the file, using the existing file-change notifications (<code>relay/fs.changed</code>).</li>
-        <li>A page with its own CSS, JavaScript and images in the same folder works, because the app serves those files from the same worktree folder.</li>
+        <li>A page cannot use <code>fetch</code>, XHR or WebSockets (<code>connect-src 'none'</code>), so a page that loads its own JSON file with <code>fetch</code> does not work. Scripts, styles and images do.</li>
+        <li>The scroll position is lost on refresh: the app cannot read it from a frame with an opaque origin.</li>
+        <li>Editing a file outside the page's own folder (<code>../css/x.css</code>) does not refresh the page until Reload.</li>
+        <li>Files up to 10 MiB; no range requests, so large video does not seek.</li>
+        <li>The relay refuses <code>.env*</code>, <code>.npmrc</code> and <code>.netrc</code> by name and by link target; files a repo's copy-files setting adds under other names are not protected. A hostile page could still send its own scripts and styles, and its address, to another site. A browser too old to send <code>Sec-Fetch-Dest</code> is not covered.</li>
       </ul>
-      <p><b>2. Markdown files, only if a library passes the bar.</b> The same tab would show rendered Markdown, but only if an open-source, actively maintained library passes the dependency bar in <code>AGENTS.md</code>: a known owner, a release in the last 12 months, a permissive license and few dependencies. Candidates to evaluate when the task starts: <code>marked</code>, <code>markdown-it</code> and <code>micromark</code>. The output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered inside the same sandbox. If no library passes, the task is dropped and Markdown files are shown as text in the editor.</p>
     </div>
   </details>
   <details>
@@ -716,7 +772,7 @@ PLANNED, NOT BUILT
 </section>
 
 <section>
-  <span class="eyebrow">Harness configuration</span>
+  <span class="eyebrow">Harness configuration · backend built, no screen yet</span>
   <h2>Configure every agent from one place</h2>
   <p>Each harness keeps MCP servers, skills, hooks and instructions in its own files and formats. The app holds one canonical version of all of it, lets you edit it in the UI, and the relay writes the right files for each agent on each workspace.</p>
   <div class="tablewrap"><table>
@@ -733,6 +789,21 @@ PLANNED, NOT BUILT
   </table></div>
   <p>Every item has a scope: <b>global</b> (all workspaces), <b>workspace</b>, or <b>repo</b>. Narrower scopes override wider ones, and the UI shows the effective config for any session before it starts.</p>
 
+  <details open>
+    <summary>State today <small>backend done and checked against the real agents; no Config screen</small> <span class="pill build">in progress</span></summary>
+    <div class="det">
+      <p><b>Built:</b> the relay reads what Claude Code and Codex have today (<code>relay/config.inspect</code>), plans the file changes, applies them with backups, rolls back byte for byte, and reports drift. The app stores the canonical items and scopes in SQLite and has the routes; the SDK has the calls. 38 end-to-end tests cover it. The item kinds are MCP server, instructions, skill, hook, command, permission and env. <b>Not built:</b> any screen for it in the UI, subagents (the model has no subagent item), per-session MCP servers in <code>session/new</code>, real secrets storage (a <code>${secret:NAME}</code> placeholder is written as is and listed as needing a secret), and Gemini CLI and OpenCode.</p>
+      <p><b>How it was checked.</b> The real Claude Code 2.1.330 and Codex 0.171.0 (the ones the ACP adapters bundle) were run on Linux against generated files in a throwaway home folder, and asked what they loaded. No official documentation was consulted, so nothing here is "verified against docs". <code>packages/relay/src/config/FORMATS.md</code> has the table; in short:</p>
+      <ul>
+        <li><b>Verified by running the real CLI</b> (the CLI read our file and showed the effect): Claude MCP servers (user and project), permission rules and mode, env, hooks for session start, instructions, skills and commands. Codex MCP servers, approval and sandbox mode, env, hooks (listed, but shown as untrusted until the user reviews them in Codex), instructions and skills.</li>
+        <li><b>Assumed</b> (needs a model call or a login to see): the hook matchers <code>Edit|Write|MultiEdit</code> for Claude and <code>apply_patch</code> for Codex, and that Claude's tool-event hooks use the same shape as the session-start hook that ran.</li>
+        <li><b>Not supported, and the plan says so:</b> Codex allow and deny lists (it has a different rules format we do not write) and Codex commands (Codex 0.171 does not load them). A hand-written entry at an item's place is left alone and reported.</li>
+        <li><b>Editor limits.</b> JSON files keep their other keys and order but are rewritten with 2-space indentation. TOML is edited line by line without a parser: only the tables and keys we own are touched; quoted or dotted server names, a server hand-written with an <code>env</code> sub-table, and header-looking lines inside multi-line strings are not handled. Plans are kept in memory (the latest 20). <code>~/.claude.json</code> is Claude Code's own state file and changes often, so a plan can go stale and apply refuses; plan again.</li>
+        <li><b>Ownership.</b> Only entries the app created are ever changed or removed; see Key decisions. Setting <code>AGENTCONTROL_CONFIG_HOME</code> moves the files the relay writes (tests always set it).</li>
+      </ul>
+    </div>
+  </details>
+
   <details>
     <summary>How a change is deployed <small>inspect, plan, apply</small></summary>
     <div class="det">
@@ -742,7 +813,7 @@ PLANNED, NOT BUILT
         <li><b>Apply.</b> The relay backs up the touched files, writes the new ones, and reports per agent. Rollback restores the backup.</li>
         <li><b>Watch for drift.</b> The relay rechecks file hashes on connect. If someone edited a file by hand, the item is marked as drifted with options to adopt the change or overwrite it.</li>
       </ol>
-      <p>Only files the app manages are touched. Managed entries carry a marker so hand-written config around them is left alone.</p>
+      <p>Only entries the app created are touched. Managed entries carry a marker and a hash in a manifest (<code>.agentcontrol/managed.json</code> in the config home), so hand-written config around them is left alone. Apply is refused if a file changed after the plan was made. An imported item that matches a file exactly is adopted without rewriting it.</p>
     </div>
   </details>
   <details>
@@ -781,34 +852,39 @@ PLANNED, NOT BUILT
 </section>
 
 <section>
-  <span class="eyebrow">The malleable part</span>
+  <span class="eyebrow">The malleable part · backend and panel built</span>
   <h2>How the UI rewrites itself</h2>
   <p>The UI is a small web project inside the app's data folder. A built-in Modify agent edits it on request. The user only sees the result and two buttons: Keep and Undo.</p>
   <ol>
     <li>The user asks for a change, for example "add a cost column and sort by it".</li>
-    <li>The Modify agent, a local ACP session of Claude Code or Codex, edits a staging copy of the UI.</li>
-    <li>A typecheck and build run after each edit. Errors go back to the agent until they pass.</li>
+    <li>The Modify agent, a local ACP session of Claude Code or Codex (a relay <i>directory</i> session), edits a staging copy of the UI.</li>
+    <li>When the agent's turn ends, the app runs a typecheck and a build. Errors go back to the agent until they pass, or the attempt is shown as failed with the reason.</li>
     <li>The finished change is copied to the live folder at once, and Vite hot-reloads it.</li>
     <li>Keep commits the change to a hidden git repository, with the request as the message. Undo goes back one commit.</li>
   </ol>
-  <div class="callout"><b>Never lock the user out.</b> <code>/_safe</code> is served by the app, not by the user's UI. It always shows the Modify chat and the version history, so any broken change can be rolled back in one click.</div>
+  <p><b>Built as described, with these differences.</b> A change waiting for Keep or Undo survives an app restart. The rules for the agent are text shipped with each app release and sent as the first message of every Modify session; the <code>AGENTS.md</code> in the staging folder is not read for them, because the agent can edit that file and must not be able to loosen its own rules. The fence is enforced by the relay, not by the app: the relay answers every permission request of a directory session and approves only file edits inside <code>ui-staging/</code>. The checks are typecheck and build; the planned lint and browser-load checks are not built.</p>
+  <div class="callout"><b>Never lock the user out.</b> <code>/_safe</code> is served by the app, not by the user's UI. It needs neither the UI folder nor the SDK, and offers Undo last change and Restore for earlier versions, so any broken change can be rolled back in one click. It also has a box to ask the Modify agent for a change, with Keep and Undo. Built and tested with a deliberately broken UI.</div>
 
   <details>
     <summary>Folder layout and agent rules</summary>
     <div class="det">
 <pre>~/.agentcontrol/
-├─ state.db
+├─ state.db             the app's SQLite file
+├─ api-token            the secret for the local API, new at every start (0600)
 ├─ ui.git/              UI history (kept outside the agent's folder)
 ├─ ui/                  live UI (served by Vite)
 ├─ ui-staging/          Modify agent's working copy
-└─ ui/AGENTS.md         rules for the Modify agent</pre>
+├─ ui-template/         the default UI this app release shipped
+├─ ui-upstream-version  which default UI the user's branch has merged
+├─ modify-waiting.json  a change waiting for Keep or Undo, kept across restarts
+└─ relay/               relay socket, repos, session logs, worktrees, adapters</pre>
       <ul>
         <li>Data only through <code>@agentcontrol/sdk</code>; never call the API directly.</li>
         <li>Only bundled libraries are available. No <code>npm install</code>.</li>
         <li>Prefer editing <code>layout.json</code> for arrangement changes; put new features in your own files, plugged into the default UI's named slots, instead of editing default components.</li>
-        <li>Run the check command before finishing.</li>
+        <li>The app runs the checks itself after each turn; the agent cannot run commands.</li>
       </ul>
-      <p><b>The Modify agent is fenced in.</b> It may edit files only inside <code>ui-staging/</code>; it runs no shell commands (the app runs the checks itself and sends back the result) and has no web access beyond its model's API. This is enforced twice: through the agent's own permission settings, and by the app automatically refusing any other permission request the agent sends.</p>
+      <p><b>The Modify agent is fenced in.</b> It may edit files only inside <code>ui-staging/</code>; it runs no shell commands (the app runs the checks itself and sends back the result) and has no web access beyond its model's API. This is enforced twice. <b>The relay</b> answers every permission request of the session itself and approves only a file edit whose paths (symlinks followed) all lie inside <code>ui-staging/</code>; everything else gets a refusal. This works for every agent and is the only fence for Codex. <b>Launch settings</b> sent with <code>session/new</code> limit Claude Code to the Read, Glob, Grep, Write, Edit and MultiEdit tools and switch off its shell and web tools; the user's own Claude settings are kept out. Checked with the real Claude adapter (23 Nov 2026): it never had a Bash tool, asked to run <code>ls</code> it used Glob instead, and the user's own slash commands were gone. Plugin and managed skills are still listed, but cannot run without the Skill tool. Codex has not been tried for Modify.</p>
     </div>
   </details>
   <details>
@@ -819,13 +895,13 @@ PLANNED, NOT BUILT
     </div>
   </details>
   <details open>
-    <summary>Updating the default UI <small>merge, agent fixes conflicts, checks, Keep or Undo</small></summary>
+    <summary>Updating the default UI <small>merge, agent fixes conflicts, checks, Keep or Undo</small> <span class="pill">built</span></summary>
     <div class="det">
       <ol>
         <li>The new app version commits its default UI onto <code>upstream</code>.</li>
         <li>In the staging folder, <code>upstream</code> is merged into <code>main</code>. Clean merges need nothing more.</li>
         <li>For each conflict, the Modify agent gets the conflicted files and the original requests behind the user's changes, so it rebuilds what the user wanted, not just the old lines.</li>
-        <li>The usual checks run: typecheck, build, lint, and a browser test that the UI loads.</li>
+        <li>The checks run: typecheck and build (lint and a browser load test are planned).</li>
         <li>The user sees a summary, for example <i>"Update 1.2: 4 of your changes kept automatically, 1 conflict resolved (cost column moved to the new session table)"</i>, then Keep or Undo.</li>
       </ol>
       <p><b>Merge, not rebase.</b> A rebase replays each change one by one, so one conflict can come back several times. A merge brings both histories together once, so each conflict is resolved once. The result is the same: the user's changes on top of the latest default UI.</p>
@@ -858,7 +934,7 @@ main:         A ── B ── C ──── M1 ── D ── E ────
 <section>
   <span class="eyebrow">Getting started and distribution</span>
   <h2>Easy to run from source, easy to install on a Mac</h2>
-  <p>Two audiences, two paths. Contributors clone the repo and run one command. Everyone else installs a signed Mac app or uses Homebrew. Both paths run the same binary, so there's one thing to test.</p>
+  <p>Two audiences, two paths. Contributors clone the repo and run one command. Everyone else will install a Mac app (unsigned for the first release, so with one manual step) and later use Homebrew. Both paths run the same code, so there's one thing to test. The <code>README.md</code> in the repository root walks through the source path, the first session, where data lives, reset and troubleshooting; every command in it was run for real.</p>
   <div class="two">
     <div class="box"><h3>From source</h3>
 <pre>git clone …/agentcontrol
@@ -866,8 +942,8 @@ cd agentcontrol
 bun install
 bun dev</pre>
       <ul>
-        <li>Bun is the only prerequisite. No Docker, no database to set up, no required environment variables.</li>
-        <li><code>bun dev</code> runs the app with <code>--watch</code> and connects it to a relay for the local machine. Serving the default UI with hot reload and opening the browser come when the UI is wired to live data (phase 3).</li>
+        <li>Bun (1.4.4, the version CI uses) and <code>git</code> are the prerequisites. No Docker, no database to set up, no required environment variables. Real agents need Claude Code or Codex signed in on the machine; the first session downloads the agent's adapter.</li>
+        <li><code>bun dev</code> runs the app with <code>--watch</code>, serves the default UI with hot reload and connects to a relay for the local machine. On a terminal it opens the browser the first time the app is listening (not after a restart caused by a file change); <code>AGENTCONTROL_NO_OPEN</code> turns that off. Checked in <code>scripts/dev.ts</code> and its test; the README still says it does not open the browser, which is out of date.</li>
         <li>SQLite and the data folder are created on first run; the local machine is added as a workspace automatically.</li>
       </ul>
     </div>
@@ -875,10 +951,10 @@ bun dev</pre>
 <pre>brew install --cask agentcontrol
 # or download AgentControl.dmg</pre>
       <ul>
-        <li>A signed and notarized <code>.dmg</code> with a small menu bar app: it starts the local server, opens the UI, and shows how many sessions are waiting on you.</li>
-        <li>Apple Silicon and Intel builds, published on GitHub Releases.</li>
-        <li>In-app updates are deferred. For now the menu item "Check for updates..." opens the GitHub Releases page.</li>
-        <li>Not yet built or run on a Mac: see "Building the Mac installer" below.</li>
+        <li>A <code>.dmg</code> with a small menu bar app: it starts the local server, opens the UI, and shows how many sessions are waiting on you. <b>Unsigned for the first release</b> (ad-hoc signed only). The first open is blocked by macOS: open System Settings, Privacy &amp; Security, and press Open Anyway, or run <code>xattr -dr com.apple.quarantine /Applications/AgentControl.app</code>.</li>
+        <li>Apple Silicon and Intel builds, published on GitHub Releases. About 700 MB per platform, because the default UI ships with its own <code>node_modules</code> and the app carries the Linux relays.</li>
+        <li>No Homebrew cask and no in-app updates yet (parked with the Developer ID). The menu item "Check for updates..." opens the GitHub Releases page.</li>
+        <li>Not yet run on a Mac by a person: see "Building the Mac installer" below.</li>
       </ul>
     </div>
   </div>
@@ -888,34 +964,41 @@ bun dev</pre>
     <div class="det">
 <pre>agentcontrol/
 ├─ AGENTS.md        coding rules for every agent (CLAUDE.md imports it)
+├─ README.md, CONTRIBUTING.md
 ├─ TASKS.md         deferred tasks and decisions made
 ├─ LICENSE          MIT
+├─ coverage.config.json   what the coverage gate counts, and the written exclusions
 ├─ packages/
 │  ├─ protocol/     shared types: relay methods, events, config items
-│  ├─ app/          local server: API, relay connections, sync, SQLite, UI versions
-│  ├─ relay/        workspace daemon: ACP clients, event log, worktrees, fs
+│  ├─ app/          local server: API, relay connections, sync, SQLite, security,
+│  │                preview, Modify agent, UI versions, UI serving
+│  ├─ relay/        workspace daemon: ACP clients, event log, worktrees, fs, usage, config
 │  ├─ sdk/          @agentcontrol/sdk used by the UI
 │  ├─ ui-template/  default UI (Vite + React), copied to the data folder
 │  └─ mac/          Swift menu bar app (Package.swift, Sources/AgentControlMenu)
-├─ e2e/
-│  ├─ sessions/ sync/ editor/ usage/ workspace/ worktrees/   *.e2e.ts tests
-│  └─ support/      setup/ expect/ mock-agent/
-├─ scripts/         check, check-quick, integrate, done, run-e2e, prove-gates,
-│                   build, smoke-binary, format, guard-deps; gates/ build/ mac/
+├─ e2e/             app/ browser/ config/ editor/ modify/ preview/ security/ sessions/
+│                   sync/ ui/ updates/ usage/ workspace/ worktrees/   *.e2e.ts tests
+│                   fixtures/ (recordings of real Claude Code, a UI fixture)
+│                   support/ browser/ setup/ expect/ mock-agent/
+├─ scripts/         check, check-quick, integrate, done, run-e2e, coverage, prove-gates,
+│                   acp-leaks, build, smoke-binary, real-agent-smoke, dev, format,
+│                   guard-deps; gates/ build/ mac/ smoke/ real-agent/ coverage-gate/
 ├─ packaging/       homebrew/ (cask template)
 ├─ spike/           the Phase 0 script that drives the real ACP adapters
 ├─ docs/            plan.html, status.html, acp-notes, dev-loop-review,
-│                   abstractions-review, releasing, brief-template, decisions/
-├─ .github/         workflows (ci, audit, build, release), dependabot.yml
+│                   abstractions-review, releasing, brief-template, landings.log,
+│                   decisions/ (12 files)
+├─ .github/         workflows (ci, audit, build, release, real-agents), actions/setup,
+│                   dependabot.yml
 └─ package.json</pre>
       <p>Commands that exist today:</p>
       <ul>
-        <li><code>bun install</code>, then <code>bun dev</code>: the app with <code>--watch</code>, connected to the local relay.</li>
-        <li><code>bun run test</code>: the end-to-end suite against the mock ACP agent (no real agent or API key). Each file runs in its own <code>bun test</code> process, in parallel. Plain <code>bun test</code> would not find the <code>*.e2e.ts</code> files.</li>
+        <li><code>bun install</code>, then <code>bun dev</code>: the app with <code>--watch</code> and the default UI, connected to the local relay, opening the browser.</li>
+        <li><code>bun run test</code>: the end-to-end suite against the mock ACP agent (no real agent or API key). Each file runs in its own <code>bun test</code> process, in parallel. Plain <code>bun test</code> would not find the <code>*.e2e.ts</code> files. <code>bun run test:coverage</code> runs it with the coverage gate; <code>test:coverage-stable</code> repeats it to prove the numbers do not move. Browser tests need Chromium (<code>bunx playwright install chromium</code> from <code>e2e/</code>).</li>
         <li><code>bun run check</code>: every quality gate plus the tests, in parallel, with timings. <code>bun run check:quick</code>: only the changed files, for the inner loop.</li>
         <li><code>bun run integrate &lt;branch&gt;</code> lands a branch on <code>main</code>; <code>bun run done &lt;paths&gt;</code> is the machine-checked definition of done (see Development loop).</li>
-        <li><code>bun run build</code> (also <code>build:relay-linux-x64</code> and <code>build:mac</code>): compiled binaries and <code>dist/manifest.json</code>. <code>bun scripts/smoke-binary.ts &lt;binary&gt;</code> runs a compiled relay for real.</li>
-        <li><code>bun run prove-gates</code>: shows that every quality gate breaks the build on a bad sample. <code>bun run format</code>: formats your changed files. <code>bun run relay</code>: the relay daemon alone.</li>
+        <li><code>bun run build</code> (also <code>build:relay-linux-x64</code>, <code>build:mac</code> and <code>build:linux</code>): compiled binaries, the release folder per platform and <code>dist/manifest.json</code>. <code>bun scripts/smoke-binary.ts &lt;binary&gt;</code> runs a compiled relay for real, and <code>--app dist/release/linux-x64</code> runs the whole compiled app.</li>
+        <li><code>bun run prove-gates</code>: shows that every quality gate breaks the build on a bad sample. <code>bun run smoke:real</code>: drives the real Claude Code through relay, app and SDK (needs a login; costs about a cent; <code>--record</code> saves its logs). <code>bun run format</code>: formats your changed files. <code>bun run relay</code>: the relay daemon alone.</li>
         <li>Planned, not built: a <code>dev:remote &lt;host&gt;</code> script that pushes the current relay build to an SSH workspace for end-to-end testing (phase 5).</li>
       </ul>
     </div>
@@ -924,19 +1007,21 @@ bun dev</pre>
     <summary>Building the Mac installer <small>signing, notarization, updates</small></summary>
     <div class="det">
       <ol>
-        <li><b>Binaries.</b> <code>bun build --compile</code> produces the app for <code>darwin-arm64</code> and <code>darwin-x64</code>, and the relay for <code>linux-x64</code> and <code>linux-arm64</code>. Relay binaries ship inside the app, so the app always deploys a relay of the same version.</li>
+        <li><b>Binaries and release folder.</b> <code>bun build --compile</code> produces the app for <code>darwin-arm64</code> and <code>darwin-x64</code>, the relay for each platform, and the Linux relays that ship inside the app so it always deploys a relay of the same version. They are assembled with the default UI into one folder per platform (see Key decisions, Release layout).</li>
         <li><b>App shell.</b> A thin menu bar app wraps the binary. Options, from lightest: a small Swift launcher; Electrobun (Bun-based desktop shell); Tauri. The UI itself stays in the browser, so the shell does very little.</li>
-        <li><b>Sign and notarize.</b> An Apple Developer ID (99 USD a year) is required, or Gatekeeper blocks the app. <code>codesign</code> with hardened runtime, then <code>xcrun notarytool</code> and <code>stapler</code>.</li>
-        <li><b>Package.</b> <code>create-dmg</code> builds the disk image; a Homebrew cask in our own tap points to it.</li>
+        <li><b>Sign and notarize.</b> An Apple Developer ID (99 USD a year) is required for a smooth first open; without it Gatekeeper blocks the app until the user presses Open Anyway. Parked: the first release is ad-hoc signed only. With a Developer ID: <code>codesign</code> with hardened runtime (the <code>.node</code> files inside <code>node_modules</code> must be signed too), then <code>xcrun notarytool</code> and <code>stapler</code>.</li>
+        <li><b>Package.</b> <code>hdiutil</code> builds the disk image; a Homebrew cask in our own tap points to it (template written, tap not set up).</li>
         <li><b>Release.</b> A GitHub Actions workflow on a macOS runner does all of the above on a version tag and publishes to GitHub Releases.</li>
         <li><b>Updates.</b> Sparkle (for a Swift shell) or the shell's own updater checks GitHub Releases. On update, the app redeploys the matching relay to each workspace on next connect.</li>
       </ol>
-      <p><b>State today</b> (from <code>docs/releasing.md</code>):</p>
+      <p><b>State today</b> (from <code>docs/releasing.md</code>, the build workflow and the status page, 23 Nov 2026):</p>
       <ul>
-        <li><b>Works:</b> compiled relay binaries for Linux and Mac build, and the Linux one passes a smoke test, including starting its own daemon from the compiled binary.</li>
-        <li><b>Written, never run:</b> the Swift menu bar app, the app bundle script, the signing and notarisation scripts, the dmg and the Homebrew cask template. Nothing Mac-specific could be built on the Linux machine the work ran on. The first run of the build workflow on a Mac runner is the real test, and small fixes are expected. The Mac binaries were cross-compiled but never executed.</li>
-        <li><b>The owner must add:</b> an Apple Developer ID (99 USD a year) and these repository secrets: <code>APPLE_CERT_P12_BASE64</code>, <code>APPLE_CERT_PASSWORD</code>, <code>APPLE_SIGNING_IDENTITY</code>, and one set for notarisation (<code>APPLE_ID</code>, <code>APPLE_TEAM_ID</code>, <code>APPLE_APP_PASSWORD</code>, or the three App Store Connect API key values). Without them the release still runs but the dmgs are not notarised and Gatekeeper warns.</li>
-        <li><b>Deferred or manual:</b> in-app updates (Sparkle), the Homebrew tap update (a manual step for now) and the app icon.</li>
+        <li><b>Verified on Linux (and in CI on Linux):</b> the compiled app works end to end with no source tree and no <code>bun</code> on the PATH. <code>bun run build:linux</code> then <code>bun scripts/smoke-binary.ts --app dist/release/linux-x64</code> runs it from a clean copy of the release folder and checks, step by step: it listens; <code>/api/health</code>; the UI page and a script load; the database is migrated (migrations are embedded); a mock-agent session runs; a Modify request fails its typecheck, is fixed, builds and is promoted (the shipped <code>tsc</code> and Vite run through the binary itself); the UI server serves the promoted file; and nothing was written into the shipped <code>node_modules</code>. It takes 30 to 90 seconds and is green in CI. The compiled Linux relay passes its own smoke test, including starting its own daemon.</li>
+        <li><b>Verified on a real Mac runner (GitHub Actions):</b> the Swift menu bar app builds for both Apple Silicon and Intel, <code>make-app.sh</code> assembles the bundle, and the ad-hoc signature verifies.</li>
+        <li><b>Not verified on a Mac:</b> the compiled app actually running (the build workflow's smoke step on the Mac runner failed on the latest <code>main</code> run; a fix is on a branch and has not landed), the dmg mounting and the app inside it running, the menu bar app running and reading the token (it has never been run, and reads <code>api-token</code> from the default data folder only), the <code>.node</code> files inside the shipped <code>node_modules</code> loading under the hardened runtime, Gatekeeper's view of 300 MB of JavaScript inside the bundle, and the darwin binaries on Intel. Signing with a Developer ID and notarisation cannot be tried without the certificate.</li>
+        <li><b>Size.</b> One release folder is about 718 MB on Linux (app 105 MB, relay 105 MB, two Linux relays 210 MB, default UI with <code>node_modules</code> 300 MB); the Macs are the same order. Nothing is trimmed yet: the default UI's <code>node_modules</code> (285 MB) is under the 400 MB line set for trimming. Its biggest parts are monaco-editor (105 MB) and lucide-react (50 MB). Whether 700 MB is acceptable to download is open.</li>
+        <li><b>The owner must add</b> (parked, not needed for the unsigned release): an Apple Developer ID (99 USD a year) and the repository secrets <code>APPLE_CERT_P12_BASE64</code>, <code>APPLE_CERT_PASSWORD</code>, <code>APPLE_SIGNING_IDENTITY</code>, and one set for notarisation (<code>APPLE_ID</code>, <code>APPLE_TEAM_ID</code>, <code>APPLE_APP_PASSWORD</code>, or the three App Store Connect API key values). Without them the release workflow still runs and produces an ad-hoc signed app and an unsigned dmg.</li>
+        <li><b>Deferred or manual:</b> in-app updates (Sparkle), the Homebrew tap and cask (a cask for an unsigned app needs the same manual step, so it waits), and the app icon.</li>
       </ul>
       <p><b>Version handshake.</b> <code>relay/hello</code> exchanges versions. If they differ, the app upgrades the relay before opening sessions; running sessions keep the old relay until they end.</p>
       <p class="muted">Before signing is set up, the fallback is a Homebrew tap formula for the CLI binary, run with <code>agentcontrol</code> from a terminal.</p>
@@ -961,7 +1046,7 @@ bun dev</pre>
       <li><b>GIVEN / WHEN / THEN</b> with a plain-language sentence at every step, saying exactly what is set up, done and checked.</li>
       <li><b>Setup helpers and assertion helpers</b> named after the domain fact, so the test reads as a specification.</li>
       <li><b>The only fake is the agent:</b> a scripted mock ACP agent, so tests are deterministic and need no API key.</li>
-      <li><b>At least 95% of lines covered</b> by the end-to-end suite, in total and on changed lines, before any push.</li>
+      <li><b>At least 95% of lines covered</b> by the end-to-end suite, in total and on changed lines, before any push. Built: about 98% today.</li>
     </ul></div>
   </div>
 
@@ -1020,20 +1105,31 @@ test("a session that asks to run a command is shown as waiting on you", async ()
           <tr><td><code>setupData()</code></td><td><code>app.mockAgent.willEditFile("src/server.ts")</code></td></tr>
         </tbody>
       </table></div>
-      <p><b>Two levels of end-to-end test.</b> API tests drive the real relay (over JSON-RPC) and the real app (over HTTP and <code>@agentcontrol/sdk</code>) with the mock agent, run by <code>bun run test</code>. Browser tests will drive the default UI with Playwright; none exist yet. Remote paths will run over real SSH to a local <code>sshd</code> in CI, and a nightly smoke run will use the real Claude Code and Codex adapters with API keys. Neither exists yet. Today the suite is about 16 test files and 33 tests.</p>
-<p><b>In-process mode, for coverage.</b> Bun's coverage tool only sees code that runs inside the test process, and a relay or app started as a separate process shows up as zero lines. So the helpers start the relay and the app inside the test process, taking their data folder, environment and clock as parameters. Only the agent stays a separate process, because it is the fake. A small folder of tests keeps real separate processes for what only they can show: relay restart, the app closing and reopening, bridge framing, an agent crash, the compiled binary. The coverage gate is being built on this.</p>
+      <p><b>Two levels of end-to-end test.</b> API tests drive the real relay (over JSON-RPC) and the real app (over HTTP and <code>@agentcontrol/sdk</code>) with the mock agent, run by <code>bun run test</code>. Browser tests drive the default UI in Chromium with Playwright (a pinned dev dependency): 38 of them today. Remote paths will run over real SSH to a local <code>sshd</code> in CI (not built). A manual and nightly smoke run drives the real Claude Code through relay, app and SDK (<code>bun run smoke:real</code>, the <code>real-agents</code> workflow); it is skipped without API keys, and Codex is not part of it yet. Today the suite is 83 test files and 259 tests (counted from the <code>test(</code> lines, 23 Nov 2026).</p>
+<p><b>In-process mode, for coverage (built).</b> Bun's coverage tool only sees code that runs inside the test process, and a relay or app started as a separate process shows up as zero lines. So the helpers start the relay and the app inside the test process, taking their data folder, environment and clock as parameters. Only the agent stays a separate process, because it is the fake. A few tests keep real separate processes for what only they can show: relay restart, the app closing and reopening, bridge framing, an agent crash, <code>bun dev</code> and the compiled app. Because tests share a machine, the suite is sensitive to load: with many agents running on a 4-core machine, tests timed out (see the development loop).</p>
+<p><b>Recordings.</b> The mock agent is checked against real behaviour: four scrubbed recordings of real Claude Code sessions (<code>e2e/fixtures/recordings/</code>) are replayed through the normaliser, and a test fails on any update that comes out as "other" without being left alone on purpose. The mock also copies the adapter's modes and a cancelled turn's usage. Codex has no recordings.</p>
 <pre>e2e/
-├─ sessions/           relay and app tests: waiting on you, archive, cancel, restart, files
-├─ sync/               the app catching up after a restart
-├─ editor/             file read, write and watch
+├─ app/                the app's own behaviour: workspace, worktree, <code>bun dev</code>, release layout, outages
+├─ browser/            Playwright tests of the default UI (38)
+├─ config/             harness config: round trips, import, safety, failures (38)
+├─ editor/             file read, write, watch and versions
+├─ modify/             the Modify agent: change flow, fence, checks, updates, /_safe
+├─ preview/            ticketed preview route, sandbox headers, refusals
+├─ security/           Host, Origin and token checks, the token in served pages
+├─ sessions/           relay and app tests: waiting on you, archive, cancel, restart, adapters
+├─ sync/               the app catching up after a restart, live summaries
+├─ ui/                 serving the UI, the supervised UI server
+├─ updates/            normalised updates, recorded real sessions
 ├─ usage/              tokens and cost
 ├─ workspace/          the setup check
 ├─ worktrees/          diff, setup script, ports
+├─ fixtures/           recordings of real Claude Code, a UI fixture
 └─ support/
-   ├─ setup/           startRelayWithLocalRepo, start-app, relay and app "users", …
+   ├─ setup/           start-app, start-relay, relay and app "users", …
    ├─ expect/          expectSessionWaitingForApproval, …
+   ├─ browser/         page objects and browser expectations
    └─ mock-agent/      scripted ACP agent over stdio</pre>
-      <p class="muted">Planned: split by layer (relay, api, browser), a timing budget per test, a nightly flake run, and a contract test that checks the mock agent against recordings of the real adapters.</p>
+      <p class="muted">Planned: split by layer (relay, api, browser) with a way to run one layer, a timing budget per test, a nightly flake run, a real-adapter smoke job that re-records and opens an issue on failure, a check that every update kind the mock emits appears in a recording, and browser coverage for the UI package.</p>
     </div>
   </details>
 
@@ -1050,19 +1146,20 @@ test("a session that asks to run a command is shown as waiting on you", async ()
           <tr><td>Type strictness</td><td><code>strict</code>, <code>noUncheckedIndexedAccess</code>, <code>exactOptionalPropertyTypes</code>, <code>noImplicitOverride</code>, <code>noUnused*</code>, <code>noFallthroughCasesInSwitch</code>; typescript-eslint <code>strict-type-checked</code>: no <code>any</code> and no unsafe use of untyped values, exhaustive switches, no floating promises.</td><td><span class="pill">breaks build</span></td></tr>
           <tr><td>Architecture rules</td><td><code>dependency-cruiser</code>: package layering, no cycles, no imports of another feature's internals.</td><td><span class="pill">breaks build</span></td></tr>
           <tr><td>Dead code</td><td><code>knip</code>: unused files, exports and dependencies.</td><td><span class="pill">breaks build</span></td></tr>
-          <tr><td>Duplication</td><td><code>jscpd</code>: blocks of 50+ tokens, threshold 1%.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Duplication</td><td><code>jscpd</code>: blocks of 50+ tokens, <b>no clone allowed</b> (threshold 0, any codebase size). Skips only <code>node_modules</code>, generated migrations and recorded fixtures.</td><td><span class="pill">breaks build</span></td></tr>
           <tr><td>No escape hatches</td><td><code>--max-warnings 0</code>; every <code>eslint-disable</code> needs a written reason, no blanket disables, unused disables are errors.</td><td><span class="pill">breaks build</span></td></tr>
           <tr><td>Formatting</td><td>Biome formatter only (Prettier is not used), checked in CI. No style debates in review.</td><td><span class="pill">breaks build</span></td></tr>
           <tr><td>Security</td><td><code>bun audit</code> for vulnerable dependencies, <code>gitleaks</code> for committed secrets, Dependabot (built into GitHub) for updates.</td><td><span class="pill">breaks build</span></td></tr>
-          <tr><td>Git hooks</td><td><code>lefthook</code>: before commit, a guard that only the orchestrator changes dependencies, then format check and lint on staged files; typecheck before push.</td><td><span class="pill">breaks commit</span></td></tr>
+          <tr><td>Raw ACP outside the relay</td><td><code>bun run acp-leaks</code> (<code>scripts/acp-leaks.ts</code>, part of <code>check</code>): fails when ACP update names appear in app, SDK, UI template or the e2e expectation helpers. A short dated allow-list may only shrink.</td><td><span class="pill">breaks build</span></td></tr>
+          <tr><td>Git hooks</td><td><code>lefthook</code>: before commit, a guard that only the orchestrator changes dependencies, a check that no gate sample is staged, then format check and lint on staged files; before push, typecheck and the coverage gate (the whole end-to-end suite). Git's own environment variables are cleared for the suite, because inside a hook git sets <code>GIT_DIR</code> and tests that create repositories once changed this repository's settings.</td><td><span class="pill">breaks commit and push</span></td></tr>
           <tr><td>Branch rules</td><td>There are no pull requests, so no required reviews. Proposed GitHub ruleset for <code>main</code>: linear history, no force push, no deletion, require the <code>check</code> status, and let the integrate script push directly. Not set up yet; it needs the owner's clicks.</td><td><span class="pill build">proposed</span></td></tr>
           <tr><td>Where work lands</td><td><code>bun run integrate</code>: rebase in a scratch worktree, run the full check there, and only then move <code>main</code>. One landing at a time, and each landing is logged in <code>docs/landings.log</code>.</td><td><span class="pill">breaks landing</span></td></tr>
-          <tr><td>Gate proof</td><td><code>bun run prove-gates</code> writes 23 deliberately bad samples, one per rule, and checks that each one breaks the build for the expected reason.</td><td><span class="pill">built</span></td></tr>
+          <tr><td>Gate proof</td><td><code>bun run prove-gates</code> writes 25 deliberately bad samples, one per rule, and checks that each one breaks the build for the expected reason. It runs as its own CI job, so a gate that silently stops working is caught on the next push. This found four proofs that had already stopped failing.</td><td><span class="pill">built, in CI</span></td></tr>
           <tr><td>Code review</td><td>Every agent runs <code>/code-review</code> on its own diff and fixes what it finds before pushing (a rule in <code>AGENTS.md</code>; a person or tool cannot check it).</td><td><span class="pill build">rule</span></td></tr>
           <tr><td>Dependency age</td><td>Bun <code>minimumReleaseAge</code> of 14 days: no version younger than that is installed.</td><td><span class="pill">breaks install</span></td></tr>
-          <tr><td>CI</td><td>GitHub Actions: <code>ci</code> (the full check on pushes to <code>main</code>, plus gitleaks), <code>audit</code> (nightly and when <code>bun.lock</code> changes), <code>build</code> and <code>release</code>. Set up, but it has not been green yet: the first runs failed and the fixes (dead-code gate, cached installs, the audit moved out of the blocking job) are being proved. Treat CI as unproven until it is green on <code>main</code>.</td><td><span class="pill build">being fixed</span></td></tr>
+          <tr><td>CI</td><td>GitHub Actions: <code>ci</code> (<code>check</code>, <code>prove-gates</code> and gitleaks on every push; <code>coverage-stable</code> nightly), <code>audit</code> (nightly and when <code>bun.lock</code> changes), <code>build</code> (Linux relay and compiled Linux app smoke tests, and a Mac job), <code>release</code> and <code>real-agents</code> (nightly, skipped without API keys). <code>ci</code> has been green on <code>main</code> since 23 Nov 2026 (it had been red since the start; the last causes found were an unpinned Playwright downloading a different Chromium, and a shallow checkout). The Mac job of <code>build</code> is red at the compiled-app smoke step on the latest <code>main</code> run. <code>docs/decisions/2026-11-23-ci.md</code> says what each job proves and how to read a red run.</td><td><span class="pill">green</span> <span class="pill build">Mac job red</span></td></tr>
           <tr><td>UI bundle budget</td><td><code>size-limit</code> on the default UI.</td><td><span class="pill build">phase 3</span></td></tr>
-          <tr><td>E2E coverage</td><td>At least 95% of lines covered by the end-to-end suite, in total and on changed lines, and deterministic. Bun's coverage only sees the test process, so tests run the relay and the app in-process (see How tests are written). Today the number is meaningless, because the relay and app files do not appear in the report.</td><td><span class="pill build">in progress</span></td></tr>
+          <tr><td>E2E coverage</td><td>At least 95% of lines covered by the end-to-end suite, in total (about 98% today) and on the lines a change adds, deterministic (five identical runs, and a nightly repeat). Part of <code>bun run check</code>, the pre-push hook and CI. <code>coverage.config.json</code> holds the thresholds, which only go up, and the exclusions, each with a written reason: seven thin start-up files that only the real-process tests run, the drizzle config, the Swift app, and the whole UI package until its browser coverage is counted (this is the one that still hides a lot: it needs Chromium coverage mapped through source maps, and more browser tests).</td><td><span class="pill">built</span> <span class="pill build">UI not counted</span></td></tr>
         </tbody>
       </table></div>
       <p class="muted">Left out to keep dependencies down: <code>type-coverage</code> (strict typescript-eslint already bans untyped values), <code>commitlint</code>, StrykerJS mutation testing (26 dependencies, too slow for an e2e-only suite) and SonarQube Cloud (repeats these gates).</p>
@@ -1074,7 +1171,7 @@ test("a session that asks to run a command is shown as waiting on you", async ()
   <details>
     <summary>Development loop <small>how parallel agents change the code without breaking main</small></summary>
     <div class="det">
-      <p>From <code>docs/dev-loop-review.md</code>, written after seven agents worked at once, <code>main</code> had never been green, and several finished commits were stuck. The orchestrator is Claude; coding subagents (Sonnet) and research subagents (Opus) do the work.</p>
+      <p>From <code>docs/dev-loop-review.md</code>, written after seven agents worked at once, <code>main</code> had never been green, and several finished commits were stuck. The orchestrator is Claude; coding subagents (Sonnet) and research subagents (Opus) do the work, each in an isolated worktree. <b>What exists today:</b> <code>bun run integrate</code>, <code>bun run done</code>, <code>bun run check</code> and <code>check:quick</code>, the dependency and no-<code>git add -A</code> guards, the decision log (12 files), a landing log, the coverage gate, and CI that is green on <code>main</code> (except the Mac build job). What is still planned is listed in the last bullet.</p>
       <ul>
         <li><b>One worktree and one branch per agent</b>, started from the latest <code>main</code> and kept outside the tools' view (the agent worktree folder is ignored by git and ESLint). An agent edits only the paths its brief names (<code>docs/brief-template.md</code> is the template).</li>
         <li><b>Contracts first.</b> Before a parallel wave, the orchestrator commits the interfaces as code: zod schemas and types in <code>packages/protocol</code>, new SDK signatures, and the end-to-end tests for the feature written as <code>test.todo</code> with full GIVEN / WHEN / THEN bodies. The agents turn the todos into passing tests. If a contract is wrong, the agent stops and reports.</li>
@@ -1082,7 +1179,13 @@ test("a session that asks to run a command is shown as waiting on you", async ()
         <li><b>Parallel, timed gates and a quick check.</b> <code>bun run check</code> starts every gate at once, prints seconds per gate and shows all failures. <code>bun run check:quick</code> checks only the changed files and finishes in seconds.</li>
         <li><b>A done report.</b> <code>bun run done &lt;paths&gt;</code> runs the full check, fails when files outside the owned paths changed, when a dependency changed, when <code>eslint.config.js</code> changed, or when a new <code>eslint-disable</code> was added, and prints a <code>DONE-REPORT</code> block the orchestrator reads instead of prose.</li>
         <li><b>Guardrails.</b> No <code>git add -A</code> or <code>git add .</code>. No repo-wide formatting (<code>bun run format</code> touches only changed files). Dependencies are added only by the orchestrator: a pre-commit guard blocks anyone else from changing <code>bun.lock</code> or a <code>package.json</code> dependency list. Gate samples are written in a scratch copy, so a bad sample is never committed by accident.</li>
-        <li><b>A decision log.</b> One short file per decision in <code>docs/decisions/</code> (context, decision, rejected options, consequences), written on the agent's branch so it merges with the code. The first file, <code>0001</code>, records these decisions.</li>
+        <li><b>A decision log.</b> One short file per decision in <code>docs/decisions/</code> (context, decision, rejected options, consequences), written on the agent's branch so it merges with the code. The first file, <code>0001-dev-loop</code>, records these decisions.</li>
+        <li><b>Lessons from the first two days</b> (22 and 23 Nov 2026), stated plainly:
+          <ul>
+            <li><b>Tests run from a git hook inherited git's environment and changed the repository's own settings.</b> Inside a hook git sets <code>GIT_DIR</code>; tests that created their own repositories ran <code>git init</code>, <code>git config</code> and commits against this repository, which ended up marked bare with a test identity. Fixed: the relay's git calls and the test runner drop git's variables, and the pre-push hook clears them.</li>
+            <li><b>Too many agents on a 4-core machine made tests time out.</b> Several agents each running the full suite at once starved each other, and timing-sensitive tests failed for no code reason. Work was paused until the machine had room. The tests have no timing budget yet; the rule for now is fewer parallel agents, and the suite stays free of sleeps.</li>
+            <li><b>CI was red on GitHub while local checks were green, because nobody looked.</b> <code>main</code> had never been green on GitHub for the first day. When it was looked at, the causes were small (an unpinned Playwright, a shallow checkout, scripts that were not executable). It first went green on 23 Nov. The integrate script only proves a branch on the machine it runs on, so someone has to read the CI result after every landing, and the Mac job in <code>build</code> is red now.</li>
+          </ul></li>
         <li><b>Planned: golden files for the durable state.</b> Real event logs (including one cut off mid-line), a snapshot of the relay protocol with a protocol version number that must change when a field is removed, an old <code>state.db</code> per migration that the app must still open, and an old hidden UI repository that must upgrade cleanly. Also planned: a coverage map of every relay method, event kind and API route, a timing budget per test, a nightly flake run, and a status page generated from the repository.</li>
       </ul>
     </div>
@@ -1111,34 +1214,36 @@ test("a session that asks to run a command is shown as waiting on you", async ()
   <p>The phases keep their order as a dependency map, but they are being built in parallel, not strictly one after another: the default UI, the Modify agent, packaging and the first harness-config work all run at the same time as the relay and app work that they rely on. Step 1 is complete.</p>
 
   <h3>Status</h3>
-  <p class="muted">Counted from the component list on the live status page (22 Nov 2026, 19:20 UTC), which has 40 components. The status page is the detailed view; it is not repeated here.</p>
+  <p class="muted">Counted from the component list on the live status page (DATA block dated 23 Nov 2026, 10:10 UTC), which has 48 components plus 3 external ones drawn only in the diagram. The status page is the detailed view; it is not repeated here. Where the page and the code disagree, this plan follows the code: the page still lists the workdir seam and the single UI client as in progress, and says 24 gate proofs; both are done and there are 25.</p>
   <div class="goals">
-    <div class="goal"><b>21 done</b><span>Protocol, mock agent, test harness, relay, ACP client, event log, permissions, worktrees, files, archive, local app, store, sync, API, SDK, UI versions.</span></div>
-    <div class="goal"><b>16 in progress</b><span>Coverage gate, development loop, ACP spike with Codex, workspace setup, default UI and its parts, Modify agent, UI updates, /_safe, Mac app, packaging, harness config, usage.</span></div>
-    <div class="goal"><b>3 not started</b><span>Relay over SSH, AI gateway, browser VS Code. All in phase 5.</span></div>
+    <div class="goal"><b>38 done</b><span>Repository, plan, gates and CI, protocol, mock agent, test harness, coverage gate, development loop, server lock-down, README, relay and its parts, app, store, sync, API, SDK, default UI and its tabs, HTML and Markdown preview, Modify agent and panel, UI versions and updates, /_safe.</span></div>
+    <div class="goal"><b>7 in progress</b><span>Abstraction changes (the page's own wording), ACP spike with Codex, Mac menu bar app, Mac bundle and dmg, relay over SSH, harness config (no screen yet), usage and analytics.</span></div>
+    <div class="goal"><b>3 not started</b><span>Console in the app, AI gateway, browser VS Code. All phase 5.</span></div>
   </div>
   <p><a href="https://claude.ai/artifact/A88MyfyQ1j1KEUSjRidmRU">Open the live status page</a>. The smaller deferred tasks and the decisions made are in <code>TASKS.md</code>; every open task is in this roadmap, in the risks below, or in that file.</p>
 
   <h3>Phases</h3>
   <div class="phases">
-    <div class="phase"><span class="tag">Step 1 · before any feature work</span><h3>Create and configure the repository <span class="pill">done</span></h3><p>Complete. The GitHub repo, MIT <code>LICENSE</code>, <code>AGENTS.md</code>, the Bun workspace, strict TypeScript, every quality gate (each proved to break the build on a bad sample) and the e2e harness with the mock ACP agent are in place. Left over: CI is set up but not yet green (see the development loop below), and branch rules are proposed, not set.</p></div>
-    <div class="phase"><span class="tag">Phase 0 · setup</span><h3>One-command start <span class="pill">done</span></h3><p>Done: shared protocol package, <code>bun dev</code> and <code>bun run test</code> work from a fresh clone. Remaining: <code>bun dev</code> will also serve the UI once it is wired (phase 3).</p></div>
-    <div class="phase"><span class="tag">Phase 0 · spike</span><h3>Log every ACP event <span class="pill build">in progress</span></h3><p>Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load are confirmed. Remaining: Codex, which needs an OpenAI key with quota and network access to <code>api.openai.com</code>; thinking output is also unconfirmed.</p></div>
-    <div class="phase"><span class="tag">Phase 1 · MVP</span><h3>Local relay and event log <span class="pill build">in progress</span></h3><p>Done: the relay with its daemon, ACP client, event log, permission holding, worktrees and diff, files, archive and usage, behind 18 JSON-RPC methods. Decided: our own relay, not sandbox-agent. Remaining: the guided workspace setup checklist.</p></div>
-    <div class="phase"><span class="tag">Phase 2 · MVP</span><h3>Local app <span class="pill">done</span></h3><p>Done: SQLite store, sync from the local relay with resume from sequence N, derived session status, the HTTP API and one live stream. Remaining (tracked under Abstractions): a workspace id on every live message, and live summaries pushed by the relay.</p></div>
-    <div class="phase"><span class="tag">Phase 3 · MVP</span><h3>API, SDK and default UI <span class="pill build">in progress</span></h3><p>Done: the SDK. The default UI scaffold exists (shell, session list, session view, Monaco changes panel, dialogs) on example data. Remaining: connect it to live data through one injected client, serve it from the app, and add browser tests. <span class="pill opt">not started</span> Preview tab for HTML files in a sandboxed iframe, and for Markdown if a library passes the dependency bar (see the Default UI section).</p></div>
-    <div class="phase"><span class="tag">Phase 4 · MVP</span><h3>Modify agent and UI updates <span class="pill build">in progress</span></h3><p>Done: UI versions in a hidden git repository (Keep, Undo, history, merges) and the staging workspace with checks. Remaining: the fenced Modify agent session (needs the plain-directory workdir), the default-UI update flow, <code>/_safe</code>, and the end-to-end test that a user change and a template change to the same file both survive an update.</p></div>
-    <div class="phase"><span class="tag">MVP release</span><h3>First Mac release <span class="pill build">in progress</span></h3><p><b>Unsigned for now:</b> the Apple Developer ID is parked, so the first build is ad-hoc signed only and needs a manual "Open Anyway" on first launch. Done: compiled relay binaries (the Linux one passes a smoke test), and written but never built on a Mac: the Swift menu bar app, app bundle, signing and notarisation scripts, dmg and Homebrew cask template. Remaining: the first Mac build, the Apple Developer ID and secrets, and in-app updates (deferred).</p></div>
-    <div class="phase"><span class="tag">Phase 5</span><h3>Remote workspaces <span class="pill opt">not started</span></h3><p>SSH connection manager, Add workspace setup with Check and repair, relay deployment and version handshake, Linux relay builds, sessions that survive SSH drops and laptop sleep, and a console on the workspace from inside the app (xterm.js). The same bridge command runs over SSH. Also the abstractions that wait for it (workspace target, version check, per-workspace sync).</p></div>
-    <div class="phase"><span class="tag">Phase 6</span><h3>Harness configuration <span class="pill build">in progress</span></h3><p>Early research and design only: formats are being checked against the real agents. Nothing is wired into the relay, app or SDK yet. Remaining: canonical config store, import of existing setups, MCP, skills, hooks and instructions editors, plan and apply with backups, drift detection.</p></div>
-    <div class="phase"><span class="tag">Phase 7</span><h3>Analytics <span class="pill build">in progress</span></h3><p>Done: the relay works out tokens and cost per finished turn from the events. Remaining: the analytics screens, cost per workspace, behaviour insights, and usage against plan limits for subscription users.</p></div>
+    <div class="phase"><span class="tag">Step 1 · before any feature work</span><h3>Create and configure the repository <span class="pill">done</span></h3><p>Complete. The GitHub repo, MIT <code>LICENSE</code>, <code>AGENTS.md</code>, the Bun workspace, strict TypeScript, every quality gate (each proved to break the build on a bad sample) and the e2e harness with the mock ACP agent are in place. CI is green on <code>main</code> since 23 Nov 2026, apart from the Mac build job. Left over: the owner has not set the branch ruleset (proposed).</p></div>
+    <div class="phase"><span class="tag">Phase 0 · setup</span><h3>One-command start <span class="pill">done</span></h3><p>Done: shared protocol package, and from a fresh clone <code>bun dev</code> serves the default UI with hot reload and opens the browser, and <code>bun run test</code> runs the suite. A README walks through it. Checked on Linux only.</p></div>
+    <div class="phase"><span class="tag">Phase 0 · spike</span><h3>Log every ACP event <span class="pill build">in progress</span></h3><p>Script and notes written. Claude Code ran full turns: streaming, permissions, diffs and session load are confirmed, and nine scenarios pass through relay, app and UI (<code>bun run smoke:real</code>; three bugs found and fixed). Remaining: Codex, which needs an OpenAI key with quota and network access to <code>api.openai.com</code>; thinking output is also unconfirmed.</p></div>
+    <div class="phase"><span class="tag">Phase 1 · MVP</span><h3>Local relay and event log <span class="pill">done</span></h3><p>Done: the relay with its daemon, ACP client, event log, permission holding, worktrees and diff, files (including raw bytes), archive, usage, live session summaries, directory sessions and the config feature, behind 24 JSON-RPC methods and 3 notifications. Decided: our own relay, not sandbox-agent. The workspace setup is a machine check plus per-repo setup; the guided steps for connecting, installing a relay and handshaking agents come with SSH workspaces (phase 5), and config import with phase 6. Not built: resuming sessions after a relay restart, and the model option.</p></div>
+    <div class="phase"><span class="tag">Phase 2 · MVP</span><h3>Local app <span class="pill">done</span></h3><p>Done: SQLite store (five tables, embedded migrations), sync from the local relay with resume from sequence N and live summaries, the HTTP API and one live stream with a workspace id on every message, the security guard, the Preview route, usage, and resources and UI serving that work from a compiled binary. Nothing is left for the local-only version.</p></div>
+    <div class="phase"><span class="tag">Phase 3 · MVP</span><h3>API, SDK and default UI <span class="pill">done</span></h3><p>Done: the SDK, and the default UI on live data through one injected client, served by the app with hot reload, with 38 browser tests, the Modify panel, and the Preview tab for HTML and Markdown (see the Default UI section). Remaining: counting the UI in the coverage gate, the Analytics screen (phase 7), the Console tab (phase 5), a bundle size budget, and the rough edges listed under Default UI.</p></div>
+    <div class="phase"><span class="tag">Phase 4 · MVP</span><h3>Modify agent and UI updates <span class="pill">done</span></h3><p>Done: UI versions in a hidden git repository (Keep, Undo, history, merges), the staging workspace with typecheck and build checks, the fenced Modify agent as a directory session, the default-UI update flow, <code>/_safe</code>, and the panel in the UI; 26 backend tests and browser tests. Remaining: Codex as the Modify agent is untried, the lint and browser-load checks are not built, and a person has not yet used it for a day.</p></div>
+    <div class="phase"><span class="tag">MVP release</span><h3>First Mac release <span class="pill build">in progress</span></h3><p><b>Unsigned for now:</b> the Apple Developer ID is parked, so the first build is ad-hoc signed only and needs a manual "Open Anyway" on first launch. Done: the compiled app works end to end on Linux with no source tree (smoke test in CI), and on a Mac runner the Swift app builds for both chip types and the bundle is assembled and ad-hoc signed. Remaining: the compiled app running on a Mac (the Mac smoke step is red, a fix is not landed), the dmg opening, the menu bar app running, the first release, and later the Developer ID, notarisation, the cask and in-app updates.</p></div>
+    <div class="phase"><span class="tag">Phase 5</span><h3>Remote workspaces <span class="pill build">in progress</span></h3><p>Work on a separate branch, not on <code>main</code>, paused while the machine has room: SSH connection manager, Add workspace setup with Check and repair, relay deployment and version handshake, Linux relay builds, sessions that survive SSH drops and laptop sleep, and a console on the workspace from inside the app (xterm.js). The same bridge command runs over SSH. Also the abstractions that wait for it (workspace target, version check, per-workspace sync).</p></div>
+    <div class="phase"><span class="tag">Phase 6</span><h3>Harness configuration <span class="pill build">in progress</span></h3><p>Done: the backend (canonical items in SQLite, import, plan, apply with backups, rollback, drift) for Claude Code and Codex, checked against the real CLIs; 38 tests. Remaining: the Config screen in the UI (MCP, skills, hooks and instructions editors), real secret storage, per-session MCP servers, subagents, and the Codex items that have no native format (allow and deny lists, commands).</p></div>
+    <div class="phase"><span class="tag">Phase 7</span><h3>Analytics <span class="pill build">in progress</span></h3><p>Done: the relay works out tokens and cost per finished turn from the events, the app serves it, and the UI shows a usage chip and status bar. Remaining: the analytics screens, cost per workspace, behaviour insights, and usage against plan limits for subscription users.</p></div>
   </div>
 
   <h3>Across phases</h3>
   <div class="phases">
-    <div class="phase"><span class="tag">Cross-cutting</span><h3>Coverage gate <span class="pill build">in progress</span></h3><p>At least 95% of lines covered by the end-to-end suite, in total and on changed lines, deterministic, required before any push. Needs the in-process test mode: the relay and the app start inside the test process so coverage can see them, with a few tests against real processes.</p></div>
-    <div class="phase"><span class="tag">Cross-cutting</span><h3>Development loop <span class="pill build">in progress</span></h3><p>Done: parallel timed check, quick check, the integrate script, the done report, the dependency guard, CI fixes and the decision log. Remaining: prove CI green, the owner sets the branch ruleset, contract snapshot and golden files, timing budgets, flake run, generated status page.</p></div>
-    <div class="phase"><span class="tag">Cross-cutting</span><h3>Abstraction changes <span class="pill build">in progress</span></h3><p>The five changes that should land before more code sits on top: normalised agent updates, a workdir with two kinds, live session summaries, a workspace id on every live message, and the UI reading through one client. Later ones are listed under Abstractions.</p></div>
+    <div class="phase"><span class="tag">Cross-cutting</span><h3>Coverage gate <span class="pill">done</span></h3><p>At least 95% of lines covered by the end-to-end suite, in total (about 98%) and on changed lines, deterministic, in <code>check</code>, before every push and in CI, with the relay and the app in the test process. Remaining: the UI package is not counted yet (in progress) and the exclusion list may only shrink.</p></div>
+    <div class="phase"><span class="tag">Cross-cutting</span><h3>Development loop <span class="pill">done</span></h3><p>Done: parallel timed check, quick check, the integrate script, the done report, the dependency guard, the decision log (12 files), gate proofs in CI, and CI green on <code>main</code>. Remaining: the owner sets the branch ruleset, contract snapshot and golden files, timing budgets, a flake run, a generated status page, and a person reading CI after every landing.</p></div>
+    <div class="phase"><span class="tag">Cross-cutting</span><h3>Abstraction changes <span class="pill">done</span></h3><p>All five landed: normalised agent updates, a workdir with two kinds, live session summaries, a workspace id on every live message, and the UI reading through one client. The ones that wait for phase 5, 6 and 7 are listed under Abstractions.</p></div>
+    <div class="phase"><span class="tag">Cross-cutting</span><h3>Local server security <span class="pill">done</span></h3><p>Host and Origin checks and a secret header token on every route, the stream and every served page. Remaining: check on a Mac that the menu bar app sends the token; the same-user and loopback limits stay (see the decision file).</p></div>
+    <div class="phase"><span class="tag">Cross-cutting</span><h3>Real-agent verification <span class="pill build">in progress</span></h3><p>Claude Code: nine scenarios through relay, app and UI, with four recordings that tests replay; a nightly job that skips without keys. Codex: not verified (no working key). Remaining: Codex runs and recordings, thinking blocks, resume after a relay restart.</p></div>
   </div>
 </section>
 
@@ -1154,17 +1259,22 @@ test("a session that asks to run a command is shown as waiting on you", async ()
       <li>Config formats change between harness versions and can silently break translations.</li>
       <li>Aggressive limits slow early work and invite rule disabling; the reason-required rule and review must hold the line.</li>
       <li>An e2e-only suite is slower; it must stay parallel and free of sleeps to keep feedback fast.</li>
-      <li><b>Codex is unverified end to end.</b> Only start-up and sign-in were seen; streaming, diffs and permissions are not confirmed.</li>
-      <li><b>The Mac app has never been built on a Mac.</b> Expect fixes on the first run of the build workflow.</li>
-      <li><b>CI is currently red.</b> It is set up and being fixed; until it is green, <code>main</code> is checked only by the integrate script.</li>
-      <li><b>Coverage needs an in-process test mode,</b> which gives up some process isolation in most tests. A small set of real-process tests has to make up for it.</li>
-      <li><b>The mock agent may drift from the real adapters,</b> so tests pass while real agents behave differently. Recordings of real sessions are the planned check.</li>
+      <li><b>Codex is unverified end to end.</b> The OpenAI key we had has no quota, so only start-up and sign-in were seen. Streaming, diffs, permissions and the Manual-mode behaviour are not confirmed, and there are no recordings of it.</li>
+      <li><b>The Mac app has never been run on a Mac by a person.</b> The Swift app and the bundle build on a Mac runner, but the compiled app, the dmg and the menu bar app have not run there (the Mac smoke step is red on the latest <code>main</code> run). Expect fixes on the first real run.</li>
+      <li><b>The release is about 700 MB per platform</b> (the default UI ships with its own <code>node_modules</code>, and the app carries two Linux relays). Nothing is trimmed; whether that is acceptable to download is open.</li>
+      <li><b>The Modify agent's launch limits exist only for Claude Code.</b> For Codex the relay's permission answers are the only fence, and Codex as the Modify agent has not been tried.</li>
+      <li><b>A session does not survive a relay restart.</b> Claude can load the old session, so resuming is possible, but it is not built: today such a session reads as idle and the next prompt fails with "agent is not running".</li>
+      <li><b>The UI is not in the coverage count yet.</b> About 98% covers everything except the UI package, which has 38 browser tests but no coverage measurement (in progress). Untested corners remain: the Modify panel's edge cases, the workspace setup, editor conflicts.</li>
+      <li><b>Remote (SSH) workspaces are in progress</b> on a separate branch, paused for lack of machine capacity. Several designs (workspace target, version check, event format version, agent environment) wait for it.</li>
+      <li><b>The test suite is sensitive to load.</b> On a busy 4-core machine, timing-dependent tests failed without any code change. There is no timing budget or flake run yet.</li>
+      <li><b>The mock agent can still drift from the real adapters.</b> Recordings of real Claude Code now guard the update shapes, but Codex has none, and no check yet proves that every update kind the mock emits appears in a recording.</li>
+      <li><b>Local server security has a known edge.</b> Other programs running as the same user can read the token file, and another local process that can reach the port can read the token from the served page. That is the operating system's boundary and was accepted; a one-time launch URL would close the second case.</li>
+      <li><b>The unsigned release trains users to bypass Gatekeeper.</b> Accepted for the first release; the README explains the steps.</li>
     </ul></div>
     <div class="box"><h3>Open questions</h3><ul>
       <li>Subscription login or API keys per agent, which decides the gateway.</li>
       <li>How much of the default UI is layout data vs components.</li>
       <li>Where behaviour analytics run: rules, or an agent reviewing sessions.</li>
-      <li>Should the app own all harness config, or only the items it created?</li>
       <li>Allow editing files while an agent is mid-turn, or lock the editor until the turn ends?</li>
       <li><b>External trajectories.</b> Import read-only for viewing only, or as sessions that can be resumed? Imported by the app (cloud trace systems) or by the relay (agent logs on the workspace)? And what about sessions started outside the app?</li>
       <li><b>Containers or cloud sandboxes as workspaces.</b> In scope after SSH, or never? It decides whether a workspace target stays at two kinds.</li>
@@ -1173,8 +1283,11 @@ test("a session that asks to run a command is shown as waiting on you", async ()
       <li><b>The Apple Developer ID is parked.</b> The owner decided (23 Nov 2026) to ship the first release unsigned. macOS will block the app on first open, so the README and release notes explain how to open it (System Settings, Privacy &amp; Security, Open Anyway). Signing, notarisation, the Homebrew cask and in-app updates wait until the owner gets a Developer ID; the release workflow already signs by itself once the secrets exist.</li>
       <li><b>Final product name.</b> AgentControl is a working name (the name is taken elsewhere); the rename touches the SDK scope, data folder, dmg and cask.</li>
       <li><b>The 14-day release age.</b> Keep it, or shorten it so security fixes arrive sooner.</li>
+      <li><b>Release size.</b> Ship 700 MB per platform as is, or trim the default UI's <code>node_modules</code> (monaco-editor is 105 MB) or the carried Linux relays?</li>
+      <li><b>The rough edges of the default UI</b> (first-session download with no progress, typed repository paths, a cost under one cent shown as $0.00, long streams not virtualised): which to fix before the first release.</li>
+      <li><b>A per-session Claude mode.</b> Real Claude Code always runs in Manual mode; a user who wants <code>auto</code> for their own sessions cannot ask for it yet.</li>
     </ul>
-    <p class="muted">Decided and removed from this list: own relay (built), how work is merged (straight to <code>main</code>), the TypeScript version (pinned to 6.0.x), and the menu bar shell (a Swift app). The long tail of smaller tasks is in <code>TASKS.md</code>.</p></div>
+    <p class="muted">Decided and removed from this list: own relay (built), how work is merged (through the integrate script, no pull requests), the TypeScript version (pinned to 6.0.x), the menu bar shell (a Swift app), who owns harness config (only the entries the app created), the coverage approach (in-process tests plus a few real-process ones, a real gate), CI being red (green on <code>main</code>; only the Mac job is open), and local server security (locked down). The long tail of smaller tasks is in <code>TASKS.md</code>.</p></div>
   </div>
 </section>
 
