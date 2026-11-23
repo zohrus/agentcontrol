@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { copyFile, lstat, mkdir, readdir, readFile, realpath, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 /** Maps a relative posix path to the SHA-256 of the file's content. */
 type Fingerprint = Map<string, string>;
@@ -75,11 +75,22 @@ export async function syncDir(options: { from: string; to: string }): Promise<st
   return [...write, ...remove].sort();
 }
 
-/** Refuses a folder that is, or resolves (through symlinks), outside the data folder. */
+/** The real path of `path`, or of its nearest existing parent with the rest appended. */
+async function realpathEvenIfMissing(path: string): Promise<string> {
+  const parent = dirname(path);
+  return realpath(path).catch(async () =>
+    parent === path ? path : join(await realpathEvenIfMissing(parent), basename(path)),
+  );
+}
+
+/**
+ * Refuses a folder that is, or resolves (through symlinks), outside the data folder. A folder that
+ * does not exist yet is judged by its nearest existing parent: on macOS the temp folder is
+ * `/var/...`, a link to `/private/var/...`, and comparing one real and one unresolved path failed.
+ */
 export async function assertInside(options: { dataDir: string; dir: string }): Promise<void> {
-  const base = resolve(options.dataDir);
-  const real = await realpath(options.dir).catch(() => resolve(options.dir));
-  const realBase = await realpath(base).catch(() => base);
+  const real = await realpathEvenIfMissing(resolve(options.dir));
+  const realBase = await realpathEvenIfMissing(resolve(options.dataDir));
   const rel = relative(realBase, real);
   if (rel === "" || rel.startsWith("..") || isAbsolute(rel)) {
     throw new Error(`UI folder ${options.dir} is outside the data folder ${options.dataDir}`);

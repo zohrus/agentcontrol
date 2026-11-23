@@ -1,5 +1,3 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient, type SessionEvent } from "@agentcontrol/sdk";
 import type { ModifyConfig } from "@agentcontrol/app";
@@ -7,6 +5,7 @@ import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
+import { aDataFolder } from "./data-folder.ts";
 import { readApiToken } from "./api-token.ts";
 import { aBrowser, type Browser } from "./browser.ts";
 import { createLocalRepo } from "./local-repo.ts";
@@ -83,6 +82,8 @@ export interface StartOptions {
   previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  /** The data folder is given as a link to the real folder, as macOS's temp folder (/var) is. */
+  dataFolderBehindALink?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -93,9 +94,9 @@ function uiOf(options: StartOptions): { root?: string; dist?: string } {
 }
 
 /** A fresh data folder, local repo, mock agent and relay, all torn down when the test ends. */
-async function prepareWorkspace(relayEnv: Record<string, string> = {}) {
-  const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-app-"));
-  onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
+async function prepareWorkspace(options: StartOptions) {
+  const { relayEnv = {} } = options;
+  const dataDir = await aDataFolder(options.dataFolderBehindALink === true);
   const repoPath = await createLocalRepo();
   const mockAgent = await createMockAgent();
   const env = { ...mockAgentEnvironment(mockAgent), ...relayEnv };
@@ -126,7 +127,7 @@ function accessOf(options: {
 
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
-  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
+  const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options);
   const heard = newHeard();
   const ui = uiOf(options);
   const { previewLifetimeMs } = options;
