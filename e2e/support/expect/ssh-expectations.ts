@@ -96,3 +96,11 @@ export function expectHostAliasesToBe(aliases: string[], wanted: string[]): void
     throw new Error(`expected the host names ${wanted.join(", ")}, but got ${aliases.join(", ")}`);
   }
 }
+
+/** "This Mac" is listed in this connection state, eventually. */
+export function expectThisMacToBe(app: AppAccess, state: ConnectionState): Promise<void> {
+  return expectWorkspaceListedAs(app, {
+    workspace: { id: "local", label: "This Mac" } as WorkspaceInfo,
+    state,
+  });
+}

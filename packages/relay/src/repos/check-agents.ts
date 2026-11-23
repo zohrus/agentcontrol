@@ -10,7 +10,7 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 
 /** How long an agent may take to answer: 20 seconds, or AGENTCONTROL_AGENT_CHECK_TIMEOUT_MS. */
 const timeoutIn = (env: HostEnv): number =>
-  Number(env["AGENTCONTROL_AGENT_CHECK_TIMEOUT_MS"] ?? DEFAULT_TIMEOUT_MS);
+  Number(env["AGENTCONTROL_AGENT_CHECK_TIMEOUT_MS"]) || DEFAULT_TIMEOUT_MS;
 
 const LABELS: Record<AgentKind, string> = {
   "claude-code": "Claude Code",

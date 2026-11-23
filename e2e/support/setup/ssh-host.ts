@@ -87,7 +87,7 @@ async function startReachableMachine(options: { folder: string; home: string }) 
     join(folder, "config.d", "more"),
     "Host other-host\n  HostName example.invalid\n",
   );
-  const text = `Include ${join(folder, "config.d", "*")}\n\n${block}\n\nHost *.wildcard.example\n  User nobody\n`;
+  const text = `Include ${join(folder, "config.d", "*")}\nInclude ${join(folder, "missing.d", "*")}\nInclude ~/.agentcontrol-test-missing/*\n\n${block}\n\nHost *.wildcard.example\n  User nobody\n`;
   await Bun.write(configFile, text);
   return { network, configFile };
 }

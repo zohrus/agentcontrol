@@ -4,6 +4,7 @@ import type { Store, Workspace } from "../store/index.ts";
 import type { Hub, Link } from "../sync/index.ts";
 import { checkThroughRelay } from "./check.ts";
 import { createRegistry, type Entry } from "./registry.ts";
+import { replaceOldRelay } from "./ssh-connect.ts";
 import { sshWorkspaces } from "./ssh-workspaces.ts";
 import type { SshSettings, Workspaces } from "./types.ts";
 
@@ -17,11 +18,26 @@ export interface WorkspacesOptions {
   hub: Hub;
   /** Opens a fresh connection to the local relay; called again after every drop. */
   connectLocal: () => RelayClient;
+  /** Stops the local relay daemon, so that one of the app's version can replace an old one. */
+  stopLocalRelay?: () => Promise<void>;
   ssh: SshSettings;
 }
 
 const connectedLink = (entry: Entry | undefined): Link | undefined =>
   entry?.sync.status().state === "connected" ? entry.sync : undefined;
+
+function startLocal(registry: ReturnType<typeof createRegistry>, options: WorkspacesOptions) {
+  const { stopLocalRelay } = options;
+  const replaceRelay = stopLocalRelay && replaceOldRelay({ stopRelay: stopLocalRelay });
+  return registry.start({
+    workspace: LOCAL,
+    sync: {
+      version: VERSION,
+      connect: options.connectLocal,
+      ...(replaceRelay && { replaceRelay }),
+    },
+  });
+}
 
 /**
  * Starts the local workspace and reconnects every ssh workspace saved earlier. Only the local one is
@@ -31,10 +47,7 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
   const { store, ssh } = options;
   const registry = createRegistry({ store, hub: options.hub });
   store.upsertWorkspace(LOCAL);
-  const local = registry.start({
-    workspace: LOCAL,
-    sync: { version: VERSION, connect: options.connectLocal },
-  });
+  const local = startLocal(registry, options);
   const remote = sshWorkspaces({ store, registry, settings: ssh });
   store
     .listWorkspaces()
@@ -49,7 +62,7 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
     link: (id) => connectedLink(registry.entries.get(id)),
     check: (id) => (id === LOCAL.id ? checkThroughRelay(local.sync) : remote.operations.check(id)),
     hosts: () => sshConfigHosts(ssh.configFile),
-    ready: () => local.sync.ready,
+    ready: () => Promise.race([local.sync.ready, local.waiter.needsUpdate]),
     stop: async () => {
       await Promise.all([...registry.entries.values()].map((entry) => entry.sync.stop()));
     },

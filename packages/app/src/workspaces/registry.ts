@@ -52,6 +52,7 @@ export function createRegistry(parts: { store: Store; hub: Hub }) {
   return {
     entries,
     start,
+    publish,
     /** Every workspace in the store, with the state of its connection. */
     list: (): WorkspaceInfo[] =>
       store.listWorkspaces().map((workspace) => infoOf(workspace, statusOf(workspace.id))),

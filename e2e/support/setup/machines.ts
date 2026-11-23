@@ -29,3 +29,6 @@ export const machineWithoutGitIdentity = {
   GIT_CONFIG_GLOBAL: "/dev/null",
   GIT_CONFIG_NOSYSTEM: "1",
 };
+
+/** The environment of a machine whose relay reports an older version than the app. */
+export const machineWithRelayOfAnotherVersion = { AGENTCONTROL_RELAY_VERSION: "0.0.1" };

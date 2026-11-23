@@ -16,6 +16,7 @@ const app = await startApp({
   modify: readModifyConfig(process.env),
   ui: { root: config.uiRoot, dist: config.uiDist },
   connectRelay: () => relayClientOver(spawnBridge({ argv: target.bridgeCommand() })),
+  stopLocalRelay: () => target.stopRelay(),
   ...(config.relayBinaries === undefined
     ? {}
     : { ssh: { relayBinaryFor: relayBinariesIn(config.relayBinaries) } }),

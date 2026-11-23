@@ -123,7 +123,7 @@ export async function runConnections(options: {
   let wait = BACKOFF_START_MS;
   while (!signal.aborted) {
     const outcome = await oneConnection(options);
-    wait = outcome === "failed" ? Math.min(wait * 2, settings.backoffMaxMs) : BACKOFF_START_MS;
-    if (outcome !== "replaced") await pause(wait, signal);
+    wait = outcome === "synced" ? BACKOFF_START_MS : Math.min(wait * 2, settings.backoffMaxMs);
+    await pause(wait, signal);
   }
 }

@@ -20,6 +20,8 @@ export interface AppOptions {
   port: number;
   /** Opens a fresh connection to the local relay; called again after every drop. */
   connectRelay: () => RelayClient;
+  /** Stops the local relay daemon; given, an idle relay of another version is replaced at start. */
+  stopLocalRelay?: () => Promise<void>;
   /**
    * How ssh workspaces are reached. By default the system's ssh config is used and relay binaries
    * are looked for in the `dist/` folder of a source checkout.
@@ -84,14 +86,24 @@ async function listen(options: AppOptions, parts: Parts) {
   return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
 }
 
+function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): Workspaces {
+  const ssh = { relayBinaryFor: relayBinariesIn(sourceCheckoutBinaries), ...options.ssh };
+  const { stopLocalRelay } = options;
+  return createWorkspaces({
+    ...parts,
+    connectLocal: options.connectRelay,
+    ssh,
+    ...(stopLocalRelay && { stopLocalRelay }),
+  });
+}
+
 /** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the local relay is synced. */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
   const token = createToken();
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
-  const ssh = { relayBinaryFor: relayBinariesIn(sourceCheckoutBinaries), ...options.ssh };
-  const workspaces = createWorkspaces({ store, hub, connectLocal: options.connectRelay, ssh });
+  const workspaces = workspacesOf(options, { store, hub });
   let ui: UiHandler | undefined;
   const server = await Promise.try(async () => {
     const started = await startUi(options.ui ?? {});

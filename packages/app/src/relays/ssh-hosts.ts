@@ -22,7 +22,19 @@ function includesIn(text: string): string[] {
 /** The files an `Include` pattern names; a `*` is allowed in the last part only. */
 function matchingFiles(pattern: string): string[] {
   const glob = new Bun.Glob(basename(pattern));
-  return [...glob.scanSync({ cwd: dirname(pattern), absolute: true })];
+  try {
+    return [...glob.scanSync({ cwd: dirname(pattern), absolute: true })];
+  } catch {
+    return []; // the folder does not exist: ssh ignores such an Include too
+  }
+}
+
+/** Where an `Include` points: `~/` is the home folder, a relative path is relative to the ssh folder. */
+function includePath(options: { pattern: string; sshDir: string }): string {
+  const { pattern, sshDir } = options;
+  if (isAbsolute(pattern)) return pattern;
+  if (pattern.startsWith("~/")) return join(homedir(), pattern.slice(2));
+  return join(sshDir, pattern);
 }
 
 async function readIfThere(path: string): Promise<string> {
@@ -31,15 +43,18 @@ async function readIfThere(path: string): Promise<string> {
     .catch(() => "");
 }
 
-async function hostsInFile(options: { path: string; depth: number }): Promise<string[]> {
-  const { path, depth } = options;
+async function hostsInFile(options: {
+  path: string;
+  depth: number;
+  sshDir: string;
+}): Promise<string[]> {
+  const { path, depth, sshDir } = options;
   const text = await readIfThere(path);
   if (depth >= MAX_INCLUDE_DEPTH) return hostsInConfig(text);
-  const base = dirname(path);
-  const patterns = includesIn(text).map((p) => (isAbsolute(p) ? p : join(base, p)));
+  const patterns = includesIn(text).map((pattern) => includePath({ pattern, sshDir }));
   const files = patterns.flatMap(matchingFiles);
   const included = await Promise.all(
-    files.map((file) => hostsInFile({ path: file, depth: depth + 1 })),
+    files.map((file) => hostsInFile({ path: file, depth: depth + 1, sshDir })),
   );
   return [...hostsInConfig(text), ...included.flat()];
 }
@@ -47,5 +62,5 @@ async function hostsInFile(options: { path: string; depth: number }): Promise<st
 /** The host aliases a user has in their ssh config (`~/.ssh/config`, or the given file), in order, once each. */
 export async function sshConfigHosts(configFile?: string): Promise<string[]> {
   const path = configFile ?? join(homedir(), ".ssh", "config");
-  return [...new Set(await hostsInFile({ path, depth: 0 }))];
+  return [...new Set(await hostsInFile({ path, depth: 0, sshDir: dirname(path) }))];
 }

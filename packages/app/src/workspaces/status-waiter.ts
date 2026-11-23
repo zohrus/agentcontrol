@@ -9,8 +9,15 @@ const isSettled = (status: ConnectionStatus): boolean => SETTLED.has(status.stat
 /** Lets callers wait for the next time a workspace's connection settles. */
 export function statusWaiter() {
   const waiting = new Set<(status: ConnectionStatus) => void>();
+  let signalNeedsUpdate = (): void => undefined;
+  const needsUpdate = new Promise<void>((resolve) => {
+    signalNeedsUpdate = resolve;
+  });
   return {
+    /** Resolves the first time the relay is found to be of another version than the app. */
+    needsUpdate,
     notify: (status: ConnectionStatus): void => {
+      if (status.state === "needs-relay-update") signalNeedsUpdate();
       if (!isSettled(status)) return;
       waiting.forEach((resolve) => {
         resolve(status);

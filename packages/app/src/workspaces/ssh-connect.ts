@@ -47,7 +47,7 @@ export function sshConnector(options: {
  * What to do when the host's relay has another version than the app: stop it if none of its
  * sessions is working, so that the next connection starts the app's version; otherwise leave it.
  */
-export function replaceOldRelay(target: WorkspaceTarget): ReplaceRelay {
+export function replaceOldRelay(target: Pick<WorkspaceTarget, "stopRelay">): ReplaceRelay {
   return async ({ client, mismatch }) => {
     const { sessions } = await client.call(RelayName.sessionsList, {});
     const busy = sessions.filter(

@@ -77,8 +77,10 @@ async function remove(context: Context, id: string): Promise<WorkspaceInfo> {
   const entry = entryOf(context, id);
   await entry.sync.stop();
   context.registry.entries.delete(id);
+  context.targets.delete(id);
   const removed = { ...entry.workspace, removedAt: new Date().toISOString() };
   context.store.upsertWorkspace(removed);
+  context.registry.publish(removed, { state: "removed" });
   return infoOf(removed, { state: "removed" });
 }
 
