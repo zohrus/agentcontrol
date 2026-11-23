@@ -51,7 +51,7 @@ async function write(
 ): Promise<SessionEvent> {
   const file = sessionFile(ctx.dir, sessionId);
   const state = await stateOf(ctx, sessionId);
-  const meta = { sessionId, seq: state.lastSeq + 1, ts: ctx.now().toISOString() };
+  const meta = { sessionId, seq: state.lastSeq + 1, ts: input.ts ?? ctx.now().toISOString() };
   const event: SessionEvent = { ...input, ...meta };
   await mkdir(dirname(file), { recursive: true });
   await appendFile(file, `${state.needsNewline ? "\n" : ""}${JSON.stringify(event)}\n`);

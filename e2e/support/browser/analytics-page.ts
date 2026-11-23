@@ -1,12 +1,12 @@
 import type { Page } from "./playwright.ts";
+import { firstTextOf, textOf } from "./read-text.ts";
 
 /** The insights and the status bar, which sit around the table and charts. */
 function aroundTheTable(page: Page) {
   const insight = (rule: string) => page.locator(`[data-testid="insight-${rule}"]`);
   return {
     /** The sentence of one insight (by rule name), or "" when it is not listed. */
-    insightText: async (rule: string): Promise<string> =>
-      (await insight(rule).count()) === 0 ? "" : insight(rule).innerText(),
+    insightText: async (rule: string): Promise<string> => textOf(insight(rule)),
     /** Presses a session's name under an insight. */
     opensSessionFromInsight: (call: { rule: string; title: string }) =>
       insight(call.rule).getByRole("button", { name: call.title }).click(),
@@ -21,13 +21,10 @@ export function analyticsPage(page: Page) {
   return {
     ...aroundTheTable(page),
     /** The text of the whole Analytics screen, or "" when it is not open. */
-    analyticsText: async (): Promise<string> =>
-      (await view.count()) === 0 ? "" : view.innerText(),
+    analyticsText: (): Promise<string> => textOf(view),
     /** The big number of a headline tile ("Sessions", "Tokens", "Cost", ...). */
-    headlineValue: async (label: string): Promise<string> => {
-      const tile = page.locator(`[data-testid="headline-${label}"]`);
-      return (await tile.count()) === 0 ? "" : tile.innerText();
-    },
+    headlineValue: (label: string): Promise<string> =>
+      textOf(page.locator(`[data-testid="headline-${label}"]`)),
     /** Presses a column heading of the session table ("Tokens", "Cost", ...). */
     sortsTheTableBy: (heading: string) =>
       view.getByRole("columnheader", { name: heading }).getByRole("button").click(),
@@ -38,9 +35,6 @@ export function analyticsPage(page: Page) {
     opensSessionFromTheTable: (title: string) =>
       page.locator('[data-testid="analytics-row"]').getByRole("button", { name: title }).click(),
     /** The title in the open session's header, or "" when no session is open. */
-    openSessionTitle: async (): Promise<string> => {
-      const heading = page.locator("header h4").first();
-      return (await heading.count()) === 0 ? "" : heading.innerText();
-    },
+    openSessionTitle: (): Promise<string> => firstTextOf(page.locator("header h4")),
   };
 }

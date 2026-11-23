@@ -29,7 +29,7 @@ const reducers: Reducers = {
   "agent-interrupted": (state, { seq, payload }) => {
     const dropped = payload.droppedRequests;
     const waiting = dropped === 0 ? "" : ` ${String(dropped)} waiting request(s) were dropped.`;
-    const text = `Interrupted: the relay stopped while the agent was running.${waiting}`;
+    const text = `The agent was interrupted when the relay stopped.${waiting}`;
     state.items.push({ type: "notice", key: itemKey("interrupted", seq), text });
   },
   "session-resumed": (state, { seq, payload }) => {
@@ -57,10 +57,27 @@ function dispatch<K extends keyof EventMap>(state: ViewState, kind: K, event: Ev
   reducers[kind](state, event);
 }
 
+const LIFECYCLE = ["agent-started", "agent-exited", "agent-interrupted"];
+
+/**
+ * Without the exits that only record the relay stopping: the interruption says it in one line, so
+ * an exit whose next lifecycle event is the interruption (the stop's signal, or the exit the relay
+ * wrote for an agent that died with it) is not shown as a second line.
+ */
+function withoutInterruptedExits(events: readonly SessionEvent[]): SessionEvent[] {
+  let next: string | undefined;
+  const kept = events.toReversed().filter((event) => {
+    const hidden = event.kind === "agent-exited" && next === "agent-interrupted";
+    if (LIFECYCLE.includes(event.kind)) next = event.kind;
+    return !hidden;
+  });
+  return kept.toReversed();
+}
+
 /** Reduces the relay event log to the items the stream shows. Pure. */
 export function buildViewItems(events: readonly SessionEvent[]): ViewItem[] {
   const state: ViewState = { items: [] };
-  for (const event of events) dispatch(state, event.kind, event);
+  for (const event of withoutInterruptedExits(events)) dispatch(state, event.kind, event);
   return groupTools(state.items);
 }
 

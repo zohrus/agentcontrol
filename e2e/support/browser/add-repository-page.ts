@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { firstTextOf } from "./read-text.ts";
 
 /** Opens New session, chooses "Add repository…", types the folder and presses Add. */
 async function typesRepositoryFolder(page: Page, folder: string): Promise<void> {
@@ -25,7 +26,7 @@ export function addRepositoryPage(page: Page) {
     failureNoticeText: async (): Promise<string> => {
       // By attribute, because an open dialog hides everything behind it from role queries.
       const notice = page.locator('[role="alert"]');
-      return (await notice.count()) === 0 ? "" : notice.first().innerText();
+      return firstTextOf(notice);
     },
   };
 }

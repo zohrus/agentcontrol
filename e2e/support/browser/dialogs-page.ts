@@ -1,5 +1,6 @@
 import { addRepositoryPage } from "./add-repository-page.ts";
 import type { Page } from "./playwright.ts";
+import { textOf } from "./read-text.ts";
 
 const dialogOf = (page: Page) => page.getByRole("dialog");
 
@@ -64,7 +65,6 @@ export function dialogsPage(page: Page) {
     },
     archivesAnyway: () => dialogOf(page).getByRole("button", { name: "Archive anyway" }).click(),
     /** The text of the open dialog, or "" when none is open. */
-    dialogText: async (): Promise<string> =>
-      (await dialogOf(page).count()) === 0 ? "" : dialogOf(page).innerText(),
+    dialogText: (): Promise<string> => textOf(dialogOf(page)),
   };
 }

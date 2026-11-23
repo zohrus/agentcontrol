@@ -1,14 +1,11 @@
 import { TerminalServerMessage } from "@agentcontrol/protocol";
 import type { OpenTerminal, TerminalConnection } from "./terminal-types.ts";
 
+/** The app only ever sends `JSON.stringify` text frames (`app/src/terminal/socket.ts`). */
 function parseMessage(data: unknown): TerminalServerMessage | undefined {
   if (typeof data !== "string") return undefined;
-  try {
-    const checked = TerminalServerMessage.safeParse(JSON.parse(data));
-    return checked.success ? checked.data : undefined;
-  } catch {
-    return undefined;
-  }
+  const checked = TerminalServerMessage.safeParse(JSON.parse(data));
+  return checked.success ? checked.data : undefined;
 }
 
 const REFUSED =

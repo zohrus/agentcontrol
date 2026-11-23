@@ -5,7 +5,14 @@ import { StatusDot } from "./status-dot.tsx";
 import type { SessionRowProps } from "./types.ts";
 
 function WaitingBadge({ entry }: Pick<SessionRowProps, "entry">) {
-  const reason = entry.summary.waitingReason;
+  const { waitingReason: reason, status } = entry.summary;
+  if (status === "interrupted") {
+    return (
+      <Badge tone="waiting" className="ml-auto">
+        resume
+      </Badge>
+    );
+  }
   if (!reason) return null;
   const tone = reason === "setup-failed" ? "failed" : "waiting";
   return (

@@ -1,11 +1,13 @@
 import { afterEach, setDefaultTimeout, test } from "bun:test";
 import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
 import { expectAppToRefuse } from "../support/expect/app-refusal-expectations.ts";
+import { expectRefusalToNameTheWorkspace } from "../support/expect/relay-gone-expectations.ts";
 import {
   expectChecklistStepToBe,
   expectRefusalToSay,
   expectWorkspaceListedAs,
   expectWorkspaceToBe,
+  expectWorkspaceToBecome,
   expectWorkspaceToExplain,
 } from "../support/expect/ssh-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -102,4 +104,25 @@ test("the checklist of an unreachable host says it could not connect and skips t
   // AND the steps that need the host were skipped
   expectChecklistStepToBe(steps, { id: "install", status: "skipped" });
   expectChecklistStepToBe(steps, { id: "relay", status: "skipped" });
+});
+
+test("a request for a connected workspace whose host then went away is refused, naming the workspace", async () => {
+  // ********************************************************************
+  // ** GIVEN a connected ssh workspace whose host has gone away, and the app has said so
+  // ********************************************************************
+  const { app, host, user } = await startAppWithSshHost();
+  const workspace = await user.addsTheHost();
+  host.network.goesDown();
+  await expectWorkspaceToBecome(app, { workspace, state: "offline" });
+
+  // ********************************************************************
+  // ** WHEN the user starts a session on it
+  // ********************************************************************
+  const refused = await user.triesToStartSessionOn(workspace, { prompt: "Work remotely" });
+
+  // ********************************************************************
+  // ** THEN the app refuses with "relay unavailable" and names the workspace
+  // ********************************************************************
+  expectAppToRefuse(refused, { status: 503, code: "relay-unavailable" });
+  expectRefusalToNameTheWorkspace(refused, workspace.id);
 });

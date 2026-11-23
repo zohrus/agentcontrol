@@ -12,6 +12,7 @@ import { sessionPage } from "./session-page.ts";
 import { shellPage } from "./shell-page.ts";
 import { workspacePage } from "./workspace-page.ts";
 import { workspacesPage } from "./workspaces-page.ts";
+import { firstTextOf } from "./read-text.ts";
 
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
@@ -35,7 +36,7 @@ export function appPageOf(page: Page) {
       const status = page
         .getByRole("status")
         .filter({ hasText: /^(Connected|Reconnecting|Offline)/ });
-      return (await status.count()) === 0 ? "" : status.first().innerText();
+      return firstTextOf(status);
     },
     /** The part of the page address after `#`, which names the open session. */
     addressHash: () => page.evaluate<string>("window.location.hash"),

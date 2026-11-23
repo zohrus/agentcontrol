@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { textOf } from "./read-text.ts";
 
 /** What the user types into an item's form, by the label of each box, and where it applies. */
 export type ItemForm = {
@@ -51,7 +52,7 @@ function openForm(page: Page) {
     /** What the open form says, such as the problem with what was typed; "" when it is closed. */
     formText: async (verb: string, noun: string): Promise<string> => {
       const editor = editorOf(page, { verb, noun });
-      return (await editor.count()) === 0 ? "" : editor.innerText();
+      return textOf(editor);
     },
   };
 }

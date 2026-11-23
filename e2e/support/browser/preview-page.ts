@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { firstTextOf, textOf } from "./read-text.ts";
 
 const LINK_WAIT_MS = 15_000;
 
@@ -6,8 +7,7 @@ const frameOf = (page: Page) => page.frameLocator('[data-testid="preview-frame"]
 
 /** The text of the first element matching `selector` inside the preview, "" when there is none. */
 async function textInPreview(page: Page, selector: string): Promise<string> {
-  const element = frameOf(page).locator(selector).first();
-  return (await element.count()) === 0 ? "" : element.innerText();
+  return firstTextOf(frameOf(page).locator(selector));
 }
 
 async function linkOpening(page: Page, text: string): Promise<{ target: string; rel: string }> {
@@ -70,8 +70,7 @@ export function previewPage(page: Page) {
     previewFrameSandbox: async (): Promise<string> =>
       (await page.locator('[data-testid="preview-frame"]').getAttribute("sandbox")) ?? "",
     previewNotice: async (): Promise<string> => {
-      const notice = page.locator('[data-testid="preview-picker"]');
-      return (await notice.count()) === 0 ? "" : notice.innerText();
+      return textOf(page.locator('[data-testid="preview-picker"]'));
     },
   };
 }
