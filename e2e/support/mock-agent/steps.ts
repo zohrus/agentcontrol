@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { methods } from "@agentclientprotocol/sdk";
 import { processSteps, writeFile } from "./file-steps.ts";
 import type { Step, StopReason } from "./script.ts";
+import { streamSteps } from "./stream-steps.ts";
 import { ALLOW_OR_REJECT, type Handler, send, type TurnContext } from "./turn.ts";
 
 export type { TurnContext } from "./turn.ts";
@@ -127,6 +128,7 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   askToRunCommand,
   writeFile,
   ...processSteps,
+  ...streamSteps,
   compactContext,
   finish,
   waitUntilCancelled,

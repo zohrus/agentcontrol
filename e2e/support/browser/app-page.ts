@@ -3,6 +3,8 @@ import { dialogsPage } from "./dialogs-page.ts";
 import type { Page } from "./playwright.ts";
 import { sessionListPage } from "./session-list-page.ts";
 import { sessionPage } from "./session-page.ts";
+import { shellPage } from "./shell-page.ts";
+import { workspacePage } from "./workspace-page.ts";
 
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
@@ -11,6 +13,8 @@ export function appPageOf(page: Page) {
     ...sessionPage(page),
     ...changesPage(page),
     ...dialogsPage(page),
+    ...workspacePage(page),
+    ...shellPage(page),
     /** The connection indicator in the status bar: "Connected", "Reconnecting…" or "Offline". */
     connectionText: async (): Promise<string> => {
       const status = page

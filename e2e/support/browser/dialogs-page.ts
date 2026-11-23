@@ -3,25 +3,60 @@ import type { Page } from "./playwright.ts";
 const dialogOf = (page: Page) => page.getByRole("dialog");
 
 /** What to start a session with, typed into the New session dialog. */
-export type NewSession = { repoPath: string; agent: string; prompt: string };
+export type NewSession = { repoPath: string; agent: string; prompt: string; baseBranch?: string };
+
+/** The New session dialog, field by field. */
+function newSessionForm(page: Page) {
+  const dialog = dialogOf(page);
+  return {
+    opensNewSession: () => page.getByRole("button", { name: "New session", exact: true }).click(),
+    choosesToAddARepository: () =>
+      dialog
+        .getByRole("combobox", { name: /^Repository/ })
+        .selectOption({ label: "Add repository…" }),
+    typesRepositoryFolder: (folder: string) => dialog.getByLabel("Repository folder").fill(folder),
+    addsTheRepository: () => dialog.getByRole("button", { name: "Add", exact: true }).click(),
+    choosesAgent: (agent: string) =>
+      dialog.getByRole("combobox", { name: /^Agent/ }).selectOption({ label: agent }),
+    typesBaseBranch: (branch: string) => dialog.getByLabel("Base branch").fill(branch),
+    typesPrompt: (prompt: string) => dialog.getByLabel("What should the agent do?").fill(prompt),
+    startsTheSession: () => dialog.getByRole("button", { name: "Start", exact: true }).click(),
+    cancelsTheDialog: () => dialog.getByRole("button", { name: "Cancel", exact: true }).click(),
+    /** Visits a field and leaves it again, so the dialog checks it and may complain. */
+    leavesField: async (label: string): Promise<void> => {
+      const field = dialog.getByLabel(label);
+      await field.focus();
+      await field.blur();
+    },
+    leavesRepositoryChoice: async (): Promise<void> => {
+      const choice = dialog.getByRole("combobox", { name: /^Repository/ });
+      await choice.focus();
+      await choice.blur();
+    },
+    startIsEnabled: () => dialog.getByRole("button", { name: "Start", exact: true }).isEnabled(),
+  };
+}
 
 /** The dialogs: New session, and the archive warning. */
 export function dialogsPage(page: Page) {
+  const form = newSessionForm(page);
   return {
+    ...form,
     /** Opens New session, adds the repository by its folder, picks the agent and starts. */
     startsSession: async (session: NewSession): Promise<void> => {
-      await page.getByRole("button", { name: "New session", exact: true }).click();
-      const dialog = dialogOf(page);
-      await dialog
-        .getByRole("combobox", { name: /^Repository/ })
-        .selectOption({ label: "Add repository…" });
-      await dialog.getByLabel("Repository folder").fill(session.repoPath);
-      await dialog.getByRole("button", { name: "Add", exact: true }).click();
-      await dialog.getByRole("combobox", { name: /^Agent/ }).selectOption({ label: session.agent });
-      await dialog.getByLabel("What should the agent do?").fill(session.prompt);
-      await dialog.getByRole("button", { name: "Start", exact: true }).click();
+      await form.opensNewSession();
+      await form.choosesToAddARepository();
+      await form.typesRepositoryFolder(session.repoPath);
+      await form.addsTheRepository();
+      await form.choosesAgent(session.agent);
+      await form.typesPrompt(session.prompt);
+      if (session.baseBranch !== undefined) await form.typesBaseBranch(session.baseBranch);
+      await form.startsTheSession();
     },
     archivesAnyway: () => dialogOf(page).getByRole("button", { name: "Archive anyway" }).click(),
+    /** Closes the "coming soon" notice. */
+    dismissesTheNotice: () =>
+      dialogOf(page).getByRole("button", { name: "OK", exact: true }).click(),
     /** The text of the open dialog, or "" when none is open. */
     dialogText: async (): Promise<string> =>
       (await dialogOf(page).count()) === 0 ? "" : dialogOf(page).innerText(),

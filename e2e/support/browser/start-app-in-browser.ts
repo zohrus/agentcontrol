@@ -1,7 +1,8 @@
 import { onTestEnd } from "../setup/cleanup.ts";
 import { type RunningApp, startAppWithLocalWorkspace } from "../setup/start-app.ts";
 import { type AppPage, appPageOf } from "./app-page.ts";
-import { launchChromium, type Page } from "./playwright.ts";
+import { type Browser, launchChromium, type Page } from "./playwright.ts";
+import { recordBrowserCoverage } from "./ui-coverage/collect.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
 
@@ -14,6 +15,12 @@ export type AppInBrowser = RunningApp & { readonly page: AppPage };
 export type BrowserOptions = {
   viewport?: { width: number; height: number };
   colorScheme?: "light" | "dark";
+  /** Extra environment for the relay, for example to point git at a config file. */
+  relayEnv?: Record<string, string>;
+  /** The page's clock can be moved forward, so hours and days pass at once. */
+  controllableClock?: boolean;
+  /** The browser refuses to store anything, as in a locked-down private window. */
+  storageBlocked?: boolean;
 };
 
 async function waitUntilConnected(page: Page): Promise<void> {
@@ -21,12 +28,29 @@ async function waitUntilConnected(page: Page): Promise<void> {
   await connected.first().waitFor({ state: "visible", timeout: CONNECT_TIMEOUT_MS });
 }
 
+/** Makes `sessionStorage` throw, as some privacy modes do. */
+const REFUSE_STORAGE = `Object.defineProperty(window, "sessionStorage", {
+  get: () => { throw new DOMException("blocked", "SecurityError"); },
+});`;
+
+async function prepareTab(tab: Page, options: BrowserOptions): Promise<void> {
+  await recordBrowserCoverage(tab);
+  if (options.controllableClock) await tab.clock.install();
+  if (options.storageBlocked) await tab.addInitScript(REFUSE_STORAGE);
+}
+
 /** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
 export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
-  const app = await startAppWithLocalWorkspace({ withUi: true });
-  const browser = await launchChromium();
+  const { relayEnv, ...tabOptions } = options;
+  const app = await startAppWithLocalWorkspace({ withUi: true, ...(relayEnv && { relayEnv }) });
+  const browser: Browser = await launchChromium();
   onTestEnd(() => browser.close());
-  const tab = await browser.newPage(options);
+  const { viewport, colorScheme } = tabOptions;
+  const tab = await browser.newPage({
+    ...(viewport && { viewport }),
+    ...(colorScheme && { colorScheme }),
+  });
+  await prepareTab(tab, tabOptions);
   await tab.goto(app.baseUrl);
   await waitUntilConnected(tab);
   return Object.assign(app, { page: appPageOf(tab) });

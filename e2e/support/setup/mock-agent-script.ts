@@ -18,6 +18,14 @@ export interface MockAgent {
   willEchoLaunchSettings(): void;
   /** The agent process dies in the middle of the turn. */
   willExitUnexpectedly(): void;
+  /** The agent reads this file: a one-line read tool call. */
+  willReadFile(path: string): void;
+  /** The agent searches the code: a one-line search tool call. */
+  willSearchFor(query: string): void;
+  /** The agent switches to this mode (for example "plan"). */
+  willChangeModeTo(modeId: string): void;
+  /** The agent tells the user something without being asked: a muted line in the conversation. */
+  willShowNotice(title: string, description?: string): void;
   /** Forgets every step so far, for a second agent process that must run a different script. */
   startsNewScript(): void;
   /** The agent reports compacting its context: an ACP update kind the relay does not interpret. */
@@ -38,6 +46,29 @@ type ScriptedSteps = Omit<
   MockAgent,
   "dataFolder" | "scriptPath" | "onNextPrompt" | "writeScript" | "startsNewScript"
 >;
+
+function streamLineSteps(
+  add: (step: Step) => void,
+): Pick<MockAgent, "willReadFile" | "willSearchFor" | "willChangeModeTo" | "willShowNotice"> {
+  return {
+    willReadFile: (path) => {
+      add({ kind: "readFile", path });
+    },
+    willSearchFor: (query) => {
+      add({ kind: "searchFor", query });
+    },
+    willChangeModeTo: (modeId) => {
+      add({ kind: "changeMode", modeId });
+    },
+    willShowNotice: (title, description) => {
+      add(
+        description === undefined
+          ? { kind: "showNotice", title }
+          : { kind: "showNotice", title, description },
+      );
+    },
+  };
+}
 
 function turnEndingSteps(
   add: (step: Step) => void,
@@ -89,6 +120,7 @@ function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
       add({ kind: "plan", entries: tasks.map((content) => ({ content, status: "pending" })) });
     },
     ...fileSteps(add),
+    ...streamLineSteps(add),
     willAskToRunCommand: (command) => {
       add({ kind: "askToRunCommand", command });
     },
