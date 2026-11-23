@@ -15,6 +15,11 @@ const REASONS: Array<[RegExp, (host: string) => string]> = [
     () => "The machine did not answer. Check that it is on and reachable from here.",
   ],
   [
+    /closed by remote host|kex_exchange_identification|reset by peer|Broken pipe/i,
+    () =>
+      "The connection to the machine was closed. It may be restarting or behind a flaky network.",
+  ],
+  [
     /Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED/i,
     (host) =>
       `The host key is not trusted yet, or has changed. Run \`ssh ${host}\` in a terminal once to check it.`,
@@ -26,11 +31,9 @@ const REASONS: Array<[RegExp, (host: string) => string]> = [
   ],
 ];
 
-/** What went wrong, from the text ssh printed, in plain words; undefined when it printed nothing. */
+/** What went wrong, from the text ssh printed, in plain words; undefined when it is not a known case. */
 export function explainSsh(options: { stderr: string; host: string }): string | undefined {
   const { stderr, host } = options;
   const known = REASONS.find(([pattern]) => pattern.test(stderr));
-  if (known) return known[1](host);
-  const last = stderr.split("\n").findLast((line) => line.trim() !== "");
-  return last?.trim();
+  return known?.[1](host);
 }

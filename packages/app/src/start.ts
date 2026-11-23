@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import type { RelayClient } from "./relays/index.ts";
+import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
 import { createStore, type Store } from "./store/index.ts";
 import { createHub, type Hub } from "./sync/index.ts";
@@ -71,18 +72,22 @@ interface Parts {
   hub: Hub;
   workspaces: Workspaces;
   ui: UiHandler | undefined;
+  token: ReturnType<typeof createToken>;
 }
 
 async function listen(options: AppOptions, parts: Parts) {
   await parts.workspaces.ready();
   const modify = modifyOf(options, parts);
   if (options.modify) await modify.ready();
-  return startServer({ port: options.port, deps: { ...parts, modify }, ui: parts.ui });
+  const { token, ui } = parts;
+  const deps = { store: parts.store, hub: parts.hub, workspaces: parts.workspaces, modify };
+  return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
 }
 
 /** Starts the app on 127.0.0.1 with its own database under `dataDir`, once the local relay is synced. */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
+  const token = createToken();
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
   const ssh = { relayBinaryFor: relayBinariesIn(sourceCheckoutBinaries), ...options.ssh };
@@ -91,7 +96,7 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const server = await Promise.try(async () => {
     const started = await startUi(options.ui ?? {});
     ui = started;
-    return listen(options, { store, hub, workspaces, ui: started });
+    return listen(options, { store, hub, workspaces, ui: started, token });
   }).catch(async (error: unknown) => {
     await ui?.close();
     await workspaces.stop();

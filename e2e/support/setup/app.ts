@@ -15,11 +15,13 @@ export interface FileChange {
 export interface AppAccess {
   /** The SDK, connected to the app as it is now (it changes when the app restarts). */
   readonly sdk: Client;
+  /** Where the app listens now, e.g. `http://127.0.0.1:41234`. */
+  readonly baseUrl: string;
+  /** The secret the app generated at its last start, as its token file holds it. */
+  readonly token: string;
   readonly mockAgent: MockAgent;
   /** The app's data folder: the live UI is `<dataDir>/ui`. */
   readonly dataDir: string;
-  /** Where the app listens, e.g. "http://127.0.0.1:51234" (it changes when the app restarts). */
-  readonly baseUrl: string;
   readonly repoPath: string;
   /** Every session event the live stream has delivered since the test began. */
   readonly streamed: Timeline<SessionEvent>;

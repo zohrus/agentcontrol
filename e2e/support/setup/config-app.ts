@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { readApiToken } from "./api-token.ts";
 import { createClient, type Client } from "@agentcontrol/sdk";
 import { launchApp } from "./app-process.ts";
 import { onTestEnd } from "./cleanup.ts";
@@ -79,7 +80,7 @@ export async function startAppWithEmptyHome(): Promise<ConfigApp> {
   onTestEnd(() => host.stop());
   const app = await launchApp({ dataDir, env, host, onRelayConnectionEnded: () => undefined });
   onTestEnd(() => app.stop());
-  const sdk = createClient({ baseUrl: app.baseUrl });
+  const sdk = createClient({ baseUrl: app.baseUrl, token: await readApiToken(dataDir) });
   const home = folderAt(homePath, [join(".agentcontrol", "backups")]);
   return { sdk, home, repo: folderAt(repoPath), user: configUserOf({ sdk, repoPath }) };
 }

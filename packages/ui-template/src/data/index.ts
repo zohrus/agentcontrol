@@ -17,3 +17,4 @@ export {
 } from "./hooks.ts";
 export { DataProvider, useController } from "./provider.tsx";
 export { createStore, useStoreValue } from "./store.ts";
+export { reloadOnceWhenUnauthorized } from "./recover.ts";
