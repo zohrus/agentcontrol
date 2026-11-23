@@ -5,6 +5,7 @@
 import { cp, mkdir, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import { copyLockedPackages } from "./locked-packages.ts";
 
 const root = join(import.meta.dir, "../..");
 const Manifest = z.object({
@@ -20,27 +21,19 @@ async function versionsIn(name: string): Promise<Versions> {
   return { ...manifest.dependencies, ...manifest.devDependencies };
 }
 
-function pinnedVersion(known: Versions, name: string): string {
-  const version = known[name];
-  if (version === undefined) throw new Error(`No version of ${name} is pinned in the repository.`);
-  return version;
-}
-
-const FROM_REPOSITORY = ["typescript", "@types/bun", "hono", "drizzle-orm"];
+/** Taken from the repository's own install, as its lock file chose them (see locked-packages.ts). */
+const FROM_LOCK = ["typescript", "@types/bun", "hono", "drizzle-orm"];
 
 /**
- * What the UI's tools and types need installed: the template's own dependencies, Hono and drizzle
- * (the app's types, which the SDK's types are made of), and the repository's TypeScript and Bun
- * types. The workspace packages are copied in instead, see `copyWorkspacePackages`.
+ * What is installed fresh, for the target platform: the template's own dependencies (Vite and
+ * Tailwind bring native binaries). TypeScript, the Bun types and what the app's types need come
+ * from the lock, and the workspace packages are copied (see `copyWorkspacePackages`).
  */
 async function installedVersions(): Promise<Versions> {
-  const [rootVersions = {}, template = {}, app = {}] = await Promise.all(
-    ["", "ui-template", "app"].map(versionsIn),
+  const template = await versionsIn("ui-template");
+  return Object.fromEntries(
+    Object.entries(template).filter(([, version]) => !version.startsWith("workspace:")),
   );
-  const own = Object.entries(template).filter(([, version]) => !version.startsWith("workspace:"));
-  const known = { ...app, ...rootVersions };
-  const shared = FROM_REPOSITORY.map((name) => [name, pinnedVersion(known, name)] as const);
-  return { ...Object.fromEntries(own), ...Object.fromEntries(shared) };
 }
 
 /** `bun install` for another platform than this one, so a Linux machine can build the Mac release. */
@@ -123,5 +116,6 @@ export async function writeUiResources(options: {
   await rm(scratch, { recursive: true, force: true });
   await rm(join(target, "node_modules", ".bin"), { recursive: true, force: true });
   const modules = join(target, "node_modules");
+  await copyLockedPackages({ names: FROM_LOCK, into: modules });
   await copyWorkspacePackages({ modules, appTypes: options.shared.appTypes });
 }

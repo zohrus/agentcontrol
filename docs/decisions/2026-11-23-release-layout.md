@@ -67,8 +67,11 @@ a user's Mac does not have.
   part of `node_modules`. Trim only after measuring.
 - `.node` binaries inside `resources/ui-template/node_modules` must be signed with the bundle
   (hardened runtime): the signing script has to sign them, which is unverified until a Mac run.
-- Transitive dependencies of the shipped `node_modules` are resolved at build time, not from
-  `bun.lock`; the direct ones are pinned. Revisit if a release needs byte-for-byte reproduction.
+- The template's dependencies are installed fresh per platform under the repository's 14-day
+  release-age rule; their transitive packages are resolved at build time, not from `bun.lock`.
+  TypeScript, `@types/bun`, Hono and drizzle-orm are copied from the locked install, because a
+  pin the lock accepted (`@types/bun` 1.4.5 was 5 days old on 2026-11-23) must not break the build.
+  Revisit if a release needs byte-for-byte reproduction.
 - The adapter's environment carries `BUN_BE_BUN=1` and `BUN_INSTALL_CACHE_DIR` (the relay's
   adapter folder), so shell commands an agent runs inherit them: a Bun-compiled program of the
   user's would act as `bun`, and the agent's own `bun install` would cache in the relay's folder.
