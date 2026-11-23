@@ -2,11 +2,13 @@ name: ci
 # scripts/integrate.ts runs the full check before it lands anything on main, so CI on main is the
 # second opinion on a clean machine. queue/** branches can be pushed by hand to try a candidate.
 # There are no pull requests, so there is no pull_request trigger.
+# What each job proves, and how to read a red run: docs/decisions/2026-11-23-ci.md
 on:
   push:
     branches: [main, "queue/**"]
   schedule:
     - cron: "17 3 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,36 +27,20 @@ jobs:
       # The audit needs the network and the advisory feed, so it runs in audit.yml instead.
       CHECK_SKIP: audit
       # The coverage gate holds the lines added since the tip before this push to 95%.
-      COVERAGE_BASE: ${{ github.event.before }}
+      COVERAGE_BASE: ${{ github.ref == 'refs/heads/main' && github.event.before || '' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           # The coverage gate compares the lines this change adds with origin/main.
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup
         with:
-          bun-version: 1.4.4
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+          browsers: "true"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: node_modules/.cache
           key: tools-${{ runner.os }}-${{ hashFiles('bun.lock', 'eslint.config.js', 'tsconfig*.json') }}
           restore-keys: tools-${{ runner.os }}-
-      - run: bun install --frozen-lockfile
-      # The browser tests of the default UI drive a real Chromium.
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: browsers
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package.json') }}
-      - run: bunx playwright install --with-deps chromium
-        if: steps.browsers.outputs.cache-hit != 'true'
-      - run: bunx playwright install-deps chromium
-        if: steps.browsers.outputs.cache-hit == 'true'
       - name: Git identity for the tests that create repositories
         run: |
           git config --global user.name ci
@@ -62,37 +48,27 @@ jobs:
           git config --global init.defaultBranch main
       # `check` runs the end-to-end suite once, through the coverage gate (test:coverage).
       - run: bun run check
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: coverage
           path: |
             coverage/lcov.info
             coverage/summary.json
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   # Nightly: the covered lines must be identical run to run, or a code path depends on timing.
   coverage-stable:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup
         with:
-          bun-version: 1.4.4
-      - run: bun install --frozen-lockfile
-      # The browser tests of the default UI drive a real Chromium.
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        id: browsers
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package.json') }}
-      - run: bunx playwright install --with-deps chromium
-        if: steps.browsers.outputs.cache-hit != 'true'
-      - run: bunx playwright install-deps chromium
-        if: steps.browsers.outputs.cache-hit == 'true'
+          browsers: "true"
       - name: Git identity for the tests that create repositories
         run: |
           git config --global user.name ci
@@ -102,23 +78,27 @@ jobs:
 
   prove-gates:
     # Feeds every gate a deliberately bad sample and fails if one passes, so a gate that silently
-    # stops working is caught on the next push.
+    # stops working is caught on the next push. The coverage case runs the whole end-to-end suite,
+    # so it needs the browsers, the git identity and the history, like `check`.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.4
-      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
         with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
-      - run: bun install --frozen-lockfile
+          browsers: "true"
+      - name: Git identity for the tests that create repositories
+        run: |
+          git config --global user.name ci
+          git config --global user.email ci@example.invalid
+          git config --global init.defaultBranch main
       - run: bun run prove-gates
 
   gitleaks:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
