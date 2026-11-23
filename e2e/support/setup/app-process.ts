@@ -12,7 +12,7 @@ export interface AppProcess {
   stop(): Promise<void>;
 }
 
-async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
+export async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<string> {
   const reader = stdout.getReader();
   const decoder = new TextDecoder();
   let seen = "";
@@ -25,7 +25,7 @@ async function readListeningUrl(stdout: ReadableStream<Uint8Array>): Promise<str
   }
 }
 
-function afterTimeout(): Promise<never> {
+export function afterTimeout(): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => {
       reject(new Error("the app did not report that it was listening in time"));

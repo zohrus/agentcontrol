@@ -1,17 +1,25 @@
-// `bun run build`: compiles every binary into dist/ and writes dist/manifest.json.
-// `bun run build --only <text>` builds just the targets whose file name contains <text>.
+// `bun run build`: compiles every binary into dist/, writes dist/manifest.json, and assembles one
+// release folder per app platform in dist/release/<os>-<arch>/ (see scripts/build/release.ts).
+// `--only <text>` builds just the targets whose file name contains <text>.
+// `--linux-app` also builds the Linux x64 app, which is what the smoke test runs.
 import { mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { compileTarget } from "./build/compile.ts";
 import { describeFiles, formatTable, writeManifest } from "./build/manifest.ts";
-import { allTargets, splitByEntry } from "./build/targets.ts";
+import { assembleRelease, releaseFiles } from "./build/release.ts";
+import { allTargets, appPlatforms, splitByEntry } from "./build/targets.ts";
+import { buildSharedUiParts } from "./build/ui-resources.ts";
 
 const outDir = "dist";
 const onlyAt = process.argv.indexOf("--only");
 const only = onlyAt === -1 ? "" : (process.argv[onlyAt + 1] ?? "");
+const linuxApp = process.argv.includes("--linux-app");
 const pkg = (await Bun.file("package.json").json()) as { version?: string };
 const version = pkg.version ?? "0.0.0";
 
-const { build, skipped } = splitByEntry(allTargets().filter((t) => t.name.includes(only)));
+const { build, skipped } = splitByEntry(
+  allTargets({ linuxApp }).filter((t) => t.name.includes(only)),
+);
 for (const target of skipped) {
   console.log(`skipping ${target.name}: ${target.entry} does not exist yet`);
 }
@@ -23,9 +31,26 @@ for (const target of build) {
   compileTarget({ target, version, outDir });
 }
 
-const files = await describeFiles(
-  outDir,
-  build.map((target) => target.name),
-);
+const names = build.map((target) => target.name);
+const files = await describeFiles(outDir, names);
 await writeManifest({ dir: outDir, version, files });
 console.log(`\nAgentControl ${version}\n${formatTable(files)}`);
+
+const ready = appPlatforms({ linuxApp }).filter((platform) =>
+  Object.values(releaseFiles({ platform, binDir: outDir })).every((path) =>
+    names.includes(path.slice(outDir.length + 1)),
+  ),
+);
+for (const platform of appPlatforms({ linuxApp }).filter((p) => !ready.includes(p))) {
+  console.log(`no release folder for ${platform}: not every binary it needs was built`);
+}
+if (ready.length > 0) {
+  const sharedDir = join(outDir, ".ui-shared");
+  console.log("building the default UI ...");
+  const shared = buildSharedUiParts(sharedDir);
+  for (const platform of ready) {
+    console.log(`assembling release/${platform} ...`);
+    await assembleRelease({ platform, binDir: outDir, shared });
+  }
+  rmSync(sharedDir, { recursive: true, force: true });
+}

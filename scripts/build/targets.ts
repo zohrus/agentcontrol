@@ -13,16 +13,21 @@ const RELAY_ENTRY = "packages/relay/src/main.ts";
 const APP_ENTRY = "packages/app/src/main.ts";
 
 const relayPlatforms = ["linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64"] as const;
-const appPlatforms = ["darwin-arm64", "darwin-x64"] as const;
+const macPlatforms = ["darwin-arm64", "darwin-x64"] as const;
+
+/** The platforms that get a release folder: the Macs, and Linux x64 when asked for (CI smoke). */
+export function appPlatforms(options: { linuxApp: boolean }): string[] {
+  return options.linuxApp ? [...macPlatforms, "linux-x64"] : [...macPlatforms];
+}
 
 /** Every binary the release ships, in build order. */
-export function allTargets(): Target[] {
+export function allTargets(options: { linuxApp: boolean }): Target[] {
   const relays = relayPlatforms.map((platform) => ({
     name: `agentcontrol-relay-${platform}`,
     entry: RELAY_ENTRY,
     bunTarget: `bun-${platform}`,
   }));
-  const apps = appPlatforms.map((platform) => ({
+  const apps = appPlatforms(options).map((platform) => ({
     name: `agentcontrol-${platform}`,
     entry: APP_ENTRY,
     bunTarget: `bun-${platform}`,

@@ -11,7 +11,7 @@
     },
     "packages/*": { "project": ["src/**/*.ts"] },
     "e2e": {
-      "entry": ["**/*.e2e.ts", "support/mock-agent/main.ts"],
+      "entry": ["**/*.e2e.ts", "support/mock-agent/main.ts", "support/setup/record-opened-url.ts"],
       "project": ["**/*.ts"],
       "ignore": ["fixtures/**"]
     }
