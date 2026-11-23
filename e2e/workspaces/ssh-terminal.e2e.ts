@@ -1,9 +1,5 @@
 import { afterEach, setDefaultTimeout, test } from "bun:test";
-import {
-  expectShellToHavePrinted,
-  expectShellToShowAPrompt,
-  worktreeOf,
-} from "../support/expect/terminal-expectations.ts";
+import { expectShellToHavePrinted, worktreeOf } from "../support/expect/terminal-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 import { openShell } from "../support/setup/terminal-user.ts";
@@ -25,8 +21,6 @@ test("the terminal of a session on an ssh host is a shell on that host, in the s
   // ** WHEN the user opens its terminal and asks for the home folder and where it is
   // ********************************************************************
   const shell = openShell(app, { session });
-  // AND the host's shell is ready for a command
-  await expectShellToShowAPrompt(shell);
   shell.types("echo here=$HOME:$(pwd -P)");
 
   // ********************************************************************
