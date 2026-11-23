@@ -110,6 +110,15 @@ async function runAll(jobs: Job[], coverage: boolean): Promise<JobRun[]> {
   return results.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** `FAILED <file>: <failing test names>`, from the `(fail) name [ms]` lines bun test printed. */
+function failureLine(result: JobRun): string {
+  const tests = result.output
+    .split("\n")
+    .filter((line) => line.startsWith("(fail) "))
+    .map((line) => line.slice("(fail) ".length).replace(/ \[[\d.]+m?s\]$/, ""));
+  return `FAILED ${result.name}: ${tests.length === 0 ? "no test failed by name (the run itself broke)" : tests.join("; ")}`;
+}
+
 function jobsFor(files: string[]): Job[] {
   const inProcess = files.map((file) => ({ name: file, file, inSubprocesses: false }));
   const asProcesses = SUBPROCESS_FILES.filter((file) => files.includes(file)).map((file) => ({
@@ -155,5 +164,7 @@ if (files.length === 0) {
   const failed = results.filter((result) => result.exitCode !== 0);
   for (const result of failed) console.log(`\n${result.name}\n${result.output}`);
   console.log(`${String(results.length - failed.length)} of ${String(results.length)} runs passed`);
+  // The last lines of the log name what failed, so a red run is readable from its end.
+  for (const result of failed) console.log(failureLine(result));
   process.exit(failed.length === 0 ? 0 : 1);
 }

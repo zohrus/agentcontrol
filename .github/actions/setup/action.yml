@@ -4,6 +4,9 @@ inputs:
   browsers:
     description: "Install Playwright's Chromium: 'true' or 'false'"
     default: "false"
+  ssh:
+    description: "Install the OpenSSH server the ssh workspace tests start a private copy of: 'true' or 'false'"
+    default: "false"
 runs:
   using: composite
   steps:
@@ -33,3 +36,11 @@ runs:
       if: inputs.browsers == 'true' && steps.browsers.outputs.cache-hit == 'true'
       shell: bash
       working-directory: e2e
+    # The ssh workspace tests start a private sshd on 127.0.0.1 as the CI user, with its own keys.
+    # Every job that runs the end-to-end suite needs it, or the ssh tests fail before they begin.
+    - run: |
+        sudo apt-get update
+        sudo apt-get install -y openssh-server
+        sudo mkdir -p /run/sshd
+      if: inputs.ssh == 'true' && runner.os == 'Linux'
+      shell: bash

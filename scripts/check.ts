@@ -6,6 +6,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { runCapture, type StepResult, skippedStep } from "./lib/proc.ts";
 
+const FAILURE_TAIL_LINES = 6;
 const PARALLEL_GATES = ["lint", "format:check", "deps", "knip", "dup", "acp-leaks", "audit"];
 
 function packageScripts(): Record<string, string> {
@@ -51,6 +52,14 @@ function printFailures(results: StepResult[]): void {
   }
 }
 
+/** The last lines of each failed step, under the table, so the end of the log names the cause. */
+function printFailureTails(results: StepResult[]): void {
+  for (const result of results.filter((step) => !step.ok)) {
+    const tail = result.output.trim().split("\n").slice(-FAILURE_TAIL_LINES).join("\n");
+    console.log(`\n${result.name} ended with:\n${tail}`);
+  }
+}
+
 function writeTiming(results: StepResult[], totalSeconds: number): void {
   const gates = results.map(({ name, ok, skipped, seconds }) => ({ name, ok, skipped, seconds }));
   const ok = results.every((step) => step.ok);
@@ -61,6 +70,7 @@ function finish(results: StepResult[], started: number): never {
   const totalSeconds = (performance.now() - started) / 1000;
   printFailures(results);
   printSummary(results, totalSeconds);
+  printFailureTails(results);
   writeTiming(results, totalSeconds);
   process.exit(results.every((step) => step.ok) ? 0 : 1);
 }

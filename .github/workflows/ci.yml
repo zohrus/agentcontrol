@@ -36,6 +36,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           browsers: "true"
+          ssh: "true"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: node_modules/.cache
@@ -46,12 +47,6 @@ jobs:
           git config --global user.name ci
           git config --global user.email ci@example.invalid
           git config --global init.defaultBranch main
-      # The ssh workspace tests start a private sshd on 127.0.0.1 as the CI user, with its own keys.
-      - name: OpenSSH server for the ssh workspace tests
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-server
-          sudo mkdir -p /run/sshd
       # `check` runs the end-to-end suite once, through the coverage gate (test:coverage).
       - run: bun run check
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -75,22 +70,18 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           browsers: "true"
+          ssh: "true"
       - name: Git identity for the tests that create repositories
         run: |
           git config --global user.name ci
           git config --global user.email ci@example.invalid
           git config --global init.defaultBranch main
-      - name: OpenSSH server for the ssh workspace tests
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openssh-server
-          sudo mkdir -p /run/sshd
       - run: bun run test:coverage-stable
 
   prove-gates:
     # Feeds every gate a deliberately bad sample and fails if one passes, so a gate that silently
     # stops working is caught on the next push. The coverage case runs the whole end-to-end suite,
-    # so it needs the browsers, the git identity and the history, like `check`.
+    # so it needs the browsers, the ssh server, the git identity and the history, like `check`.
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -101,6 +92,7 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           browsers: "true"
+          ssh: "true"
       - name: Git identity for the tests that create repositories
         run: |
           git config --global user.name ci
