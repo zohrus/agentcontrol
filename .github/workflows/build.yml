@@ -36,6 +36,14 @@ jobs:
             app="dist/app-$arch/AgentControl.app"
             codesign -dv --verbose=2 "$app"
             codesign --verify --deep --strict --verbose=2 "$app"
+            # Every native addon and library inside is signed on its own, and there are some.
+            nested=0
+            while IFS= read -r -d '' file; do
+              codesign --verify --strict "$file"
+              nested=$((nested + 1))
+            done < <(find "$app/Contents/Resources" -type f \( -name '*.node' -o -name '*.dylib' \) -print0)
+            echo "$arch: $nested nested native files verified"
+            test "$nested" -gt 0
             for file in MacOS/AgentControlMenu Resources/agentcontrol Resources/agentcontrol-relay; do
               test -x "$app/Contents/$file"
             done
