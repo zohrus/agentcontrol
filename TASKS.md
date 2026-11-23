@@ -1,6 +1,6 @@
 # AgentControl: tasks for later
 
-Items we found while reviewing the plan (22 Nov 2026) and chose not to put in it yet.
+Items we found while reviewing the plan (22 Nov 2026, brought up to date 23 Nov 2026) and chose not to put in it yet.
 Each one should become a plan change, a roadmap task, or a decision when its time comes.
 The plan (`docs/plan.html`) holds the roadmap and the open questions; this file holds the long tail.
 Detailed progress per component is on the live status page: https://claude.ai/artifact/A88MyfyQ1j1KEUSjRidmRU (also `docs/status.html`).
@@ -12,9 +12,11 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] Before the first public release: rename everywhere (`@agentcontrol/sdk`, `~/.agentcontrol/`, `AGENTCONTROL_PORT_BASE`, `AgentControl.dmg`, cask), then claim the npm scope, Homebrew cask name and a domain.
 
 ## Security (deferred)
-- [ ] Owner asked what this is (22 Nov 2026) and has the explanation; waiting for a yes to schedule it. Recommended before the first release at the latest: the app can now change its own UI and write agent config, so an unprotected local server matters more.
+- [x] Owner asked what this is (22 Nov 2026), approved it, and it landed the same day (next item).
+- [ ] Optional, to close the case "any local process that can reach the port can read the token from the served page": hand the secret only through a one-time launch URL opened by the menu bar app.
 - [ ] Verify on a Mac that the menu bar app sends the token (`SessionPoller.swift` reads `api-token` under `$AGENTCONTROL_HOME` or `~/.agentcontrol`; never built; it will not see a `--data-dir` given only to the server).
 - [x] Lock down the local server (22 Nov 2026): `127.0.0.1` only, Host and Origin checks, a random token per start sent as a bearer header (the UI reads it from a meta tag the app puts in its pages; no cookie), and the UI reloads once when the token changes after a restart. See `docs/decisions/2026-11-22-local-server-security.md`.
+- [x] Preview pages cannot reach the API, the token or other sessions (sandbox, ticket, CSP; `docs/decisions/2026-11-22-preview-sandbox.md`). Known gaps: a browser too old to send `Sec-Fetch-Dest`; a symlink in the worktree to a nested repository's `.git`; files that a repo's copy-files setting adds under names other than `.env*`, `.npmrc` and `.netrc` are not refused by `relay/fs.readBytes`.
 - [x] Relay socket: readable only by the owner (`0600`), so other users on the machine can't drive your agents. (Set in `packages/relay/src/daemon/server.ts`; still check the folder permissions on shared SSH workspaces in phase 5.)
 
 ## Sessions and git
@@ -23,11 +25,13 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] External trajectories (sessions recorded elsewhere): read-only viewing, or resumable? Imported by the app (cloud trace systems) or by the relay (agent logs in `~/.claude/projects`, `~/.codex/sessions`)? Decide before building; read-only sources would become extra workspaces in the app.
 - [ ] Previewing an agent's dev server: forward its port over SSH and open it from the session.
 - [ ] Prompt input: images, `@file` references, slash commands. Both adapters advertise `image` and `embeddedContext` prompts; check slash commands (`available_commands_update`).
+- [ ] Real Claude Code always runs in Manual mode (`docs/decisions/2026-11-23-claude-code-manual-mode.md`). Users who want `auto` for their own sessions need a per-session setting. If an adapter stops offering a mode named `default`, nothing is switched and nothing says so: revisit then.
 - [ ] The relay accepts a `model` on `relay/sessions.create` and drops it. Pass it through when the model picker is wired (use the config option of category `model`).
 - [ ] Codex retries network errors for a long time without failing. Give turns their own timeout in the relay.
 - [ ] Use `session/resume` (no replay) instead of `session/load` when resuming an agent; never append replayed messages to the event log.
 
 ## Workspaces and the relay
+- [ ] Remote (SSH) workspaces (phase 5): in progress on a separate branch, not on `main`, paused while the machine has room. `findResources` already returns `relaysDir` for it; nothing in the app reads it yet.
 - [ ] Disk growth: retention and archiving for JSONL event logs, cleanup of old branches left by archived sessions.
 - [ ] Relay start-up on servers without user services after logout: fallback to `nohup` or tmux.
 - [ ] Decide whether Mac machines are supported as remote workspaces.
@@ -38,67 +42,93 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] Non-JSON-RPC output from an agent is dropped without a trace in `sessions/start.ts`. Log it.
 
 ## Abstractions (from `docs/abstractions-review.md`)
-In progress now (before more code sits on top):
-- [ ] Normalised agent updates: the relay attaches agent-neutral `updates` to each `acp` event and a `tool` summary to permission requests; raw ACP stays in the log; the UI, usage and e2e helpers read only the normalised form. Test that an unknown update kind still renders.
-- [ ] A `Workdir` in the relay with two kinds, `worktree` and `directory`, so the Modify agent can run as a relay session in `ui-staging/`.
-- [ ] Live session summaries kept by the relay and pushed to the app, with pending permission requests (and `turnOpen`); stop re-reading every log on list, file and diff requests.
-- [ ] A workspace id on every live SSE message; session store key becomes `(workspace_id, id)`.
-- [ ] `ClientOptions.fetch` in the SDK, and the UI reading all data through one injected `Client`.
+Landed (23 Nov 2026), before more code sat on top:
+- [x] Normalised agent updates: the relay attaches agent-neutral `updates` to each `acp` event and a `tool` summary to permission requests; raw ACP stays in the log; the UI, usage and e2e helpers read only the normalised form. Test that an unknown update kind still renders.
+- [x] A `Workdir` in the relay with two kinds, `worktree` and `directory`, so the Modify agent can run as a relay session in `ui-staging/`.
+- [x] Live session summaries kept by the relay and pushed to the app, with pending permission requests (and `turnOpen`); stop re-reading every log on list, file and diff requests.
+- [x] A workspace id on every live SSE message; session store key becomes `(workspace_id, id)`.
+- [x] `ClientOptions.fetch` in the SDK, and the UI reading all data through one injected `Client`. (Nothing replays a recorded session through it yet.)
 
 Later:
 - [ ] Phase 5: `WorkspaceTarget` (bridge command, install, port forward), version check on `relay/hello`, event format version (`v: 1`), explicit agent environment, `links(workspaceId)` routing with one sync per workspace, the suite run over SSH to a local `sshd`, a test with two local relays.
-- [ ] Migrations are found through `import.meta.dir`, which breaks in the compiled app. Embed them for the compiled build.
+- [x] Migrations are embedded for the compiled build (`store/migrations.generated.ts`; a test fails when it is behind `drizzle/`).
 - [ ] Phase 6: one agent registry (`label`, `command`, `instructionsFile`, `translator`) as a `Record<AgentKind, ...>`; `hello` returns agent labels; config item schemas in `protocol`; MCP servers passed in `session/new`. The test agent should leave the product enum.
 - [ ] Phase 7: `UsageRow.source` becomes an enum, usage readers become a list (`acp`, agent logs, gateway), prices in one app module; analytics read normalised updates, never raw ACP. Move `summarize` into `protocol` if imports need status app-side.
 - [ ] The Modify agent: remove the unused `RunCommand` hook in `ui-workspace/checks.ts` or use it from a test.
-- [ ] Runtime code exported as the app's package API only to satisfy knip (`app/src/index.ts`): clean up once the UI is wired.
+- [ ] Runtime code exported as the app's package API only to satisfy knip (`app/src/index.ts`): the UI is wired now, so clean it up.
 - Never build: a transport or plugin framework, a DI container or injected id/clock generators, other backends for the event log or store without a requirement, an interface for other git hosts before a second host, an adapter that makes sandbox-agent look like our relay, dropping raw ACP from the log, a git abstraction for jj.
 
 ## Testing
-- [ ] Coverage gate: at least 95% of lines covered by the end-to-end suite, total and on changed lines, deterministic, required before any push. Build `startRelayInProcess()` and `startAppInProcess()` (taking data folder, environment and clock as parameters, returning `stop()`), keep a small `e2e/process/` folder of real-process tests (relay restart, app close and reopen, bridge framing, agent crash, compiled binary), then add `test:coverage` and a ratchet that never lets coverage go down. Bun only measures the test process and has no per-file thresholds.
+- [x] Coverage gate (22 Nov 2026): at least 95% of lines covered by the end-to-end suite, total and on changed lines, deterministic, in `check`, before every push and in CI; about 98% today. The relay and the app start inside the test process; a few tests keep real processes.
+- [ ] Count the UI in the coverage gate: Chromium V8 coverage (`page.coverage`) mapped through Vite source maps to source lines, written as an lcov part, and enough browser tests to reach 95% of `packages/ui-template` (the Modify panel's edge cases, the workspace setup, new-session errors and editor conflicts are untested). Then remove the `packages/ui-template/**` exclusion in `coverage.config.json`. In progress.
+- [ ] Make the test suite less sensitive to load: it timed out when many agents ran on a 4-core machine. Timing budget per test and a flake run (below); fewer parallel agents meanwhile.
 - [x] Keep the mock ACP agent faithful, Claude Code part (23 Nov 2026): `bun run smoke:real` drives the real adapter through the relay, app and SDK and `--record` saves the relay's logs; four scrubbed recordings are in `e2e/fixtures/recordings/claude-code/` and `e2e/updates/real-claude-code-recordings.e2e.ts` serves them and fails on any `other` update that is not left alone on purpose. The mock now mimics the adapter's modes and a cancelled turn's usage. Still open: Codex recordings (no working key), a thinking block and a plan from the real adapter (neither appeared with Haiku), and a check that every update kind the mock emits appears in a recording.
 - [ ] Resume agents after a relay restart: a new adapter process can `session/load` the old session id and the next turn remembers the work (checked with the real adapter, see `docs/acp-notes.md`). Today the session reads as idle and a new prompt says its agent is not running.
 - [ ] Interpret more adapter messages if the UI wants them: `session_info_update` (the agent's title for the session) and `config_option_update`.
 - [ ] Cost display: a turn costing under one cent shows "$0.00" in the usage chip and the status bar; show more precision below one cent (`packages/ui-template/src/status/`).
-- [ ] Scripted Modify agent for end-to-end tests, making predictable UI edits (Keep then Undo restores the file; an edit outside `ui-staging/` is refused).
+- [x] Scripted Modify agent for end-to-end tests (`e2e/modify/`: change flow, fence, checks, update, recovery).
 - [ ] Split e2e folders by layer (`relay/`, `api/`, `browser/`) with `bun run test relay|api|browser`; a timing budget per test (relay 2 s, API 4 s, browser 12 s); `bun run test --affected`.
-- [ ] Nightly job: flake run (`--rerun-each 20`), and a real-adapter smoke job (`e2e/real/`, API-key secrets, re-records, opens an issue on failure). Quarantine folder for flaky tests with a 7-day limit.
-- [ ] Browser tests of the default UI with Playwright. Decide whether `@playwright/test` becomes a pinned dev dependency or the preinstalled Playwright is used.
+- [ ] Nightly job: flake run (`--rerun-each 20`). A real-adapter smoke job exists (`.github/workflows/real-agents.yml`, runs `bun run smoke:real`, skipped without keys); it does not yet re-record or open an issue on failure, and Codex is not in it. Quarantine folder for flaky tests with a 7-day limit.
+- [x] Browser tests of the default UI with Playwright: `playwright` 1.63.0 is a pinned dev dependency (in `e2e/package.json`), 38 browser tests.
 - [ ] Behaviour coverage map: inventory of relay methods, event kinds, API routes, SDK functions and UI components, against what the tests actually ran; gaps may only shrink.
 - [ ] Golden files for durable state: real event logs (one cut off mid-line), a protocol snapshot with `PROTOCOL_VERSION` that must change on a breaking edit, an old `state.db` per migration, an old hidden UI repository per release, an SDK declaration snapshot.
 
 ## Development loop and CI
-- [ ] Get CI green on `main`. It is set up (`ci`, `audit`, `build`, `release`) but the first runs failed; prove the fixes with a run on a clean machine.
+- [x] Get CI green on `main` (23 Nov 2026). `ci` is green; read `docs/decisions/2026-11-23-ci.md` for what each job proves.
+- [ ] The Mac job of the `build` workflow is red at "Smoke test the compiled app and relay inside the bundle" on the latest `main` run (a fix is on a branch, not landed). Then the step "The dmg mounts, and the app inside it runs" has still to pass.
+- [ ] Someone reads the CI result after every landing: it was red for a day while local checks were green. Consider having `integrate` print the latest run state of `main`.
 - [ ] Owner: set a GitHub ruleset on `main` (linear history, no force push or deletion, require the `check` status, no required pull request, owner may bypass). Test once that the integrate script's direct push is accepted.
 - [ ] Add `--autostart` to the CI smoke step of the compiled relay in `.github/workflows/build.yml`; the daemon fix has landed.
-- [ ] `docs/releasing.md` still lists the compiled-relay daemon as a known issue; it is fixed. Update the page.
+- [x] `docs/releasing.md` no longer lists the compiled-relay daemon as a known issue.
 - [ ] Agent guard hook in `.claude/settings.json` (block `git add -A`, repo-wide format, `bun add`, push to `main`, `--no-verify`).
 - [ ] Contract snapshot script (`packages/protocol/contract.json`) and `PROTOCOL_VERSION` exchanged in `relay/hello`.
-- [ ] Generate the `DATA` block of `docs/status.html` from the repository (status, test counts, coverage, last commit, CI badge); it has already drifted (for example it marks CI done and lists folders that do not exist).
+- [ ] Generate the `DATA` block of `docs/status.html` from the repository (status, test counts, coverage, last commit, CI badge); it has already drifted (it lists folders that do not exist, says 24 gate proofs where there are 25, and still shows the workdir seam and the single UI client as in progress).
+- [ ] Remove an override (`esbuild`, `minimatch`, `dompurify`) when the packages that need it have moved past the affected versions; the original reason for the overrides was not written down. Revisit the TypeScript 6.0.x pin when typescript-eslint supports 7.
 - [ ] Dependabot: bot updates are applied by hand by the orchestrator (decision `0001`). Revisit if that becomes a chore; security alerts work either way.
-- [ ] SDK imports the app's route types (`AppType`) for Hono's typed client; the dependency-cruiser rule `sdk-no-relay` forbids it. Allow type-only imports of the app's root `index.ts` from `sdk`, or restate every route as zod in `protocol`.
+- [x] SDK imports the app's route types (`AppType`) for Hono's typed client: the dependency-cruiser rule `sdk-app-types-only` allows type-only imports.
 - [ ] Decision: with integrate and CI as the hard line, are git hooks for agents still needed beyond formatting and the dependency guard?
 
 ## Release and packaging
-- [ ] First run of the `build` workflow on a macOS runner: the Swift menu bar app, `make-app.sh`, `sign-and-notarize.sh` (codesign, notarytool, stapler, hdiutil), the entitlements the Bun binaries need under the hardened runtime, and the cross-architecture `swift build` have never run. Expect small fixes. Execute the darwin binaries once.
+- [ ] Mac verification. Done on a Mac runner (23 Nov 2026): the Swift menu bar app builds for both chip types, `make-app.sh` assembles the bundle, the ad-hoc signature verifies. Still open: the compiled app running on a Mac (smoke step red), the dmg mounting and the app in it running, the menu bar app actually running, the `.node` files in `resources/ui-template/node_modules` (rolldown, lightningcss, tailwind oxide) loading and being signed with the bundle under the hardened runtime, the entitlements the Bun binaries need, and Gatekeeper's view of 300 MB of JavaScript in `Contents/Resources`. Then a person runs the app on a Mac once.
 - [ ] PARKED by the owner (23 Nov 2026): Apple Developer ID (99 USD a year), signing and notarisation. The first release ships UNSIGNED (ad-hoc signed only, which Apple Silicon needs to run a binary at all). Consequences to handle now: macOS blocks the app on first open, so the README and the release notes must explain how to open it (System Settings > Privacy & Security > Open Anyway, or `xattr -dr com.apple.quarantine /Applications/AgentControl.app`); no Homebrew cask in the official tap style (a cask for an unsigned app needs the same manual step); no in-app updates. To un-park: get the Developer ID, add the repository secrets listed in `docs/releasing.md`, and the release workflow signs and notarises by itself.
 - [ ] App icon (the menu bar uses a system symbol and the app has no icon file).
 - [ ] Automate the Homebrew tap update (`zohrus/homebrew-agentcontrol`); it is manual today.
 - [ ] In-app updates (Sparkle): deferred. The menu item opens GitHub Releases.
-- [ ] Pin `actions/upload-artifact` in `build.yml` to a commit SHA like the other actions.
+- [x] `actions/upload-artifact` in `build.yml` is pinned to a commit SHA.
+- [ ] Release size is about 700 MB per platform (default UI `node_modules` 285 MB: monaco-editor 105 MB, lucide-react 50 MB; two Linux relays 210 MB). Trim only after measuring; decide whether it is acceptable.
+- [ ] Adapter environment: the agent's environment carries `BUN_BE_BUN=1` and `BUN_INSTALL_CACHE_DIR`, so shell commands an agent runs inherit them (a Bun-compiled program of the user's would act as `bun`). Cannot be kept out today; revisit if it bites.
+- [ ] `packages/ui-template/tsconfig.json` repeats the options of `tsconfig.base.json` because a release has no repository root: add a check that compares the two.
+- [ ] The template's transitive dependencies are resolved at build time, not from `bun.lock`; revisit if a release needs byte-for-byte reproduction.
+- [ ] README says `bun dev` does not open the browser. It does (on a terminal, the first time the app listens; `AGENTCONTROL_NO_OPEN` turns it off): correct the README. Also check whether Modify changes show up under `bun dev`, which serves `packages/ui-template`, not the data folder's `ui/`.
 
 ## Spike
 - [ ] Verify Codex end to end (streaming granularity, thinking, diffs, permission requests). Needs an OpenAI key with quota and network access to `api.openai.com`, or the owner's Mac.
+- [ ] Codex recordings for the mock-fidelity test, once Codex works.
 - [ ] Confirm thinking output for Claude (`agent_thought_chunk` did not appear in two small prompts, even at high effort).
 
 ## Viewing files
 - [x] Browser support (built; see `docs/decisions/2026-11-22-preview-sandbox.md`): render an HTML file from a session's worktree inside the app, in a Preview tab next to Changes and Editor, the way an HTML artifact is shown beside a chat. It must be sandboxed (an iframe with the `sandbox` attribute, served by the app from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions), refresh when the agent edits the file (the existing `relay/fs.changed` notifications), and work for a page with its own CSS, JS and images in the same folder.
 - [x] Markdown preview (built with `marked` 18.1.3; see `docs/decisions/2026-11-22-markdown-preview.md`) in the same Preview tab, only if an open-source, actively maintained library passes the dependency bar in `AGENTS.md` (known owner, release in the last 12 months, permissive license, few dependencies). Candidates to evaluate when the task starts: `marked`, `markdown-it`, `micromark`. Output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered in the same sandbox. If no library passes, drop the task and show Markdown files as text in the editor.
 
+- [ ] Revisit `marked` when 18.2.x is 14 days old (bump with `ALLOW_DEP_CHANGE=1`).
 - [ ] Preview follow-ups: keep the page's scroll position across a refresh (not possible from the app with an opaque origin; would need the page to cooperate), `fetch` of files in the page's own folder (blocked by `connect-src 'none'`), range requests for large video, and refreshing a page when a file outside its own folder (`../css/x.css`) changes.
+
+## Harness config (phase 6)
+- [ ] The Config screen in the UI (MCP, skills, hooks, instructions, permissions editors, import, plan, apply, rollback, drift). The backend is done and has 38 tests; today the UI's Config button opens only the workspace setup.
+- [ ] Real secrets storage (OS keychain): a `${secret:NAME}` placeholder is written as is and listed as needing a secret.
+- [ ] Subagents (`.claude/agents/*.md`): the canonical model has no subagent item.
+- [ ] Codex items with no native format written yet: allow and deny lists (Codex has a different rules format) and commands (Codex 0.171 does not load them; could become skills).
+- [ ] Verify the assumed hook matchers (`Edit|Write|MultiEdit` for Claude, `apply_patch` for Codex) with a real model call.
+- [ ] Config editor limits (`packages/relay/src/config/FORMATS.md`): the TOML editor has no parser (quoted or dotted server names, a server hand-written with an `env` sub-table, header-looking lines in multi-line strings); a hook group with several commands imports as several items; removing the hand-written-notes item leaves the text in the file; plans are kept in memory (latest 20); JSON files are rewritten with 2-space indentation.
+- [ ] MCP servers passed in `session/new` for per-session use.
 
 ## Console
 - [ ] Console access from inside the app (phase 5, remote workspaces; also works locally): a Terminal tab that opens a shell in the session's worktree on its workspace. Browser side: `@xterm/xterm` (xterm.js, MIT, zero dependencies, the VS Code terminal). Workspace side: the relay starts the shell in a pseudo-terminal with Bun's built-in terminal support (no `node-pty`); verify it works in the compiled Linux relay binary. Input, output and resize go over the existing relay connection as `relay/terminal.*` methods, so no extra port or second SSH login. The ACP `terminal` capability stays off for agents.
+
+## Modify agent
+- [ ] Codex as the Modify agent: it gets no launch limits, only the relay's permission answers as the fence. Try it for real.
+- [ ] Checks beyond typecheck and build: lint and a browser load test of the new UI (the plan lists them).
+- [ ] Use the Modify panel by hand for a day (browser tests and one real run so far).
 
 ## App robustness
 - [ ] Long sessions: list virtualization and batching of streamed chunks so the browser doesn't stall.
@@ -110,6 +140,15 @@ Later:
 - [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead.
 
 ## Decisions made
+- [x] Local server lock-down (22 Nov 2026): Host and Origin checks and a secret token sent as a header, never a cookie (cookies are not isolated by port). `docs/decisions/2026-11-22-local-server-security.md`.
+- [x] Preview sandbox and Markdown library (22 Nov 2026): sandboxed iframe, ticketed route, `marked` 18.1.3 with DOMPurify. `docs/decisions/2026-11-22-preview-sandbox.md`, `2026-11-22-markdown-preview.md`.
+- [x] Harness config ownership: the app owns only the entries it created, tracked in a manifest. `docs/decisions/0001-harness-config-ownership.md`.
+- [x] Duplication limit zero; gate proofs (25) run in CI. `docs/decisions/2026-11-22-duplication-threshold-zero.md`.
+- [x] Live session summaries and workspace identity. `docs/decisions/2026-11-22-live-session-summaries.md`.
+- [x] Modify agent runs as a directory session; the relay answers its permission requests. `docs/decisions/modify-directory-sessions.md`.
+- [x] Real Claude Code runs in Manual mode or the session does not start (23 Nov 2026). `docs/decisions/2026-11-23-claude-code-manual-mode.md`.
+- [x] Release layout (23 Nov 2026): one folder per platform, the app is its own `bun`, migrations embedded. `docs/decisions/2026-11-23-release-layout.md`.
+- [x] CI jobs and how to read a red run (23 Nov 2026). `docs/decisions/2026-11-23-ci.md`.
 - [x] First Mac release is unsigned; Apple Developer ID parked (owner, 23 Nov 2026). See "Release and packaging".
 - [x] Coverage exclusions approved by the owner (22 Nov 2026): the seven thin start-up files proven by the real-process tests, the UI package until browser tests report coverage, the Swift Mac app, and one tooling config file. The list is in `coverage.config.json`; it may only shrink.
 - [x] Laptop platform: macOS only.
