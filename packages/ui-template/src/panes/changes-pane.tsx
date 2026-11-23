@@ -34,6 +34,7 @@ function Loaded({ id, diff }: { id: SessionId; diff: DiffResult }) {
   };
   return (
     <ChangesPanel
+      sessionId={id}
       diff={diff}
       tree={tree}
       selectedPath={path}

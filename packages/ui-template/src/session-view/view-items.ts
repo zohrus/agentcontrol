@@ -1,4 +1,4 @@
-import type { PermissionOption } from "@agentcontrol/protocol";
+import type { FileChange, PermissionOption } from "@agentcontrol/protocol";
 
 export type DiffStat = { additions: number; deletions: number };
 type PlanEntryView = { content: string; status: string };
@@ -31,6 +31,12 @@ type ItemMap = {
     title: string;
     options: PermissionOption[];
     answer: string | undefined;
+    /** Set when the relay answered by itself (the Modify agent's permission policy), and why. */
+    automatic: { reason: string; refused: boolean } | undefined;
+    /** The shell command the agent wants to run, when it is one. */
+    command: string | undefined;
+    /** The changes the agent wants to make, with their text when the agent sent it. */
+    files: FileChange[];
   };
   setup: { type: "setup"; key: string; text: string; exitCode: number | undefined };
   "turn-ended": { type: "turn-ended"; key: string; stopReason: string };

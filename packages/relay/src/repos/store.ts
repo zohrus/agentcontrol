@@ -1,4 +1,4 @@
-import { realpath } from "node:fs/promises";
+import { realpath, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { RepoId, type RepoInfo, type RepoSetup } from "@agentcontrol/protocol";
 import { git, runGit } from "../git/index.ts";
@@ -19,8 +19,18 @@ async function detectDefaultBranch(cwd: string): Promise<string> {
   return (await git(["symbolic-ref", "--short", "HEAD"], { cwd })).trim();
 }
 
+/** The real folder, or a plain-language refusal when the path is not an existing folder. */
+async function existingFolder(path: string): Promise<string> {
+  const folder = await realpath(path).catch(() => undefined);
+  const isFolder = folder !== undefined && (await stat(folder)).isDirectory();
+  if (!isFolder) throw new Error(`"${path}" is not a folder on this computer. Type its full path.`);
+  return folder;
+}
+
 async function gitRoot(path: string): Promise<string> {
-  const result = await runGit(["rev-parse", "--show-toplevel"], { cwd: await realpath(path) });
+  const result = await runGit(["rev-parse", "--show-toplevel"], {
+    cwd: await existingFolder(path),
+  });
   if (result.exitCode !== 0) throw new Error(`"${path}" is not a git repository.`);
   return result.stdout.trim();
 }

@@ -1,3 +1,4 @@
+import { addRepositoryPage } from "./add-repository-page.ts";
 import type { Page } from "./playwright.ts";
 
 const dialogOf = (page: Page) => page.getByRole("dialog");
@@ -41,6 +42,7 @@ function newSessionForm(page: Page) {
 export function dialogsPage(page: Page) {
   const form = newSessionForm(page);
   return {
+    ...addRepositoryPage(page),
     ...form,
     /** Opens New session, adds the repository by its folder, picks the agent and starts. */
     startsSession: async (session: NewSession): Promise<void> => {

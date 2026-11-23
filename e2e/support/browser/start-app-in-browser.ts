@@ -39,19 +39,27 @@ async function prepareTab(tab: Page, options: BrowserOptions): Promise<void> {
   if (options.storageBlocked) await tab.addInitScript(REFUSE_STORAGE);
 }
 
-/** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
-export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
-  const { relayEnv, ...tabOptions } = options;
-  const app = await startAppWithLocalWorkspace({ withUi: true, ...(relayEnv && { relayEnv }) });
+/** Opens the UI of an app that was started `withUi` in a headless browser. */
+export async function openInBrowser<A extends RunningApp>(
+  app: A,
+  options: BrowserOptions = {},
+): Promise<A & { readonly page: AppPage }> {
   const browser: Browser = await launchChromium();
   onTestEnd(() => browser.close());
-  const { viewport, colorScheme } = tabOptions;
+  const { viewport, colorScheme } = options;
   const tab = await browser.newPage({
     ...(viewport && { viewport }),
     ...(colorScheme && { colorScheme }),
   });
-  await prepareTab(tab, tabOptions);
+  await prepareTab(tab, options);
   await tab.goto(app.baseUrl);
   await waitUntilConnected(tab);
   return Object.assign(app, { page: appPageOf(tab) });
+}
+
+/** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
+export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
+  const { relayEnv } = options;
+  const app = await startAppWithLocalWorkspace({ withUi: true, ...(relayEnv && { relayEnv }) });
+  return openInBrowser(app, options);
 }

@@ -13,5 +13,7 @@ export const ErrorCode = {
   fileNotFound: -32005,
   /** A config plan no longer matches the files on disk. */
   configStale: -32006,
+  /** A file is bigger than the relay hands over in one answer (see `relay/fs.readBytes`). */
+  fileTooLarge: -32007,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

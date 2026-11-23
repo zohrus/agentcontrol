@@ -56,7 +56,10 @@ Later:
 
 ## Testing
 - [ ] Coverage gate: at least 95% of lines covered by the end-to-end suite, total and on changed lines, deterministic, required before any push. Build `startRelayInProcess()` and `startAppInProcess()` (taking data folder, environment and clock as parameters, returning `stop()`), keep a small `e2e/process/` folder of real-process tests (relay restart, app close and reopen, bridge framing, agent crash, compiled binary), then add `test:coverage` and a ratchet that never lets coverage go down. Bun only measures the test process and has no per-file thresholds.
-- [ ] Keep the mock ACP agent faithful: record real Claude Code and Codex sessions (`spike/` driver writes the tap to `e2e/fixtures/recordings/`) and add a contract test that every update kind and permission shape the mock emits appears in a recording.
+- [x] Keep the mock ACP agent faithful, Claude Code part (23 Nov 2026): `bun run smoke:real` drives the real adapter through the relay, app and SDK and `--record` saves the relay's logs; four scrubbed recordings are in `e2e/fixtures/recordings/claude-code/` and `e2e/updates/real-claude-code-recordings.e2e.ts` serves them and fails on any `other` update that is not left alone on purpose. The mock now mimics the adapter's modes and a cancelled turn's usage. Still open: Codex recordings (no working key), a thinking block and a plan from the real adapter (neither appeared with Haiku), and a check that every update kind the mock emits appears in a recording.
+- [ ] Resume agents after a relay restart: a new adapter process can `session/load` the old session id and the next turn remembers the work (checked with the real adapter, see `docs/acp-notes.md`). Today the session reads as idle and a new prompt says its agent is not running.
+- [ ] Interpret more adapter messages if the UI wants them: `session_info_update` (the agent's title for the session) and `config_option_update`.
+- [ ] Cost display: a turn costing under one cent shows "$0.00" in the usage chip and the status bar; show more precision below one cent (`packages/ui-template/src/status/`).
 - [ ] Scripted Modify agent for end-to-end tests, making predictable UI edits (Keep then Undo restores the file; an edit outside `ui-staging/` is refused).
 - [ ] Split e2e folders by layer (`relay/`, `api/`, `browser/`) with `bun run test relay|api|browser`; a timing budget per test (relay 2 s, API 4 s, browser 12 s); `bun run test --affected`.
 - [ ] Nightly job: flake run (`--rerun-each 20`), and a real-adapter smoke job (`e2e/real/`, API-key secrets, re-records, opens an issue on failure). Quarantine folder for flaky tests with a 7-day limit.
@@ -78,7 +81,7 @@ Later:
 
 ## Release and packaging
 - [ ] First run of the `build` workflow on a macOS runner: the Swift menu bar app, `make-app.sh`, `sign-and-notarize.sh` (codesign, notarytool, stapler, hdiutil), the entitlements the Bun binaries need under the hardened runtime, and the cross-architecture `swift build` have never run. Expect small fixes. Execute the darwin binaries once.
-- [ ] Owner: Apple Developer ID (99 USD a year) and the repository secrets listed in `docs/releasing.md` (`APPLE_CERT_P12_BASE64`, `APPLE_CERT_PASSWORD`, `APPLE_SIGNING_IDENTITY`, plus one notarisation set).
+- [ ] PARKED by the owner (23 Nov 2026): Apple Developer ID (99 USD a year), signing and notarisation. The first release ships UNSIGNED (ad-hoc signed only, which Apple Silicon needs to run a binary at all). Consequences to handle now: macOS blocks the app on first open, so the README and the release notes must explain how to open it (System Settings > Privacy & Security > Open Anyway, or `xattr -dr com.apple.quarantine /Applications/AgentControl.app`); no Homebrew cask in the official tap style (a cask for an unsigned app needs the same manual step); no in-app updates. To un-park: get the Developer ID, add the repository secrets listed in `docs/releasing.md`, and the release workflow signs and notarises by itself.
 - [ ] App icon (the menu bar uses a system symbol and the app has no icon file).
 - [ ] Automate the Homebrew tap update (`zohrus/homebrew-agentcontrol`); it is manual today.
 - [ ] In-app updates (Sparkle): deferred. The menu item opens GitHub Releases.
@@ -89,8 +92,10 @@ Later:
 - [ ] Confirm thinking output for Claude (`agent_thought_chunk` did not appear in two small prompts, even at high effort).
 
 ## Viewing files
-- [ ] Browser support: render an HTML file from a session's worktree inside the app, in a Preview tab next to Changes and Editor, the way an HTML artifact is shown beside a chat. It must be sandboxed (an iframe with the `sandbox` attribute, served by the app from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions), refresh when the agent edits the file (the existing `relay/fs.changed` notifications), and work for a page with its own CSS, JS and images in the same folder.
-- [ ] Markdown preview in the same Preview tab, only if an open-source, actively maintained library passes the dependency bar in `AGENTS.md` (known owner, release in the last 12 months, permissive license, few dependencies). Candidates to evaluate when the task starts: `marked`, `markdown-it`, `micromark`. Output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered in the same sandbox. If no library passes, drop the task and show Markdown files as text in the editor.
+- [x] Browser support (built; see `docs/decisions/2026-11-22-preview-sandbox.md`): render an HTML file from a session's worktree inside the app, in a Preview tab next to Changes and Editor, the way an HTML artifact is shown beside a chat. It must be sandboxed (an iframe with the `sandbox` attribute, served by the app from a separate path with a strict Content-Security-Policy, so the page cannot reach the AgentControl API or other sessions), refresh when the agent edits the file (the existing `relay/fs.changed` notifications), and work for a page with its own CSS, JS and images in the same folder.
+- [x] Markdown preview (built with `marked` 18.1.3; see `docs/decisions/2026-11-22-markdown-preview.md`) in the same Preview tab, only if an open-source, actively maintained library passes the dependency bar in `AGENTS.md` (known owner, release in the last 12 months, permissive license, few dependencies). Candidates to evaluate when the task starts: `marked`, `markdown-it`, `micromark`. Output must be sanitised (DOMPurify is already in the tree through Monaco) and rendered in the same sandbox. If no library passes, drop the task and show Markdown files as text in the editor.
+
+- [ ] Preview follow-ups: keep the page's scroll position across a refresh (not possible from the app with an opaque origin; would need the page to cooperate), `fetch` of files in the page's own folder (blocked by `connect-src 'none'`), range requests for large video, and refreshing a page when a file outside its own folder (`../css/x.css`) changes.
 
 ## Console
 - [ ] Console access from inside the app (phase 5, remote workspaces; also works locally): a Terminal tab that opens a shell in the session's worktree on its workspace. Browser side: `@xterm/xterm` (xterm.js, MIT, zero dependencies, the VS Code terminal). Workspace side: the relay starts the shell in a pseudo-terminal with Bun's built-in terminal support (no `node-pty`); verify it works in the compiled Linux relay binary. Input, output and resize go over the existing relay connection as `relay/terminal.*` methods, so no extra port or second SSH login. The ACP `terminal` capability stays off for agents.
@@ -105,6 +110,7 @@ Later:
 - [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead.
 
 ## Decisions made
+- [x] First Mac release is unsigned; Apple Developer ID parked (owner, 23 Nov 2026). See "Release and packaging".
 - [x] Coverage exclusions approved by the owner (22 Nov 2026): the seven thin start-up files proven by the real-process tests, the UI package until browser tests report coverage, the Swift Mac app, and one tooling config file. The list is in `coverage.config.json`; it may only shrink.
 - [x] Laptop platform: macOS only.
 - [x] License: MIT. Add the `LICENSE` file when the repo is created.

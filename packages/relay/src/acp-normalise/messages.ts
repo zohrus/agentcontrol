@@ -20,6 +20,18 @@ const PromptParams = z.looseObject({
 
 const tokens = z.number().catch(0);
 
+/** What Claude lists per model in `_meta.quota`; the cache is counted apart from the input. */
+const ModelUsage = z.looseObject({
+  model: z.string(),
+  token_count: z.looseObject({
+    totalTokens: tokens,
+    inputTokens: tokens,
+    outputTokens: tokens,
+    cachedInputTokens: tokens,
+    cachedWriteTokens: tokens,
+  }),
+});
+
 /** The result of `session/prompt`; Claude lists the models of the turn in `_meta.quota`. */
 const PromptResult = z.looseObject({
   stopReason: z.string(),
@@ -33,22 +45,54 @@ const PromptResult = z.looseObject({
     .nullish()
     .catch(undefined),
   _meta: z
-    .looseObject({
-      quota: z.looseObject({
-        model_usage: z.array(
-          z.looseObject({ model: z.string(), token_count: z.looseObject({ totalTokens: tokens }) }),
-        ),
-      }),
-    })
+    .looseObject({ quota: z.looseObject({ model_usage: z.array(ModelUsage) }) })
     .nullish()
     .catch(undefined),
 });
 
+type Meta = z.infer<typeof PromptResult>["_meta"];
+
 /** The model that used the most tokens in the turn, when the adapter says. */
-function mainModel(meta: z.infer<typeof PromptResult>["_meta"]): string | undefined {
+function mainModelUsage(meta: Meta): z.infer<typeof ModelUsage> | undefined {
   const models = meta?.quota.model_usage ?? [];
-  const sorted = models.toSorted((a, b) => b.token_count.totalTokens - a.token_count.totalTokens);
-  return sorted[0]?.model;
+  return models.toSorted((a, b) => b.token_count.totalTokens - a.token_count.totalTokens)[0];
+}
+
+type TurnTokens = Omit<Extract<AgentUpdate, { type: "turn-usage" }>, "type" | "model">;
+
+const isEmpty = (spent: TurnTokens): boolean => Object.values(spent).every((count) => count === 0);
+
+/** What every model of the turn used, from `_meta.quota`; the adapter counts the cache apart from the input. */
+function quotaTokens(meta: Meta): TurnTokens | undefined {
+  const entries = (meta?.quota.model_usage ?? []).map((entry) => entry.token_count);
+  if (entries.length === 0) return undefined;
+  const sum = (count: (usage: (typeof entries)[number]) => number): number =>
+    entries.reduce((total, usage) => total + count(usage), 0);
+  return {
+    inputTokens: sum((usage) => usage.inputTokens),
+    outputTokens: sum((usage) => usage.outputTokens),
+    cacheReadTokens: sum((usage) => usage.cachedInputTokens),
+    cacheWriteTokens: sum((usage) => usage.cachedWriteTokens),
+  };
+}
+
+/**
+ * The tokens of the turn. A cancelled Claude turn reports `usage` as all zeros although it spent
+ * tokens; its `_meta.quota` (per turn, not cumulative) still has them, so that is the fallback when
+ * `usage` is empty.
+ */
+function tokensOfTurn(parsed: {
+  usage: NonNullable<z.infer<typeof PromptResult>["usage"]>;
+  meta: Meta;
+}): TurnTokens {
+  const { usage, meta } = parsed;
+  const reported = {
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cacheReadTokens: usage.cachedReadTokens,
+    cacheWriteTokens: usage.cachedWriteTokens,
+  };
+  return isEmpty(reported) ? (quotaTokens(meta) ?? reported) : reported;
 }
 
 function sessionUpdate(params: unknown): AgentUpdate[] {
@@ -65,10 +109,8 @@ function promptResult(result: unknown): AgentUpdate[] {
   const { stopReason, usage, _meta } = parsed.data;
   const ended: AgentUpdate = { type: "turn-ended", stopReason };
   if (!usage) return [ended];
-  const model = mainModel(_meta);
-  const { inputTokens, outputTokens, cachedReadTokens, cachedWriteTokens } = usage;
-  const spent = { inputTokens, outputTokens, cacheReadTokens: cachedReadTokens };
-  return [ended, { type: "turn-usage", model, cacheWriteTokens: cachedWriteTokens, ...spent }];
+  const model = mainModelUsage(_meta)?.model;
+  return [ended, { type: "turn-usage", model, ...tokensOfTurn({ usage, meta: _meta }) }];
 }
 
 function promptText(params: unknown): AgentUpdate[] {

@@ -41,14 +41,11 @@
     {
       "path": "packages/mac/**",
       "reason": "Swift/menu bar shell and installer glue; not exercised by the TypeScript e2e suite."
+    },
+    {
+      "path": "packages/ui-template/src/index.ts",
+      "reason": "The package's public barrel: re-exports only, no logic. The browser loads main.tsx and never this file, and nothing imports it."
     }
   ],
-  "pending": [
-    {
-      "path": "packages/ui-template/src/modify/**",
-      "owner": "Modify panel UI task",
-      "since": "2026-11-23",
-      "reason": "The Modify panel is rewritten by its own task, which adds its browser tests (e2e/browser/modify*). Remove this entry when they land."
-    }
-  ]
+  "pending": []
 }

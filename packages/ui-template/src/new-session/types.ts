@@ -14,6 +14,9 @@ export type NewSessionDialogProps = {
   repos: readonly RepoInfo[];
   agents: readonly AgentKind[];
   onStart: (request: NewSessionRequest) => void;
-  /** The user typed a folder path under "Add repository…". The new repo should appear in `repos`. */
-  onAddRepository: (path: string) => void;
+  /**
+   * The user typed a folder path under "Add repository…". The new repo should appear in `repos`;
+   * resolves to its path, or to undefined when it could not be added (the user has been told).
+   */
+  onAddRepository: (path: string) => Promise<string | undefined>;
 };

@@ -79,6 +79,8 @@ export interface StartOptions {
   uiDist?: string;
   /** The default UI and the agent that edits it; the live and staging UI are ready at start. */
   modify?: ModifyConfig;
+  /** How long a preview link stays valid after its last use, in milliseconds (default: an hour). */
+  previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
 }
@@ -127,8 +129,9 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options.relayEnv);
   const heard = newHeard();
   const ui = uiOf(options);
+  const { previewLifetimeMs } = options;
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ dataDir, env, host, heard, ui, ...extra });
+    openApp({ dataDir, env, host, heard, ui, previewLifetimeMs, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -164,6 +167,7 @@ async function openApp(options: {
   ui: { root?: string; dist?: string };
   port?: number;
   modify?: ModifyConfig | undefined;
+  previewLifetimeMs?: number | undefined;
 }): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({

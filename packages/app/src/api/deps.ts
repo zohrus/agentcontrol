@@ -1,4 +1,5 @@
 import type { Modify } from "../modify/index.ts";
+import type { Previews } from "../preview/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
 import type { Hub, Link } from "../sync/index.ts";
 
@@ -11,4 +12,6 @@ export interface ApiDeps {
   /** The relay link of `workspace`. Routes reach it only through `api/routing.ts`. */
   relay: Link;
   modify: Modify;
+  /** The tickets that let a previewed page load a session's files. */
+  previews: Previews;
 }

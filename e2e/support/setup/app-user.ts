@@ -3,6 +3,7 @@ import { type ApiError, isStaleFile } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
 import { modifyUserOf } from "./modify-user.ts";
 import { appWorkspaceUserOf, appWorktreeUserOf } from "./app-more-user.ts";
+import { appPreviewUserOf } from "./preview-user.ts";
 import { optionOfKind } from "./permission-option.ts";
 
 type PermissionRequest = Extract<SessionEvent, { kind: "permission-requested" }>;
@@ -77,7 +78,12 @@ function sessionUserOf(app: AppAccess) {
 
 /** The things a person does in the app, each one through the SDK. Extend when a test needs more. */
 export function appUserOf(app: AppAccess) {
-  return { ...sessionUserOf(app), ...appWorktreeUserOf(app), ...appWorkspaceUserOf(app) };
+  return {
+    ...sessionUserOf(app),
+    ...appWorktreeUserOf(app),
+    ...appWorkspaceUserOf(app),
+    ...appPreviewUserOf(app),
+  };
 }
 
 export type AppUser = ReturnType<typeof appUserOf>;

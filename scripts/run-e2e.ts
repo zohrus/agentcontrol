@@ -52,9 +52,18 @@ function commandFor(job: Job, coverage: boolean): string[] {
   return [...command, `./${job.file}`];
 }
 
+/**
+ * Git sets GIT_DIR and friends when it runs a hook. A test that inherits them runs its `git init`
+ * and `git config` against this repository instead of its own temporary one.
+ */
+function withoutGitHookEnv(): Record<string, string | undefined> {
+  const entries = Object.entries(Bun.env).filter(([name]) => !name.startsWith("GIT_"));
+  return Object.fromEntries(entries);
+}
+
 async function runJob(job: Job, coverage: boolean): Promise<JobRun> {
   const env: Record<string, string | undefined> = {
-    ...Bun.env,
+    ...withoutGitHookEnv(),
     AGENTCONTROL_E2E_PROCESSES: job.inSubprocesses ? "1" : "0",
   };
   // Browser tests write what the UI ran as one more lcov part (e2e/support/browser/ui-coverage).
