@@ -1,10 +1,12 @@
 import type { AppAccess } from "../setup/app.ts";
 import { eventually } from "../setup/eventually.ts";
 
-type Readable = Pick<AppAccess, "sdk" | "baseUrl">;
+type Readable = Pick<AppAccess, "sdk" | "baseUrl" | "token">;
 
 async function health(app: Readable): Promise<string> {
-  const response = await fetch(`${app.baseUrl}/api/health`);
+  const response = await fetch(`${app.baseUrl}/api/health`, {
+    headers: { authorization: `Bearer ${app.token}` },
+  });
   const body = (await response.json()) as { ok: boolean; relay: string };
   return `${body.ok ? "ok" : "not ok"}, relay ${body.relay}`;
 }

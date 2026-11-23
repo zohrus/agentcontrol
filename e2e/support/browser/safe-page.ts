@@ -1,29 +1,41 @@
+import type { RunningApp } from "../setup/start-app.ts";
 import { onTestEnd } from "../setup/cleanup.ts";
-import type { AppAccess } from "../setup/app.ts";
-import { eventually } from "../setup/eventually.ts";
-import { launchChromium } from "./playwright.ts";
+import { launchChromium, type Page } from "./playwright.ts";
 
-const PAGE_WAIT_MS = 15_000;
+const CALL_WAIT_MS = 15_000;
 
-/** The recovery page open in a browser, as a person looks at it while something else changes. */
-export async function opensTheSafePageInABrowser(app: AppAccess) {
+/** What the recovery page's script sent to the app, and how the app answered. */
+export interface SafePageCall {
+  status: number;
+  authorization: string | undefined;
+}
+
+/** The recovery page open in a real browser tab. */
+export interface SafePageInABrowser {
+  /** The next call the page's script makes that carries the app's current secret. */
+  nextCallWithTheCurrentSecret(): Promise<SafePageCall>;
+}
+
+async function nextCall(tab: Page, app: RunningApp): Promise<SafePageCall> {
+  const wanted = `Bearer ${app.token}`;
+  const request = await tab
+    .waitForRequest(
+      (seen) =>
+        seen.url() === `${app.baseUrl}/api/modify` && seen.headers()["authorization"] === wanted,
+      { timeout: CALL_WAIT_MS },
+    )
+    .catch(() => {
+      throw new Error("expected the recovery page to call the app with the app's current secret");
+    });
+  const response = await request.response();
+  return { status: response?.status() ?? 0, authorization: request.headers()["authorization"] };
+}
+
+/** Opens `/_safe` in a headless browser, as a user whose UI is broken would. */
+export async function opensTheSafePageInABrowser(app: RunningApp): Promise<SafePageInABrowser> {
   const browser = await launchChromium();
   onTestEnd(() => browser.close());
-  const page = await browser.newPage();
-  await page.goto(`${app.baseUrl}/_safe`);
-  return {
-    typesInTheRequestBox: (text: string) => page.locator("#request").fill(text),
-    requestBoxText: () => page.locator("#request").inputValue(),
-
-    /** Waits until the status part of the page says this, without the page being loaded again. */
-    waitsForTheStatusToSay: (text: string) =>
-      eventually(
-        `expected the recovery page's status to say "${text}"`,
-        async () => {
-          const shown = await page.locator("body").innerText();
-          return shown.includes(text) ? undefined : `it says "${shown}"`;
-        },
-        PAGE_WAIT_MS,
-      ),
-  };
+  const tab = await browser.newPage();
+  await tab.goto(`${app.baseUrl}/_safe`);
+  return { nextCallWithTheCurrentSecret: () => nextCall(tab, app) };
 }

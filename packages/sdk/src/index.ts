@@ -1,6 +1,7 @@
 import { hc } from "hono/client";
 import type { AppType } from "@agentcontrol/app";
 import { configApi } from "./config.ts";
+import { authorizedFetch } from "./authorized-fetch.ts";
 import { filesApi } from "./files.ts";
 import { modifyApi } from "./modify.ts";
 import { sessionsApi } from "./sessions.ts";
@@ -21,10 +22,24 @@ export interface ClientOptions {
   baseUrl: string;
   /** How requests are sent; defaults to the global `fetch`. Lets the client point at something other than the local app. */
   fetch?: typeof fetch;
+  /**
+   * The app's secret, sent on every call and on the live stream as `Authorization: Bearer`.
+   * Programs outside a browser (scripts, tests, the menu bar app) pass the content of
+   * `<data folder>/api-token`. In the browser leave it out: the app puts the secret into the page
+   * it serves (`<meta name="agentcontrol-token">`) and the client reads it from there.
+   */
+  token?: string | undefined;
+  /**
+   * Called when the app answers 401: its secret changed, usually because it restarted after this
+   * page was loaded. Reloading the page fetches the new secret. May be called repeatedly while the
+   * live stream retries, so guard against reload loops.
+   */
+  onUnauthorized?: (() => void) | undefined;
 }
 
 /** The one way the UI talks to the app. Every function throws ApiError when the app refuses. */
-export function createClient({ baseUrl, fetch: send = fetch }: ClientOptions) {
+export function createClient({ baseUrl, fetch: sender = fetch, ...auth }: ClientOptions) {
+  const send = authorizedFetch(sender, auth);
   const api = hc<AppType>(`${baseUrl}/api`, { fetch: send });
   return {
     sessions: sessionsApi(api),

@@ -13,7 +13,8 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 
 ## Security (deferred)
 - [ ] Owner asked what this is (22 Nov 2026) and has the explanation; waiting for a yes to schedule it. Recommended before the first release at the latest: the app can now change its own UI and write agent config, so an unprotected local server matters more.
-- [ ] Lock down the local server. Done: it listens on `127.0.0.1` only. Still to do: require a random token generated at startup, check `Origin` and `Host` headers (blocks attacks from websites open in the browser, including DNS rebinding).
+- [ ] Verify on a Mac that the menu bar app sends the token (`SessionPoller.swift` reads `api-token` under `$AGENTCONTROL_HOME` or `~/.agentcontrol`; never built; it will not see a `--data-dir` given only to the server).
+- [x] Lock down the local server (22 Nov 2026): `127.0.0.1` only, Host and Origin checks, a random token per start sent as a bearer header (the UI reads it from a meta tag the app puts in its pages; no cookie), and the UI reloads once when the token changes after a restart. See `docs/decisions/2026-11-22-local-server-security.md`.
 - [x] Relay socket: readable only by the owner (`0600`), so other users on the machine can't drive your agents. (Set in `packages/relay/src/daemon/server.ts`; still check the folder permissions on shared SSH workspaces in phase 5.)
 
 ## Sessions and git

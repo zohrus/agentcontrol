@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { type ModifyConfig, relayClientOver, startApp } from "@agentcontrol/app";
+import { readApiToken } from "./api-token.ts";
 import { eventually } from "./eventually.ts";
 import { inSubprocesses, type RelayHost } from "./relay-host.ts";
 
@@ -95,9 +96,12 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
 }
 
 /** Polls the app's health check until it reports the relay connected: the app starts without it. */
-async function waitUntilRelayConnected(app: AppProcess): Promise<void> {
+async function waitUntilRelayConnected(app: AppProcess, dataDir: string): Promise<void> {
+  const token = await readApiToken(dataDir);
   await eventually("expected the started app to connect to the relay", async () => {
-    const response = await fetch(`${app.baseUrl}/api/health`);
+    const response = await fetch(`${app.baseUrl}/api/health`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
     const { relay } = (await response.json()) as { relay: string };
     return relay === "disconnected" ? "the relay is still disconnected" : undefined;
   });
@@ -109,6 +113,6 @@ async function waitUntilRelayConnected(app: AppProcess): Promise<void> {
  */
 export async function launchApp(options: LaunchOptions): Promise<AppProcess> {
   const app = await (inSubprocesses ? launchAppProcess(options) : launchAppInProcess(options));
-  if (!options.relayDown) await waitUntilRelayConnected(app);
+  if (!options.relayDown) await waitUntilRelayConnected(app, options.dataDir);
   return app;
 }

@@ -7,7 +7,7 @@ function clientSending(
   app: AppAccess,
   send: (url: string, init?: RequestInit) => Promise<Response>,
 ) {
-  return createClient({ baseUrl: app.baseUrl, fetch: send as typeof fetch });
+  return createClient({ baseUrl: app.baseUrl, token: app.token, fetch: send as typeof fetch });
 }
 
 /** Adds a repo with a request body that is not JSON at all, as a broken client would send. */

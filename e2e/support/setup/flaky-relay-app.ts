@@ -2,6 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient } from "@agentcontrol/sdk";
+import { readApiToken } from "./api-token.ts";
 import { launchAppProcess } from "./app-process.ts";
 import { onTestEnd } from "./cleanup.ts";
 import { stopDaemonProcess } from "./relay-host.ts";
@@ -22,9 +23,11 @@ export async function startAppWhoseRelayCommandFailsAtFirst() {
   // Teardowns run last-in first-out: quit the app first, so it cannot start a daemon after it was stopped.
   onTestEnd(() => stopDaemonProcess(join(dataDir, "relay")));
   onTestEnd(() => app.stop());
+  const token = await readApiToken(dataDir);
   return {
-    sdk: createClient({ baseUrl: app.baseUrl }),
+    sdk: createClient({ baseUrl: app.baseUrl, token }),
     baseUrl: app.baseUrl,
+    token,
     theRelayCommandWorks: async (): Promise<void> => {
       await Bun.write(marker, "");
     },

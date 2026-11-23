@@ -57,7 +57,9 @@ export function appWorkspaceUserOf(app: AppAccess) {
     listsTheAgents: () => app.sdk.agents.list(),
     readsTheWorkspace: () => app.sdk.workspace.get(),
     readsTheHealth: async (): Promise<{ ok: boolean; relay: string }> => {
-      const response = await fetch(`${app.baseUrl}/api/health`);
+      const response = await fetch(`${app.baseUrl}/api/health`, {
+        headers: { authorization: `Bearer ${app.token}` },
+      });
       return (await response.json()) as { ok: boolean; relay: string };
     },
     readsTheChecklist: () => app.sdk.workspace.check(),

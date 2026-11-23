@@ -20,10 +20,25 @@ textarea{width:100%;font:inherit;box-sizing:border-box}pre{background:#eee;paddi
 
 /** Runs in the browser; knows nothing of the UI bundle or the SDK package, only the app's API. */
 const SCRIPT = `
+const KEY = "agentcontrol-safe-reloaded";
+const secret = document.querySelector('meta[name="agentcontrol-token"]');
+const authorized = (headers) => ({ ...headers, authorization: "Bearer " + (secret ? secret.content : "") });
+/** Private windows may refuse session storage; then there is no memory, so it counts as "already reloaded". */
+function stored(use) {
+  try { return use(sessionStorage); } catch { return "1"; }
+}
+function expired(response) {
+  // The app restarted and made a new secret: reload once to get the page that holds it.
+  if (response.status !== 401 || stored((s) => s.getItem(KEY))) return false;
+  stored((s) => s.setItem(KEY, "1"));
+  location.reload();
+  return true;
+}
 async function call(path, body) {
   const response = await fetch("/api/modify" + path, {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: authorized({ "content-type": "application/json" }),
     body: body ? JSON.stringify(body) : undefined });
+  if (expired(response)) return;
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     document.getElementById("error").textContent = (data.error && data.error.message) || "That did not work.";
@@ -51,7 +66,10 @@ document.addEventListener("click", (event) => {
   } else call("/" + action);
 });
 setInterval(async () => {
-  const state = await fetch("/api/modify").then((r) => r.json()).catch(() => undefined);
+  const response = await fetch("/api/modify", { headers: authorized({}) }).catch(() => undefined);
+  if (!response || expired(response)) return;
+  stored((s) => s.removeItem(KEY));
+  const state = await response.json().catch(() => undefined);
   if (state && state.status !== document.body.dataset.status) await refresh();
 }, 2000);
 `;
