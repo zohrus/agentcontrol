@@ -3,8 +3,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Link } from "../sync/index.ts";
 import type { ApiDeps } from "./deps.ts";
+
 import { ApiFailure } from "./errors.ts";
-import { routeRequest, WorkspaceQuery } from "./routing.ts";
+import { WorkspaceQuery, routeRequest } from "./routing.ts";
 import { validate } from "./validate.ts";
 
 const RepoParam = z.object({ id: RepoId });
