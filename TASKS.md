@@ -66,6 +66,7 @@ Later:
 ## Testing
 - [x] Coverage gate (22 Nov 2026): at least 95% of lines covered by the end-to-end suite, total and on changed lines, deterministic, in `check`, before every push and in CI; about 98% today. The relay and the app start inside the test process; a few tests keep real processes.
 - [x] Count the UI in the coverage gate (23 Nov 2026): Chromium V8 coverage mapped through Vite source maps to source lines. Thresholds: 98% of all lines and 95% of changed lines; total about 98.9%. Only `packages/ui-template/src/index.ts` (re-exports) and thin CLI entry files are excluded, with written reasons in `coverage.config.json`.
+- [x] Flaky under load, fixed 24 Nov 2026: `error-messages` ("invalid reference: no-such-branch") failed 2 of 14 runs under a CPU stress and 0 of 16 after: the New session helper pressed Add and typed the base branch before the app had the repository; the dialog then selected the new repository and reset the branch. Coverage flips: `sync/pause.ts` (`wake` only ran its abort after a pause had begun), `ui-serving/dev.ts` (the kill after the grace period ran only when Vite was slow to quit; a stubborn UI server is tested now), `api/errors.ts` (restructured; the cause was not proven, `bun run test:coverage-stable` is the check).
 - [ ] Make the test suite less sensitive to load: it timed out when many agents ran on a 4-core machine, and again on 23 Nov when several suites ran at once. Timing budget per test and a flake run (below); fewer parallel agents meanwhile.
 - [ ] The dependency-guard test should clear the override environment variable, so it does not depend on the shell it runs in.
 - [x] Keep the mock ACP agent faithful, Claude Code part (23 Nov 2026): `bun run smoke:real` drives the real adapter through the relay, app and SDK and `--record` saves the relay's logs; four scrubbed recordings are in `e2e/fixtures/recordings/claude-code/` and `e2e/updates/real-claude-code-recordings.e2e.ts` serves them and fails on any `other` update that is not left alone on purpose. The mock now mimics the adapter's modes and a cancelled turn's usage. Still open: Codex recordings (no working key), a thinking block and a plan from the real adapter (neither appeared with Haiku), and a check that every update kind the mock emits appears in a recording.
@@ -82,7 +83,7 @@ Later:
 ## Development loop and CI
 - [x] Get CI green on `main` (23 Nov 2026). `ci` is green; read `docs/decisions/2026-11-23-ci.md` for what each job proves.
 - [x] The Mac job of the `build` workflow is green on `main` (23 Nov 2026): it builds both Mac apps, ad-hoc signs nested native code, smoke-tests the compiled app from the bundle and from the mounted dmg, and uploads the unsigned dmgs (`agentcontrol-mac`, about 700 MB zipped, 14 days). The red was `VERSION` reading the root `package.json`, absent in a release folder; it now reads `packages/protocol/package.json` and the build refuses to run when the two versions differ.
-- [ ] Put the compiled-app smoke (`bun run build:linux` and the app smoke) into `bun run integrate`. A change that passed every gate broke the compiled app because it was not in the pre-landing path; the orchestrator runs it by hand for now.
+- [x] The compiled-app smoke is in `bun run integrate` (24 Nov 2026): after the check and before the push it runs `bun run build:linux` and `bun scripts/smoke-binary.ts --app dist/release/linux-x64`. A change to `docs/` and Markdown files only skips it; `--skip-smoke` is accepted only for such a change. It adds a build and a smoke (a few minutes) to every landing that touches code; the Mac smoke stays in CI.
 - [ ] Someone reads the CI result after every landing: it was red for a day while local checks were green. Consider having `integrate` print the latest run state of `main`.
 - [ ] Owner: set a GitHub ruleset on `main` (linear history, no force push or deletion, require the `check` status, no required pull request, owner may bypass). Test once that the integrate script's direct push is accepted.
 - [ ] Add `--autostart` to the CI smoke step of the compiled relay in `.github/workflows/build.yml`; the daemon fix has landed.
@@ -103,6 +104,7 @@ Later:
 - [ ] In-app updates (Sparkle): deferred. The menu item opens GitHub Releases.
 - [x] `actions/upload-artifact` in `build.yml` is pinned to a commit SHA.
 - [ ] Release size is about 700 MB per platform (default UI `node_modules` 285 MB: monaco-editor 105 MB, lucide-react 50 MB; two Linux relays 210 MB). Trim only after measuring; decide whether it is acceptable.
+- [ ] Console, found on review and left: a terminal opened while its connection is closing is not ended (the `onClose` cleanup of a connection that is already gone never runs), so the shell outlives it; it needs a race between `relay/terminal.open` and a disconnect, and no test can make it happen on purpose. Also: a shell that ends while output is being dropped never shows the "[output skipped]" line; the decoder is not flushed when the shell ends (a half character at the very end is lost).
 - [ ] Adapter environment: the agent's environment carries `BUN_BE_BUN=1` and `BUN_INSTALL_CACHE_DIR`, so shell commands an agent runs inherit them (a Bun-compiled program of the user's would act as `bun`). Being fixed now by the console agent.
 - [ ] `packages/ui-template/tsconfig.json` repeats the options of `tsconfig.base.json` because a release has no repository root: add a check that compares the two.
 - [ ] The template's transitive dependencies are resolved at build time, not from `bun.lock`; revisit if a release needs byte-for-byte reproduction.
@@ -143,12 +145,16 @@ Later:
 - [ ] Diagnostics: app and relay logs, a "copy diagnostics" button for bug reports.
 - [ ] Write down the telemetry policy (proposed: none).
 
+- [x] Console, fixed on review (24 Nov 2026): output a client does not read is bounded (relay and app drop past 4 MB unread, past 8 MB everything, with an "[output skipped]" line); a terminal socket refused for a stale secret says so and the page reloads like for any other 401.
+
 ## Analytics
 - [x] The Analytics screen (phase 7): durable `usage` table, summary, sessions and insights API, `analytics.*` in the SDK, rule-based insights, plain SVG charts (no chart library), session table, filters, light and dark. Screenshots: `docs/ui-analytics-light.png`, `docs/ui-analytics-dark.png`.
 - [x] Sub-cent costs show as "<$0.01" in the chip and status bar, and with four decimals in Analytics.
 - [x] Sessions with tokens and no reported cost are marked "no cost reported", never counted as $0.
 - [ ] Subscription users (Claude Pro/Max, ChatGPT) have no dollar cost: show usage against plan limits instead (needs the plan's limits from the agent; the Analytics screen only says "no cost reported" for now).
-- [ ] Analytics reads every event of every session on each request, and the app reads all usage from the relay on each connection. Cache per session (by last seq) and read usage incrementally if it gets slow.
+- [x] Analytics read every event of every session on each request: with 200 sessions of about 540 events each (110,000 events) a summary, the session table or the insights took 360 to 600 ms. Facts are now kept per session in memory, keyed by the session's last saved seq, the range and the store's revision (re-translated events), so a request takes 20 to 50 ms when nothing changed; live sessions are read each time. Still open: the app reads all usage from the relay on each connection (one request, no measurement yet), and the first request after a start reads everything once.
+- [x] Analytics: a live session's open turn no longer runs past the end of a `to` range; usage reads that fail are logged ("Could not read the usage of ..."); a test upgrades a database made by migrations 0000-0005 and counts its sessions.
+- [ ] Analytics, judged not bugs on review (23-24 Nov 2026): a cancelled permission request counts as denied even when its request is outside the range (only with a range; only cancellations); "cancelled" turns count as cut short although the user chose to cancel; the day breakdown uses one time-zone offset for the whole range, so a daylight-saving change shifts one hour of one day; days without data are not drawn.
 - [ ] Analytics: the Modify agent's sessions are not counted; a chart library is not needed so far (the three charts are about 250 lines of SVG).
 
 ## Decisions made
