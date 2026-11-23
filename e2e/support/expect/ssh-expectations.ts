@@ -3,6 +3,9 @@ import type { AppAccess } from "../setup/app.ts";
 import type { ApiOutcome } from "../setup/app-attempt.ts";
 import { eventually } from "../setup/eventually.ts";
 
+/** Reconnecting over ssh is a few handshakes; a busy machine needs room. */
+const SSH_WAIT_MS = 30_000;
+
 /** The workspace is in this connection state, and when it is not good it says why in words. */
 export function expectWorkspaceToBe(workspace: WorkspaceInfo, state: ConnectionState): void {
   if (workspace.state !== state) {
@@ -40,10 +43,15 @@ export async function expectWorkspaceListedAs(
   call: { workspace: WorkspaceInfo; state: ConnectionState },
 ): Promise<void> {
   const { workspace, state } = call;
-  await eventually(`expected workspace "${workspace.label}" to be listed as ${state}`, async () => {
-    const listed = (await app.sdk.workspaces.list()).find((each) => each.id === workspace.id);
-    return listed?.state === state ? undefined : `it is ${listed?.state ?? "not listed"}`;
-  });
+  const expectation = `expected workspace "${workspace.label}" to be listed as ${state}`;
+  await eventually(
+    expectation,
+    async () => {
+      const listed = (await app.sdk.workspaces.list()).find((each) => each.id === workspace.id);
+      return listed?.state === state ? undefined : `it is ${listed?.state ?? "not listed"}`;
+    },
+    SSH_WAIT_MS,
+  );
 }
 
 /** The checklist has every one of these steps, and each passed. */

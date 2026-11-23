@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { afterEach, setDefaultTimeout, test } from "bun:test";
 import {
   expectHistoryContinuesWithoutGaps,
   expectLiveStreamDeliveredAgentReply,
@@ -12,6 +12,8 @@ import { expectHostToHaveFinishedTheTurn } from "../support/expect/ssh-session-e
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 
+// Every ssh call is a real handshake, and the suite runs files side by side.
+setDefaultTimeout(60_000);
 afterEach(cleanUpAfterTest);
 
 test("when the ssh connection is cut mid-turn, no event is lost and none is repeated", async () => {

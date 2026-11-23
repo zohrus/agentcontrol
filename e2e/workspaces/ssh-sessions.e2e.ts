@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { afterEach, setDefaultTimeout, test } from "bun:test";
 import {
   expectLiveStreamDeliveredAgentReply,
   expectSessionWaitingForReply,
@@ -12,6 +12,8 @@ import {
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 
+// Every ssh call is a real handshake, and the suite runs files side by side.
+setDefaultTimeout(60_000);
 afterEach(cleanUpAfterTest);
 
 test("a session started on the ssh workspace runs its agent on the host and its events reach the app", async () => {

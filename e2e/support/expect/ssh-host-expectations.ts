@@ -17,12 +17,16 @@ export async function expectHostRelayToHaveBeenReplaced(
   host: SshHost,
   old: { pid: number },
 ): Promise<void> {
-  await eventually("expected the host's relay to have been replaced", async () => {
-    const pid = await host.relayPid();
-    return pid !== undefined && pid !== old.pid
-      ? undefined
-      : "the old relay is still the one running";
-  });
+  await eventually(
+    "expected the host's relay to have been replaced",
+    async () => {
+      const pid = await host.relayPid();
+      return pid !== undefined && pid !== old.pid
+        ? undefined
+        : "the old relay is still the one running";
+    },
+    30_000,
+  );
 }
 
 /** The old relay is still the one running on the host, with whatever it was doing. */

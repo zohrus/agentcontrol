@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { afterEach, setDefaultTimeout, test } from "bun:test";
 import { expectSessionWaitingForReply } from "../support/expect/app-expectations.ts";
 import { expectAppToRefuse } from "../support/expect/app-refusal-expectations.ts";
 import {
@@ -11,6 +11,8 @@ import {
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 
+// Every ssh call is a real handshake, and the suite runs files side by side.
+setDefaultTimeout(60_000);
 afterEach(cleanUpAfterTest);
 
 test("an unreachable host shows as offline with a reason in plain words", async () => {

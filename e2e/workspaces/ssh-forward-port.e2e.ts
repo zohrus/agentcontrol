@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { afterEach, setDefaultTimeout, test } from "bun:test";
 import {
   expectForwardingToFail,
   expectGreetingToBe,
@@ -12,6 +12,8 @@ import {
 } from "../support/setup/ssh-forwarding.ts";
 import { startSshHost } from "../support/setup/ssh-host.ts";
 
+// Every ssh call is a real handshake, and the suite runs files side by side.
+setDefaultTimeout(60_000);
 afterEach(cleanUpAfterTest);
 
 test("a port of a dev server on the host can be reached from this machine", async () => {

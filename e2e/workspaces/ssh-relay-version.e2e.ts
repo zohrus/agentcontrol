@@ -1,4 +1,4 @@
-import { afterEach, test } from "bun:test";
+import { afterEach, setDefaultTimeout, test } from "bun:test";
 import {
   expectChecklistStepToBe,
   expectWorkspaceListedAs,
@@ -13,6 +13,8 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { startOldRelayOnHost } from "../support/setup/ssh-old-relay.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
 
+// Every ssh call is a real handshake, and the suite runs files side by side.
+setDefaultTimeout(60_000);
 afterEach(cleanUpAfterTest);
 
 test("a relay of another version on the host that has nothing running is replaced, and the app connects", async () => {
