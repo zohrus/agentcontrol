@@ -2,6 +2,7 @@ import { afterEach, test } from "bun:test";
 import {
   expectConnectionToSay,
   expectNoToasts,
+  expectPageToShow,
   expectToastToShow,
 } from "../support/browser/page-expectations.ts";
 import {
@@ -146,6 +147,32 @@ test(
     // ** THEN a message says something went wrong in the page
     // ********************************************************************
     await expectToastToShow(app, "Something went wrong in the page.");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "when the app cannot give a session's changes the Changes panel says why",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session whose changes the app refuses to give
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    await app.page.getsAnErrorFrom("/diff", "the repository is locked");
+    const session = await app.user.startsSession({ prompt: "Reword the readme" });
+
+    // ********************************************************************
+    // ** WHEN the user opens the session
+    // ********************************************************************
+    await app.page.opensSession(session.title);
+
+    // ********************************************************************
+    // ** THEN the Changes panel gives the app's reason
+    // ********************************************************************
+    await expectPageToShow(
+      app,
+      "Something went wrong inside AgentControl. the repository is locked",
+    );
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

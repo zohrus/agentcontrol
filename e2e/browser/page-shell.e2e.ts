@@ -96,11 +96,13 @@ test(
     // ** GIVEN the app is open in a browser that refuses to store anything
     // ********************************************************************
     const app = await startAppInBrowser({ storageBlocked: true });
+    const refused = app.page.watchesForARefusedSecret();
 
     // ********************************************************************
-    // ** WHEN the app restarts and makes a new secret
+    // ** WHEN the app restarts and makes a new secret, and the page's old one is refused
     // ********************************************************************
     await app.restartsTheApp();
+    await refused;
 
     // ********************************************************************
     // ** THEN the page stays as it is and says it is reconnecting, instead of reloading again and again

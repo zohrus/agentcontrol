@@ -67,6 +67,12 @@ function badAnswers(page: Page) {
         route.fulfill({ status: 200, contentType: "text/plain", body: "this is not json" }),
       );
     },
+    /** The app refuses a request to this path with an internal error carrying this message. */
+    getsAnErrorFrom: async (path: string, message: string): Promise<void> => {
+      await page.route(`**${path}`, (route) =>
+        route.fulfill({ status: 500, json: { error: { code: "internal-error", message } } }),
+      );
+    },
     /** The app's answer to this path is valid but not what the page expects. */
     getsAnUnexpectedAnswerFrom: async (path: string): Promise<void> => {
       await page.route(`**${path}`, (route) =>
@@ -101,6 +107,9 @@ function lateAnswers(page: Page) {
 function trouble(page: Page) {
   return {
     /** The whole network goes away: the page can neither listen nor ask. */
+    /** Starts watching for the app to refuse the page's secret; resolves when it has. */
+    watchesForARefusedSecret: (): Promise<unknown> =>
+      page.waitForResponse((response) => response.status() === 401),
     losesTheNetwork: () => page.context().setOffline(true),
     /** New live connections to the app fail, so a connection that drops cannot come back. */
     cannotReachTheLiveStream: async (): Promise<void> => {
