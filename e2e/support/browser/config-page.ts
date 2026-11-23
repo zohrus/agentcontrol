@@ -28,6 +28,11 @@ function changes(page: Page) {
     goesBackToEditing: () => screen.getByRole("button", { name: "Back to editing" }).click(),
     doneWithTheApply: () => screen.getByRole("button", { name: "Done", exact: true }).click(),
     undoesTheApply: () => screen.getByRole("button", { name: "Undo this apply" }).click(),
+    cancelsTheUndoWarning: () =>
+      page
+        .getByRole("dialog", { name: "Files changed since" })
+        .getByRole("button", { name: "Cancel" })
+        .click(),
     confirmsUndoAnyway: () =>
       page
         .getByRole("dialog", { name: "Files changed since" })

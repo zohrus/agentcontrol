@@ -26,7 +26,7 @@ function decodeOrNothing(text: string): string {
 function partsOf(hash: string): { workspaceId: string; id: string } | undefined {
   if (!hash.startsWith(PREFIX)) return undefined;
   const parts = hash.slice(PREFIX.length).split("/").map(decodeOrNothing);
-  const workspaceId = parts.slice(0, -1).join("") || LOCAL_WORKSPACE;
+  const workspaceId = parts.length === 1 ? LOCAL_WORKSPACE : parts.slice(0, -1).join("");
   return parts.length > 2 ? undefined : { workspaceId, id: parts.slice(-1).join("") };
 }
 

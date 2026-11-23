@@ -12,13 +12,22 @@ import {
   useSessionEvents,
   useTree,
   useTurnRunning,
+  useWorkspace,
   worktreePathOf,
 } from "../data/index.ts";
+import { canTakeCommands } from "../workspaces/index.ts";
 
 const NO_FILE = { base: "", working: "", notice: undefined };
 
 function Message({ text }: { text: string }) {
   return <p className="m-0 p-4 text-xs text-muted">{text}</p>;
+}
+
+/** Files cannot be edited while the agent works, or when the session's workspace is not usable. */
+function useFrozen(id: SessionRef): boolean {
+  const workspace = useWorkspace(id.workspaceId);
+  const unusable = workspace !== undefined && !canTakeCommands(workspace);
+  return useTurnRunning(id) || unusable;
 }
 
 function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
@@ -29,7 +38,7 @@ function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
   useOpenFile(id, path);
   const file = useFile(id, path) ?? NO_FILE;
   const tree = useTree(id);
-  const running = useTurnRunning(id);
+  const frozen = useFrozen(id);
   const save = (content: string) => {
     if (path !== undefined) void controller.saveFile(id, path, content);
   };
@@ -44,7 +53,7 @@ function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
       workingContent={file.working}
       notice={file.notice}
       worktreePath={worktreePathOf(events) ?? ""}
-      readOnly={running}
+      readOnly={frozen}
       onSave={save}
     />
   );

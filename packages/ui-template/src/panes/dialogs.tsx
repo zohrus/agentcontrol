@@ -32,12 +32,24 @@ const choiceOf = (w: WorkspaceInfo): WorkspaceChoice => ({
   connected: canTakeCommands(w),
 });
 
+/** The workspace a session will start on; it falls back to this Mac when that one goes away. */
+function useChosenWorkspace(workspaces: readonly WorkspaceInfo[]) {
+  const [workspaceId, setWorkspaceId] = useState(LOCAL_WORKSPACE);
+  const chosen = workspaces.find((workspace) => workspace.id === workspaceId);
+  const usable = chosen === undefined || canTakeCommands(chosen);
+  useEffect(() => {
+    if (!usable) setWorkspaceId(LOCAL_WORKSPACE);
+  }, [usable]);
+  return [workspaceId, setWorkspaceId] as const;
+}
+
 function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: SessionRef) => void }) {
   const controller = useController();
-  const [workspaceId, setWorkspaceId] = useState(LOCAL_WORKSPACE);
+  const every = useWorkspaces();
+  const [workspaceId, setWorkspaceId] = useChosenWorkspace(every);
+  const workspaces = every.filter((workspace) => workspace.state !== "removed");
   const choices = useChoices(workspaceId);
   const ready = useData((s) => s.choices[workspaceId] !== undefined);
-  const workspaces = useWorkspaces().filter((workspace) => workspace.state !== "removed");
   useEffect(() => {
     if (shared.open) void controller.workspaces.loadChoices(workspaceId);
   }, [controller, shared.open, workspaceId]);

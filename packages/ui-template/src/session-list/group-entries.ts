@@ -12,9 +12,9 @@ export type WorkspaceGroup = {
   entries: SessionListEntry[];
 };
 
-/** True for a session that is blocked until the user answers. */
+/** True for a session that is blocked until the user answers (one nobody can answer is not). */
 export function isWaiting(entry: SessionListEntry): boolean {
-  return entry.summary.status === "waiting";
+  return entry.summary.status === "waiting" && !entry.readOnly;
 }
 
 function groupFor(entry: SessionListEntry): Omit<WorkspaceGroup, "entries"> {

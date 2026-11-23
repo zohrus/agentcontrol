@@ -48,7 +48,8 @@ function AddWorkspace(shared: Shared) {
   const flow = useAddWorkspace(shared.open);
   const { steps } = useWorkspaceCheck(flow.id ?? "");
   const added = useWorkspace(flow.id);
-  const connected = added?.state === "connected" && steps.every((step) => step.status === "ok");
+  const passed = steps.length > 0 && steps.every((step) => step.status === "ok");
+  const connected = added?.state === "connected" && passed;
   return (
     <AddWorkspaceDialog
       {...shared}

@@ -6,6 +6,8 @@ export type AppliedViewProps = {
   /** Files that changed after the apply; set when an undo was held back for the user to confirm. */
   changedSince: readonly string[];
   onUndo: (force: boolean) => void;
+  /** Declines the undo that was held back; the apply stays as it is. */
+  onKeepApply: () => void;
   onDone: () => void;
 };
 
@@ -26,7 +28,7 @@ function Written({ paths }: { paths: readonly string[] }) {
   );
 }
 
-function ChangedSince(props: Pick<AppliedViewProps, "changedSince" | "onUndo" | "onDone">) {
+function ChangedSince(props: Pick<AppliedViewProps, "changedSince" | "onUndo" | "onKeepApply">) {
   return (
     <ConfirmDialog
       open={props.changedSince.length > 0}
@@ -35,7 +37,7 @@ function ChangedSince(props: Pick<AppliedViewProps, "changedSince" | "onUndo" | 
       onConfirm={() => {
         props.onUndo(true);
       }}
-      onCancel={props.onDone}
+      onCancel={props.onKeepApply}
     >
       <p className="m-0">
         These files were changed after the apply. Undoing puts them back as they were before it, and

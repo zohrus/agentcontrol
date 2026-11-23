@@ -6,7 +6,7 @@ import type {
   WorkspaceInfo,
 } from "@agentcontrol/sdk";
 import { useEffect, useMemo, useState } from "react";
-import type { SessionListEntry } from "../session-list/index.ts";
+import { isWaiting, type SessionListEntry } from "../session-list/index.ts";
 import {
   attentionText,
   connectedLabels,
@@ -117,13 +117,14 @@ function useDay(): string {
 /** What the status bar counts: waiting and running sessions, today's cost and the connection. */
 export function useStatusStats() {
   const sessions = useSessions();
+  const entries = useSessionEntries();
   const usage = useData((s) => s.usage);
   const connection = useData((s) => s.connection);
   const workspaces = useData((s) => s.workspaces);
   const day = useDay();
   return useMemo(
     () => ({
-      waiting: sessions.filter((row) => row.status === "waiting").length,
+      waiting: entries.filter(isWaiting).length,
       running: sessions.filter((row) => row.status === "running" || row.status === "starting")
         .length,
       today: costToday(usage, new Date()),
@@ -132,6 +133,6 @@ export function useStatusStats() {
       attention: workspaces.filter(needsAttention).map(attentionText),
     }),
     // `day` is a dependency so the sum starts again at midnight.
-    [sessions, usage, connection, workspaces, day],
+    [sessions, entries, usage, connection, workspaces, day],
   );
 }

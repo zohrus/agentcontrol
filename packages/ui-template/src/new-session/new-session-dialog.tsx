@@ -52,7 +52,6 @@ function NewSessionForm(props: FormProps) {
 
 /** "New session": pick repository, base branch and agent, write the prompt and start. */
 export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
-  const formKey = `${form.workspaceId}:${String(form.ready)}`;
   return (
     <Dialog
       open={open}
@@ -65,7 +64,11 @@ export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
         value={form.workspaceId}
         onChange={form.onWorkspaceChange}
       />
-      <NewSessionForm key={formKey} {...form} />
+      {form.ready ? (
+        <NewSessionForm key={form.workspaceId} {...form} />
+      ) : (
+        <p className="p-4 text-muted">Loading this workspace…</p>
+      )}
     </Dialog>
   );
 }

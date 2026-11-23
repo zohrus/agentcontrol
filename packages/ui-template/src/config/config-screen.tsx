@@ -29,6 +29,7 @@ function Review({ props, screen }: PartProps) {
         applied={applied}
         changedSince={undoBlockedBy}
         onUndo={(force) => void screen.undo(force)}
+        onKeepApply={props.actions.keepApply}
         onDone={screen.done}
       />
     );

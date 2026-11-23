@@ -90,3 +90,30 @@ test(
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
+
+test(
+  "declining to undo over a changed file keeps the apply, so it can still be undone",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN an applied MCP server, and Claude Code rewrote its own file afterwards
+    // ********************************************************************
+    const app = await startConfigAppAfterApplyingAServerInTheScreen();
+    // AND Claude Code rewrote its own file after the apply
+    await app.home.has(".claude.json", editedLater);
+    // AND the user pressed Undo this apply and saw the warning about that file
+    await app.page.undoesTheApply();
+    await expectUndoWarningToName(app, ".claude.json");
+
+    // ********************************************************************
+    // ** WHEN the user cancels the warning
+    // ********************************************************************
+    await app.page.cancelsTheUndoWarning();
+
+    // ********************************************************************
+    // ** THEN the screen still shows the apply with Undo this apply, and nothing was restored
+    // ********************************************************************
+    await expectConfigToShow(app, "Applied.", "Undo this apply");
+    await expectFileToContain(app.home, { file: ".codex/config.toml", text: "docs" });
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);

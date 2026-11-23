@@ -6,7 +6,8 @@ import {
   findExisting,
   loadConfig,
   reviewChanges,
-  saveItems,
+  changeItems,
+  clearUndoBlock,
   undoApplied,
 } from "./config-data.ts";
 import { keepManualEdit } from "./config-drift.ts";
@@ -16,7 +17,8 @@ import { type Context, succeeded } from "./context.ts";
 export function configActions(ctx: Context) {
   return {
     load: () => succeeded(ctx, () => loadConfig(ctx)),
-    save: (items: readonly ScopedItem[]) => succeeded(ctx, () => saveItems(ctx, items)),
+    change: (change: (items: readonly ScopedItem[]) => readonly ScopedItem[]) =>
+      succeeded(ctx, () => changeItems(ctx, change)),
     review: (target: ConfigTarget) => succeeded(ctx, () => reviewChanges(ctx, target)),
     apply: () => succeeded(ctx, () => applyReviewed(ctx)),
     undo: async (force: boolean): Promise<boolean> => {
@@ -30,6 +32,9 @@ export function configActions(ctx: Context) {
       succeeded(ctx, () => findExisting(ctx, agents)),
     keepManualEdit: (call: { agent: ConfigAgent; itemIds: readonly string[] }) =>
       succeeded(ctx, () => keepManualEdit(ctx, call)),
+    keepApply: () => {
+      clearUndoBlock(ctx);
+    },
     forgetFound: () => {
       clearFound(ctx);
     },

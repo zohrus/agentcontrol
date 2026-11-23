@@ -13,13 +13,28 @@ async function loadDrift(ctx: Context): Promise<void> {
 
 /** The items the app holds and whether any file was edited by hand; on opening the Config screen. */
 export async function loadConfig(ctx: Context): Promise<void> {
-  const [items] = await Promise.all([ctx.client.config.list(), loadDrift(ctx)]);
-  holdConfig(ctx, { loaded: true, items });
+  holdConfig(ctx, { loaded: true, items: await ctx.client.config.list() });
+  await loadDrift(ctx);
 }
 
-/** Stores the items in the app (nothing is written to any agent's files). */
-export async function saveItems(ctx: Context, items: readonly ScopedItem[]): Promise<void> {
-  holdConfig(ctx, { items: await ctx.client.config.save([...items]) });
+type Change = (items: readonly ScopedItem[]) => readonly ScopedItem[];
+
+/** Changes to the items wait for the one before, so each starts from what the last one stored. */
+const saving = new WeakMap<Context, Promise<unknown>>();
+
+/**
+ * Changes the stored items (nothing is written to any agent's files). `change` is given the items
+ * as they are when its turn comes, so quick successive changes never overwrite each other.
+ */
+export function changeItems(ctx: Context, change: Change): Promise<void> {
+  const turn = (saving.get(ctx) ?? Promise.resolve())
+    .catch(() => undefined)
+    .then(async () => {
+      const next = change(ctx.store.get().config.items);
+      holdConfig(ctx, { items: await ctx.client.config.save([...next]) });
+    });
+  saving.set(ctx, turn);
+  return turn;
 }
 
 /** Shows what applying the stored items would change in the agents' files, without writing. */
@@ -67,6 +82,11 @@ export async function findExisting(ctx: Context, agents: readonly ConfigAgent[])
 /** Forgets what the last "Import existing setup" found. */
 export function clearFound(ctx: Context): void {
   holdConfig(ctx, { found: undefined });
+}
+
+/** The user declined to undo over files that changed since: the apply stays undoable. */
+export function clearUndoBlock(ctx: Context): void {
+  holdConfig(ctx, { undoBlockedBy: [] });
 }
 
 /** Forgets the last apply when the user goes back to editing; the review's notes stay in the list. */

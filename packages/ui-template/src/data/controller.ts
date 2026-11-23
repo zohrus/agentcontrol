@@ -15,7 +15,7 @@ import { loadModify, modifyActions } from "./modify-data.ts";
 import { createSelection } from "./selection.ts";
 import { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 import { loadSessions } from "./sessions-data.ts";
-import { addRepository, loadChoices, saveSetup } from "./setup-data.ts";
+import { addRepository, saveSetup } from "./setup-data.ts";
 import { createStore } from "./store.ts";
 import { loadWorkspaces, workspaceActions } from "./workspaces-data.ts";
 
@@ -68,7 +68,7 @@ function fileChangeListeners() {
 /** What is fetched again whenever the live connection (re)opens. */
 function resyncOf(ctx: Context, selection: ReturnType<typeof createSelection>): () => void {
   return () => {
-    inBackground(ctx, Promise.all([loadSessions(ctx), loadWorkspaces(ctx), loadChoices(ctx)]));
+    inBackground(ctx, Promise.all([loadSessions(ctx), loadWorkspaces(ctx)]));
     inBackground(ctx, loadModify(ctx));
     selection.reloadAll();
   };

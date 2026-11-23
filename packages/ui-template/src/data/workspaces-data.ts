@@ -21,8 +21,7 @@ export function applyWorkspace(ctx: Context, info: WorkspaceInfo): void {
 
 /** Every workspace the app knows, after a (re)connect. */
 export async function loadWorkspaces(ctx: Context): Promise<void> {
-  const workspaces = await ctx.client.workspaces.list();
-  ctx.store.update((s) => ({ ...s, workspaces }));
+  for (const workspace of await ctx.client.workspaces.list()) applyWorkspace(ctx, workspace);
 }
 
 function holdCheck(ctx: Context, id: string, check: WorkspaceCheck): void {

@@ -2,8 +2,7 @@ import type { ScopedItem } from "@agentcontrol/protocol";
 import { itemTitle } from "./item-title.ts";
 
 /** An item is one per id and repository. */
-export const placeOf = (scoped: ScopedItem): string =>
-  `${scoped.item.id}|${scoped.scope.repoPath ?? ""}`;
+const placeOf = (scoped: ScopedItem): string => `${scoped.item.id}|${scoped.scope.repoPath ?? ""}`;
 
 /** The items with this one added, or in place of the one it replaces. */
 export function withItem(call: {
@@ -33,3 +32,13 @@ export const titlesOf = (items: readonly ScopedItem[]): Record<string, string> =
 /** The repository whose own files a review should include: that of the first repo-scoped item. */
 export const repoOf = (items: readonly ScopedItem[]): string | undefined =>
   items.find((scoped) => scoped.scope.repoPath !== undefined)?.scope.repoPath;
+
+/** The items without this one. */
+export const without = (items: readonly ScopedItem[], gone: ScopedItem): ScopedItem[] =>
+  items.filter((held) => placeOf(held) !== placeOf(gone));
+
+/** The items with this one switched on or off. */
+export const toggled = (items: readonly ScopedItem[], one: ScopedItem): ScopedItem[] =>
+  items.map((held) =>
+    placeOf(held) === placeOf(one) ? { ...held, enabled: !held.enabled } : held,
+  );
