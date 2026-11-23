@@ -24,7 +24,7 @@ function ChatTab(props: ModifyPanelProps) {
     <>
       <ModifyChat
         events={props.events}
-        canSend={status === "idle" || status === "failed"}
+        canSend={(status === "idle" || status === "failed") && update?.phase !== "merged"}
         onSendPrompt={props.onSendPrompt}
       />
       <ChangeDetails change={change} />

@@ -22,7 +22,8 @@ export function applyModify(ctx: Context, state: ModifyState): void {
   const before = ctx.store.get().modify;
   ctx.store.update((s) => ({ ...s, modify: state }));
   followChat(ctx, state);
-  if (state.status === "idle" && before?.status !== "idle") inBackground(ctx, loadHistory(ctx));
+  const settled = before !== undefined && before.status !== "idle" && state.status === "idle";
+  if (settled) inBackground(ctx, loadHistory(ctx));
 }
 
 /** Reads the state and history from the app: on first connection and after every reconnect. */
@@ -37,9 +38,11 @@ export async function loadModify(ctx: Context): Promise<void> {
 
 /** Runs something the user asked of the Modify agent and shows the state it answers with. */
 async function act(ctx: Context, call: Call): Promise<void> {
+  const heldBefore = ctx.store.get().modify;
   const state = await attempt(ctx, () => call(ctx.client.modify));
   if (state === undefined) return;
-  applyModify(ctx, state);
+  // A live message that arrived before this answer is newer than it.
+  if (ctx.store.get().modify === heldBefore) applyModify(ctx, state);
   inBackground(ctx, loadHistory(ctx));
 }
 

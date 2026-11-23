@@ -1,6 +1,13 @@
 import { sessionTableWith } from "../setup/fixture-ui.ts";
-import { modifyAgentKeepsWritingTypeErrors } from "../setup/modify-history.ts";
-import { type ModifiableApp, startAppWithModifiableUi } from "../setup/modify-app.ts";
+import {
+  type ModifiableApp,
+  releaseDefaultUiUpdate,
+  startAppWithModifiableUi,
+} from "../setup/modify-app.ts";
+import {
+  modifyAgentKeepsWritingTypeErrors,
+  userKeptTableColumns,
+} from "../setup/modify-history.ts";
 import { expectModifyPanelToShow } from "./modify-browser-expectations.ts";
 import { openInBrowser } from "./start-app-in-browser.ts";
 
@@ -36,6 +43,25 @@ export async function costColumnChangeReadyInModifyPanel() {
   const app = await modifyPanelOpenWithAgentAddingCostColumn();
   await app.page.asksToModifyTheUi("add a cost column");
   await expectModifyPanelToShow(app, "Ready");
+  return app;
+}
+
+/** The user kept a cost column change, default UI 1.1 was released, and the open panel offers it. */
+export async function defaultUiUpdateOfferedInModifyPanel() {
+  const app = await startModifiableAppInBrowser();
+  await userKeptTableColumns(app, ["Title", "Status", "Cost"]);
+  const files = { "src/footer.ts": 'export const footer = "AgentControl 1.1";\n' };
+  await releaseDefaultUiUpdate(app, { version: "1.1", files });
+  await app.page.opensTheModifyPanel();
+  await expectModifyPanelToShow(app, "Update 1.1 available");
+  return app;
+}
+
+/** The same, after the user pressed Update: the merge waits for Keep or Undo. */
+export async function defaultUiUpdateMergedInModifyPanel() {
+  const app = await defaultUiUpdateOfferedInModifyPanel();
+  await app.page.appliesTheDefaultUiUpdate();
+  await expectModifyPanelToShow(app, "Updated to 1.1.");
   return app;
 }
 
