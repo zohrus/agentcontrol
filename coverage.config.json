@@ -44,7 +44,7 @@
     },
     {
       "path": "packages/ui-template/src/index.ts",
-      "reason": "The package's public barrel: re-exports only, no logic. The browser loads main.tsx and never this file, and nothing imports it."
+      "reason": "The package's public entry (package.json exports; knip counts the components it re-exports as used because of it): re-exports only, no logic. The browser loads main.tsx and never this file."
     }
   ],
   "pending": []
