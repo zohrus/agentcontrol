@@ -20,6 +20,12 @@ async function versionsIn(name: string): Promise<Versions> {
   return { ...manifest.dependencies, ...manifest.devDependencies };
 }
 
+function pinnedVersion(known: Versions, name: string): string {
+  const version = known[name];
+  if (version === undefined) throw new Error(`No version of ${name} is pinned in the repository.`);
+  return version;
+}
+
 const FROM_REPOSITORY = ["typescript", "@types/bun", "hono", "drizzle-orm"];
 
 /**
@@ -33,7 +39,7 @@ async function installedVersions(): Promise<Versions> {
   );
   const own = Object.entries(template).filter(([, version]) => !version.startsWith("workspace:"));
   const known = { ...app, ...rootVersions };
-  const shared = FROM_REPOSITORY.map((name) => [name, known[name] ?? ""] as const);
+  const shared = FROM_REPOSITORY.map((name) => [name, pinnedVersion(known, name)] as const);
   return { ...Object.fromEntries(own), ...Object.fromEntries(shared) };
 }
 
@@ -43,6 +49,8 @@ async function install(options: { platform: string; folder: string }): Promise<v
   await mkdir(options.folder, { recursive: true });
   const manifest = { name: "ui-resources", private: true, dependencies: await installedVersions() };
   await Bun.write(join(options.folder, "package.json"), JSON.stringify(manifest, null, 2));
+  // The repository's rule (no package younger than 14 days) must apply to this install as well.
+  await cp(join(root, "bunfig.toml"), join(options.folder, "bunfig.toml"));
   const run = Bun.spawnSync(
     ["bun", "install", "--linker", "hoisted", "--ignore-scripts", "--os", os, "--cpu", cpu],
     { cwd: options.folder, stdout: "pipe", stderr: "pipe" },

@@ -62,6 +62,11 @@ appears in the session; offline it says to check the connection). The data folde
 UI (`ui/`), `ui-staging/` and `ui-template/`, with `node_modules` linked to the release folder; the
 links are repointed on every start. Nothing is ever written into the release folder.
 
+The `node_modules` is installed fresh for each platform by `bun run build` (`bun install --linker
+hoisted --os <os> --cpu <cpu>`, from the pins of `ui-template`, `app` and the root `package.json`).
+It follows the repository's `bunfig.toml`, so a pin younger than 14 days fails the build: wait, or
+bump to an older version. Transitive packages are resolved at build time, not from `bun.lock`.
+
 Sizes (linux-x64, same order of magnitude for the Macs): whole folder 718 MB (app 105 MB, relay
 105 MB, two Linux relays 210 MB, `resources` 300 MB); `node_modules` 285 MB, of which monaco-editor
 105 MB, lucide-react 50 MB, typescript 24 MB. Under the 400 MB line, so nothing is trimmed.

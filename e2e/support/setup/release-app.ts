@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterTimeout, readListeningUrl } from "./app-process.ts";
 import { onTestEnd } from "./cleanup.ts";
-import { aResourcesFolderWithTools } from "./release-folder.ts";
+import type { ResourcesFolder } from "./release-folder.ts";
 
 const appMain = join(import.meta.dir, "../../../packages/app/src/main.ts");
 const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
@@ -20,8 +20,7 @@ async function stopRelay(dataDir: string): Promise<void> {
 }
 
 /** Starts `main.ts` as a program, with a resources folder and no `--ui-root` or `--ui-dist`. */
-export async function startReleaseApp(): Promise<ReleaseApp> {
-  const resources = await aResourcesFolderWithTools();
+export async function startReleaseApp(resources: ResourcesFolder): Promise<ReleaseApp> {
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-release-"));
   const child = Bun.spawn(["bun", appMain, "--port", "0", "--data-dir", dataDir], {
     stdout: "pipe",

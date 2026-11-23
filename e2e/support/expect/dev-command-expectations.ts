@@ -14,13 +14,13 @@ export async function expectBrowserToOpenTheApp(dev: DevCommand): Promise<void> 
   });
 }
 
-/** The browser was not asked to open anything. The app already answers, so an open would be under way. */
+/** `bun dev` said that it does not open a browser, and none was asked to open anything. */
 export async function expectNoBrowserToOpen(dev: DevCommand): Promise<void> {
-  const answer = await fetch(dev.appUrl);
+  await eventually("expected `bun dev` to say it opens no browser", () =>
+    Promise.resolve(
+      dev.output().includes("Not opening a browser") ? undefined : `it printed: ${dev.output()}`,
+    ),
+  );
   const opened = await openedUrl(dev);
-  if (opened !== undefined) {
-    throw new Error(
-      `expected no browser to open, but it opened ${opened} (the app answered ${String(answer.status)})`,
-    );
-  }
+  if (opened !== undefined) throw new Error(`expected no browser to open, but it opened ${opened}`);
 }

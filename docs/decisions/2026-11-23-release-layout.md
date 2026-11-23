@@ -69,3 +69,9 @@ a user's Mac does not have.
   (hardened runtime): the signing script has to sign them, which is unverified until a Mac run.
 - Transitive dependencies of the shipped `node_modules` are resolved at build time, not from
   `bun.lock`; the direct ones are pinned. Revisit if a release needs byte-for-byte reproduction.
+- The adapter's environment carries `BUN_BE_BUN=1` and `BUN_INSTALL_CACHE_DIR` (the relay's
+  adapter folder), so shell commands an agent runs inherit them: a Bun-compiled program of the
+  user's would act as `bun`, and the agent's own `bun install` would cache in the relay's folder.
+  Checked: the native Claude Code binary (2.1.330) ignores `BUN_BE_BUN`. `bunx` has no flag for the
+  cache folder, and a symlink named `bun` does not make a compiled binary act as bun, so the
+  variables cannot be kept out of the adapter's environment. Revisit if it bites.

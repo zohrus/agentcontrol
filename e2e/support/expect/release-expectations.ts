@@ -5,8 +5,6 @@ import type { AppAccess } from "../setup/app.ts";
 import type { ReleaseApp } from "../setup/release-app.ts";
 import type { ResourcesFolder } from "../setup/release-folder.ts";
 
-const journalPath = join(import.meta.dir, "../../../packages/app/drizzle/meta/_journal.json");
-
 async function markerSeenFrom(app: AppAccess, folder: "ui" | "ui-staging"): Promise<string> {
   const marker = join(app.dataDir, folder, "node_modules", "marker.txt");
   return readFile(marker, "utf8").catch(() => "(no dependencies found)");
@@ -40,16 +38,29 @@ export async function expectUiServedFromTheDataFolder(app: ReleaseApp): Promise<
 }
 
 /** The app's database has every migration of the drizzle folder, not only the ones it was built with. */
-export async function expectEveryMigrationToBeApplied(app: AppAccess): Promise<void> {
-  const journal = JSON.parse(await readFile(journalPath, "utf8")) as { entries: unknown[] };
+export function expectEveryMigrationToBeApplied(
+  app: AppAccess,
+  repository: { migrations: number },
+): void {
   const database = new Database(join(app.dataDir, "state.db"), { readonly: true });
   const row = database.query("SELECT count(*) AS applied FROM __drizzle_migrations").get() as {
     applied: number;
   };
   database.close();
-  if (row.applied !== journal.entries.length) {
+  if (row.applied !== repository.migrations) {
     throw new Error(
-      `expected all ${String(journal.entries.length)} migrations in packages/app/drizzle to be applied, but ${String(row.applied)} were (run \`bun run db:generate\`'s embed step: bun scripts/embed-migrations.ts)`,
+      `expected all ${String(repository.migrations)} migrations in packages/app/drizzle to be applied, but ${String(row.applied)} were (run bun scripts/embed-migrations.ts)`,
     );
   }
+}
+
+/** Reading where the app's default UI is fails, and the message names the place it looked. */
+export function expectReadingTheDefaultUiToFailSaying(read: () => unknown, text: string): void {
+  try {
+    read();
+  } catch (error) {
+    if (String(error).includes(text)) return;
+    throw new Error(`expected the failure to mention "${text}", but it said: ${String(error)}`);
+  }
+  throw new Error(`expected the app to fail mentioning "${text}", but it did not fail`);
 }

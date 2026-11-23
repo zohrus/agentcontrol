@@ -1,18 +1,9 @@
-import { join, resolve } from "node:path";
-import { findResources } from "../resources/index.ts";
+import { resolve } from "node:path";
 import type { UiHandler } from "./types.ts";
+import { launch, type Running } from "./vite-process.ts";
 
-const START_TIMEOUT_MS = 60_000;
 const RESTART_DELAY_MS = 1000;
 const RESTART_TRIES = 5;
-
-type DevServer = Bun.Subprocess<"ignore", "pipe", "inherit">;
-
-/** A UI server process and the port it listens on. */
-interface Running {
-  child: DevServer;
-  port: number;
-}
 
 /** Drops headers that no longer describe the body once `fetch` has decoded it. */
 function plainHeaders(headers: Headers): Headers {
@@ -20,61 +11,6 @@ function plainHeaders(headers: Headers): Headers {
   copy.delete("content-encoding");
   copy.delete("content-length");
   return copy;
-}
-
-/** The first line the dev server prints says where it listens; the rest is its log. */
-async function readPort(child: DevServer): Promise<number> {
-  const reader = child.stdout.getReader();
-  const decoder = new TextDecoder();
-  let seen = "";
-  for (;;) {
-    const chunk = await reader.read();
-    if (chunk.done)
-      throw new Error(`The UI server stopped before it was ready. It printed: ${seen}`);
-    seen += decoder.decode(chunk.value, { stream: true });
-    if (seen.includes("\n")) break;
-  }
-  reader.releaseLock();
-  void child.stdout.pipeTo(new WritableStream({ write: (log) => void process.stderr.write(log) }));
-  return (JSON.parse(seen.split("\n")[0] ?? "") as { port: number }).port;
-}
-
-function afterTimeout(child: DevServer): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => {
-      child.kill();
-      reject(new Error("The UI server did not start in time."));
-    }, START_TIMEOUT_MS).unref();
-  });
-}
-
-/**
- * Runs the UI template's `server.ts` (Vite) as a child process: the app binary is started as
- * `bun` (BUN_BE_BUN), so no other runtime has to be installed. It quits when the app does.
- */
-function startDevServer(root: string): DevServer {
-  const script = join(
-    findResources({ env: process.env, execPath: process.execPath }).templateDir,
-    "server.ts",
-  );
-  return Bun.spawn([process.execPath, script, root], {
-    cwd: root,
-    env: { ...process.env, BUN_BE_BUN: "1" },
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "inherit",
-  });
-}
-
-async function launch(root: string): Promise<Running> {
-  const child = startDevServer(root);
-  const port = await Promise.race([readPort(child), afterTimeout(child)]).catch(
-    (error: unknown) => {
-      child.kill();
-      throw error;
-    },
-  );
-  return { child, port };
 }
 
 function forwardTo(port: () => number): UiHandler["fetch"] {

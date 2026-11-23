@@ -27,7 +27,7 @@
     "dev": "bun scripts/dev.ts",
     "build": "bun scripts/build.ts",
     "build:relay-linux-x64": "bun scripts/build.ts --only relay-linux-x64",
-    "build:mac": "bun scripts/build.ts --only darwin",
+    "build:mac": "bun scripts/build.ts",
     "build:linux": "bun scripts/build.ts --linux-app --only linux",
     "check:quick": "bun scripts/check-quick.ts",
     "integrate": "bun scripts/integrate.ts",

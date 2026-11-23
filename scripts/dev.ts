@@ -1,8 +1,9 @@
 // `bun dev`: the app with --watch and the default UI (Vite, hot reload), connected to the local
 // relay. The first time the app says it is listening, the browser opens on it; a restart caused by
-// a file change does not open it again. No browser opens when AGENTCONTROL_NO_OPEN is set or when
-// there is no terminal. Extra arguments go to the app (`bun dev --port 4800`).
-// AGENTCONTROL_OPEN_COMMAND (a JSON array) replaces `open`/`xdg-open`; tests use it.
+// a file change does not open it again. No browser opens (and it says so) when AGENTCONTROL_NO_OPEN
+// is set, and none opens when there is no terminal. Extra arguments go to the app
+// (`bun dev --port 4800`). AGENTCONTROL_OPEN_COMMAND (a JSON array) replaces `open`/`xdg-open`;
+// tests use it.
 import { join } from "node:path";
 
 const root = join(import.meta.dir, "..");
@@ -11,7 +12,6 @@ const LISTENING = /listening on (http:\/\/127\.0\.0\.1:\d+)/;
 /** The command that opens `url`, or undefined when no browser should open. */
 function openCommand(url: string): string[] | undefined {
   const env = process.env;
-  if (env["AGENTCONTROL_NO_OPEN"]) return undefined;
   const custom = env["AGENTCONTROL_OPEN_COMMAND"];
   if (custom) return [...(JSON.parse(custom) as string[]), url];
   if (!process.stdout.isTTY) return undefined;
@@ -19,6 +19,10 @@ function openCommand(url: string): string[] | undefined {
 }
 
 function openBrowser(url: string): void {
+  if (process.env["AGENTCONTROL_NO_OPEN"]) {
+    console.log("Not opening a browser: AGENTCONTROL_NO_OPEN is set.");
+    return;
+  }
   const command = openCommand(url);
   if (command === undefined) return;
   try {

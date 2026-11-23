@@ -2,13 +2,15 @@ import { afterEach, test } from "bun:test";
 import { readModifyConfig } from "@agentcontrol/app";
 import {
   expectEveryMigrationToBeApplied,
+  expectReadingTheDefaultUiToFailSaying,
   expectUiDependenciesToComeFrom,
   expectUiServedFromTheDataFolder,
 } from "../support/expect/release-expectations.ts";
 import { expectLiveUiFileToContain } from "../support/expect/ui-file-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { aResourcesFolder } from "../support/setup/release-folder.ts";
+import { theMigrationsOfTheRepository } from "../support/setup/drizzle-folder.ts";
 import { startReleaseApp } from "../support/setup/release-app.ts";
+import { aResourcesFolder, aResourcesFolderWithTools } from "../support/setup/release-folder.ts";
 import { startAppWithLocalWorkspace } from "../support/setup/start-app.ts";
 
 afterEach(cleanUpAfterTest);
@@ -24,9 +26,8 @@ test("an app finds its default UI in the resources folder it is given and prepar
   // ********************************************************************
   // ** WHEN the app starts with that resources folder
   // ********************************************************************
-  const app = await startAppWithLocalWorkspace({
-    modify: readModifyConfig(inFolder(resources.path)),
-  });
+  const modify = readModifyConfig(inFolder(resources.path));
+  const app = await startAppWithLocalWorkspace({ modify });
 
   // ********************************************************************
   // ** THEN the live UI is made from the default UI in it, with its dependencies
@@ -37,11 +38,11 @@ test("an app finds its default UI in the resources folder it is given and prepar
 
 test("an app whose release moved finds the dependencies of the new place", async () => {
   // ********************************************************************
-  // ** GIVEN the app ran from one resources folder
+  // ** GIVEN the app ran from one resources folder, and was then updated: the release now lives
+  // ** in another folder
   // ********************************************************************
   const before = await aResourcesFolder("before");
   const app = await startAppWithLocalWorkspace({ modify: readModifyConfig(inFolder(before.path)) });
-  // AND the app was updated: the release now lives in another folder
   const after = await aResourcesFolder("after");
 
   // ********************************************************************
@@ -63,31 +64,24 @@ test("an app without a default UI says where it looked", () => {
 
   // ********************************************************************
   // ** WHEN the app reads where its default UI is
+  // ** THEN it fails, naming the place it looked
   // ********************************************************************
-  const read = () => readModifyConfig(inFolder(missing));
-
-  // ********************************************************************
-  // ** THEN it fails, naming the place it looked and how to fix it
-  // ********************************************************************
-  expectToFailSaying(read, `${missing}/ui-template`);
+  expectReadingTheDefaultUiToFailSaying(
+    () => readModifyConfig(inFolder(missing)),
+    `${missing}/ui-template`,
+  );
 });
-
-function expectToFailSaying(action: () => unknown, text: string): void {
-  try {
-    action();
-  } catch (error) {
-    if (String(error).includes(text)) return;
-    throw new Error(`expected the failure to mention "${text}", but it said: ${String(error)}`);
-  }
-  throw new Error(`expected the app to fail mentioning "${text}", but it did not fail`);
-}
 
 test("an app started like a release serves the UI of its data folder with Vite", async () => {
   // ********************************************************************
   // ** GIVEN a resources folder with a default UI, and Vite in its dependencies
   // ********************************************************************
-  // WHEN the app starts with no UI flags, only that resources folder
-  const app = await startReleaseApp();
+  const resources = await aResourcesFolderWithTools();
+
+  // ********************************************************************
+  // ** WHEN the app starts with no UI flags, only that resources folder
+  // ********************************************************************
+  const app = await startReleaseApp(resources);
 
   // ********************************************************************
   // ** THEN the root address serves the UI that was made in the data folder
@@ -97,15 +91,17 @@ test("an app started like a release serves the UI of its data folder with Vite",
 
 test("the database of a new app has every migration the repository has", async () => {
   // ********************************************************************
-  // ** GIVEN the app has just started on an empty data folder
+  // ** GIVEN the repository's migrations
+  // ********************************************************************
+  const repository = await theMigrationsOfTheRepository();
+
+  // ********************************************************************
+  // ** WHEN the app starts on an empty data folder
   // ********************************************************************
   const app = await startAppWithLocalWorkspace();
 
   // ********************************************************************
-  // ** WHEN the migrations that are applied are counted
+  // ** THEN its database got all of them
   // ********************************************************************
-  // ********************************************************************
-  // ** THEN they are all of the ones in packages/app/drizzle
-  // ********************************************************************
-  await expectEveryMigrationToBeApplied(app);
+  expectEveryMigrationToBeApplied(app, repository);
 });

@@ -41,6 +41,9 @@ const ready = appPlatforms({ linuxApp }).filter((platform) =>
     names.includes(path.slice(outDir.length + 1)),
   ),
 );
+for (const platform of appPlatforms({ linuxApp }).filter((p) => !ready.includes(p))) {
+  console.log(`no release folder for ${platform}: not every binary it needs was built`);
+}
 if (ready.length > 0) {
   const sharedDir = join(outDir, ".ui-shared");
   console.log("building the default UI ...");
