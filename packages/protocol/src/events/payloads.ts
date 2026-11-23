@@ -27,6 +27,8 @@ export const SessionCreatedPayload = z.object({
   title: z.string(),
   /** Absent means "worktree". A directory session has no branch; `worktreePath` is its folder. */
   kind: SessionKind.optional(),
+  /** First port of the session's block of 10 (`PORT`); absent for a directory session or an older log. */
+  portBase: z.number().int().optional(),
 });
 
 /** Payload of "setup-output": one chunk of the worktree setup script's output. */

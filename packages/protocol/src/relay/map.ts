@@ -2,6 +2,7 @@ import type { z } from "zod";
 import * as c from "../config/index.ts";
 import * as f from "../files/index.ts";
 import * as s from "../sessions/index.ts";
+import * as t from "../terminal/index.ts";
 import * as w from "../workspace/index.ts";
 import { UsageParams, UsageResult } from "../usage/index.ts";
 import { DiffParams, DiffResult } from "../worktrees/index.ts";
@@ -34,6 +35,10 @@ export const RelayMethods = {
   [N.configApply]: { params: c.ConfigApplyParams, result: c.ApplyResult },
   [N.configRollback]: { params: c.ConfigRollbackParams, result: c.ConfigRollbackResult },
   [N.configDrift]: { params: c.ConfigDriftParams, result: c.DriftReport },
+  [N.terminalOpen]: { params: t.TerminalOpenParams, result: t.TerminalOpenResult },
+  [N.terminalWrite]: { params: t.TerminalWriteParams, result: s.AckResult },
+  [N.terminalResize]: { params: t.TerminalResizeParams, result: s.AckResult },
+  [N.terminalClose]: { params: t.TerminalCloseParams, result: s.AckResult },
 } as const;
 
 /** The name of a relay request method. */
@@ -48,4 +53,6 @@ export const RelayNotifications = {
   [N.event]: s.EventNotificationParams,
   [N.sessionsChanged]: s.SessionsChangedParams,
   [N.fsChanged]: f.FsChangedParams,
+  [N.terminalData]: t.TerminalDataParams,
+  [N.terminalExit]: t.TerminalExitParams,
 } as const;

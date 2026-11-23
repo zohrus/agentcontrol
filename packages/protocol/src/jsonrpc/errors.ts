@@ -15,5 +15,9 @@ export const ErrorCode = {
   configStale: -32006,
   /** A file is bigger than the relay hands over in one answer (see `relay/fs.readBytes`). */
   fileTooLarge: -32007,
+  /** The session was archived: it has no folder to open a terminal in. */
+  sessionArchived: -32008,
+  /** No such terminal, or it belongs to another client. */
+  terminalNotFound: -32009,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

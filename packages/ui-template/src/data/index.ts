@@ -16,6 +16,7 @@ export {
   useUsage,
 } from "./hooks.ts";
 export { useModify } from "./modify-hooks.ts";
+export type { Controller } from "./controller.ts";
 export { DataProvider, useController } from "./provider.tsx";
 export { createStore, useStoreValue } from "./store.ts";
 export { reloadOnceWhenUnauthorized } from "./recover.ts";

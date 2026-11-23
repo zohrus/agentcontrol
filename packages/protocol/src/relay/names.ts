@@ -25,7 +25,13 @@ export const RelayName = {
   configApply: "relay/config.apply",
   configRollback: "relay/config.rollback",
   configDrift: "relay/config.drift",
+  terminalOpen: "relay/terminal.open",
+  terminalWrite: "relay/terminal.write",
+  terminalResize: "relay/terminal.resize",
+  terminalClose: "relay/terminal.close",
   event: "relay/event",
   sessionsChanged: "relay/sessions.changed",
   fsChanged: "relay/fs.changed",
+  terminalData: "relay/terminal.data",
+  terminalExit: "relay/terminal.exit",
 } as const;

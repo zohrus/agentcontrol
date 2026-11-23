@@ -24,6 +24,8 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
   [ErrorCode.fileNotFound]: { status: 404, code: "file-not-found" },
   [ErrorCode.fileTooLarge]: { status: 413, code: "file-too-large" },
   [ErrorCode.configStale]: { status: 409, code: "config-plan-stale" },
+  [ErrorCode.sessionArchived]: { status: 409, code: "session-archived" },
+  [ErrorCode.terminalNotFound]: { status: 404, code: "terminal-not-found" },
   [ErrorCode.invalidParams]: { status: 400, code: "invalid-request" },
 };
 const unknownFailure = { status: 500, code: "internal-error" } as const;

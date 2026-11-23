@@ -18,6 +18,7 @@ import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts
 import { createDirectorySession } from "./directory.ts";
 import { answerRequest, cancelRequests } from "./permissions.ts";
 import { recoverSessions } from "./recovery.ts";
+import { shellTarget } from "./shell-target.ts";
 import { runInBackground } from "./start.ts";
 import { createLiveSummaries, type LiveSummaries } from "./live-summaries.ts";
 import { followEvents, followSummaries } from "./subscribe.ts";
@@ -44,6 +45,8 @@ export interface Sessions {
   ): () => void;
   /** Where the session's worktree is; fails with sessionNotFound for an unknown session. */
   info(sessionId: SessionId): Promise<SessionInfo>;
+  /** The folder and variables a terminal of the session starts with; fails for an archived session. */
+  shellTarget(sessionId: SessionId): Promise<{ cwd: string; env: Record<string, string> }>;
   /** Every event of the session, with normalised updates; fails with sessionNotFound for an unknown session. */
   events(sessionId: SessionId): Promise<SessionEvent[]>;
   /** Replays events after the client's cursors, then streams new ones; returns how to stop. */
@@ -65,20 +68,21 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
   const repo =
     (await ctx.repos.findByPath(params.repoPath)) ?? (await ctx.repos.add(params.repoPath));
   const sessionId = SessionId.parse(crypto.randomUUID());
+  const portBase = portBaseFor(ctx.nextPortIndex());
   const worktree = await createWorktree({
     repoPath: repo.path,
     baseBranch: params.baseBranch,
     sessionId,
     worktreesDir: ctx.worktreesDir,
     setup: repo.setup,
-    portBase: portBaseFor(ctx.nextPortIndex()),
+    portBase,
   });
   const { worktreePath, branch } = worktree;
   const created = { agent: params.agent, repoPath: repo.path, baseBranch: params.baseBranch };
   const title = titleOf(params);
   await ctx.log.append(sessionId, {
     kind: "session-created",
-    payload: { ...created, title, worktreePath, branch },
+    payload: { ...created, title, worktreePath, branch, portBase },
   });
   runInBackground(ctx, { sessionId, repo, params, worktree });
   return sessionId;
@@ -111,12 +115,13 @@ function contextOf(options: {
   hostEnv: HostEnv;
   sessionCount: number;
   summaries: LiveSummaries;
+  endTerminals: SessionContext["endTerminals"];
 }): SessionContext {
   let portIndex = options.sessionCount;
   let recording = true;
-  const { log, repos, worktreesDir, hostEnv, summaries } = options;
+  const { log, repos, worktreesDir, hostEnv, summaries, endTerminals } = options;
   return {
-    ...{ log, repos, worktreesDir, hostEnv, summaries },
+    ...{ log, repos, worktreesDir, hostEnv, summaries, endTerminals },
     permissions: createPendingPermissions(),
     live: new Map(),
     stopRecording: () => {
@@ -138,6 +143,8 @@ export async function createSessions(options: {
   repos: RepoStore;
   worktreesDir: string;
   hostEnv: HostEnv;
+  /** Ends a session's terminals, before its folder is removed. */
+  endTerminals: SessionContext["endTerminals"];
 }): Promise<Sessions> {
   const ids = await recoverSessions(options.log);
   const summaries = await createLiveSummaries({ log: options.log, sessionIds: ids });
@@ -151,6 +158,7 @@ export async function createSessions(options: {
     list: () => Promise.resolve(summaries.list()),
     followSummaries: (sessionId, send) => followSummaries({ summaries, sessionId, send }),
     info: (sessionId) => sessionInfo(ctx, sessionId),
+    shellTarget: (sessionId) => shellTarget(ctx, sessionId),
     events: async (sessionId) => {
       await sessionInfo(ctx, sessionId);
       return (await options.log.readAfter(sessionId, 0)).map(withNormalised);

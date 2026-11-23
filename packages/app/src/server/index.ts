@@ -5,6 +5,7 @@ import { createApi, previewSource } from "../api/index.ts";
 import { previewRoutes } from "../preview/index.ts";
 import { safeRoutes } from "../safe/index.ts";
 import { type GuardOptions, guard, writeTokenFile } from "../security/index.ts";
+import { type TerminalSocketData, terminalWebsocket } from "../terminal/index.ts";
 import type { UiHandler } from "../ui-serving/index.ts";
 
 export interface RunningServer {
@@ -47,7 +48,7 @@ const fallbackPage =
  * is handled before the file holds the new secret, and a start that cannot bind never touches it.
  */
 function saveTokenOrStop(options: {
-  server: Server<undefined>;
+  server: Server<TerminalSocketData>;
   dataDir: string;
   token: string;
 }): void {
@@ -75,6 +76,7 @@ export function startServer(options: {
     port: options.port,
     idleTimeout: 0,
     fetch: createRoot({ deps: options.deps, ui: options.ui, guarded }).fetch,
+    websocket: terminalWebsocket,
   });
   saveTokenOrStop({ server, dataDir: options.dataDir, token: options.token });
   return {

@@ -7,6 +7,7 @@ import type { SmokeApp } from "./app-process.ts";
 import { expect, type Step, pageAt } from "./check.ts";
 import { leavesResourcesAlone, modifyPromotes, viteServesChange } from "./modify-steps.ts";
 import { sessionRuns } from "./session-steps.ts";
+import { terminalRuns } from "./terminal-step.ts";
 
 const migrationsJournal = join(import.meta.dir, "../../packages/app/drizzle/meta/_journal.json");
 
@@ -52,6 +53,7 @@ export const steps: Step[] = [
   { name: "a UI script and the hot-reload client load", run: uiAsset },
   { name: "the database was migrated", run: databaseMigrated },
   { name: "a session with the mock agent runs a turn", run: sessionRuns },
+  { name: "a terminal runs a command in a pseudo-terminal", run: terminalRuns },
   {
     name: "a Modify request fails typecheck, is fixed, builds and is promoted",
     run: modifyPromotes,

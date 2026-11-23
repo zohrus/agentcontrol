@@ -5,7 +5,7 @@ import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
 import { actionsOf } from "./relay-actions.ts";
-import type { RelayClient } from "./relay-client.ts";
+import { connectToRelay, type RelayClient } from "./relay-client.ts";
 import { type RelayHost, startRelayHost } from "./relay-host.ts";
 import type { RelayAccess, Session } from "./relay.ts";
 import { type User, userOf } from "./relay-user.ts";
@@ -15,6 +15,8 @@ const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 /** A relay as the app sees it: connect and disconnect at will; the daemon keeps running. */
 export interface RunningRelay extends RelayAccess {
   readonly user: User;
+  /** Another client of the same relay, connected as a second program would. */
+  connectsAnotherClient(): RelayClient;
   /** Closes the app's connection; the relay and its sessions carry on without it. */
   closesTheApp(): Promise<void>;
   /** Connects again, as the app does on launch; nothing is followed until the app asks. */
@@ -77,5 +79,6 @@ export async function startRelayWithLocalRepo(
   const { follow, current, ...actions } = actionsOf({ host, repoPath });
   const access = accessOver({ dataDir, repoPath, mockAgent }, current);
   await follow();
-  return Object.assign(access, actions, { user: userOf(access) });
+  const connectsAnotherClient = (): RelayClient => connectToRelay(host.wire());
+  return Object.assign(access, actions, { connectsAnotherClient, user: userOf(access) });
 }

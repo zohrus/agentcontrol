@@ -17,6 +17,12 @@ export function portBaseFor(index: number): number {
   return PORT_START + index * PORT_BLOCK;
 }
 
+/** The variables of a session's block of ports, for its setup script, agent and terminal. */
+export function portEnv(portBase: number): Record<string, string> {
+  const port = String(portBase);
+  return { PORT: port, AGENTCONTROL_PORT_BASE: port };
+}
+
 /** Adds a worktree on a new branch from baseBranch, copies the setup files and assigns the ports. */
 export async function createWorktree(options: {
   repoPath: string;
@@ -35,7 +41,5 @@ export async function createWorktree(options: {
     worktreePath,
     patterns: options.setup.copyFiles,
   });
-  const port = String(options.portBase);
-  const env = { PORT: port, AGENTCONTROL_PORT_BASE: port };
-  return { worktreePath, branch, env };
+  return { worktreePath, branch, env: portEnv(options.portBase) };
 }

@@ -8,6 +8,9 @@ import {
 } from "@agentcontrol/protocol";
 import type { RelayClient } from "../relays/index.ts";
 import type { Hub } from "./hub.ts";
+import { type TerminalSignal, terminalSignals } from "./terminal-signals.ts";
+
+export type { TerminalSignal } from "./terminal-signals.ts";
 
 /** The relay connection as the rest of the app sees it: there when connected, an error when not. */
 export class RelayUnavailableError extends Error {
@@ -17,6 +20,11 @@ export class RelayUnavailableError extends Error {
 }
 
 export interface Link {
+  /**
+   * Calls the listener with the output and ending of terminals on this workspace's relay, and with
+   * `lost` when the connection ends (its terminals end with it). Returns how to stop listening.
+   */
+  onTerminal: (listener: (signal: TerminalSignal) => void) => () => void;
   call: <M extends RelayMethodName>(method: M, params: RelayParams<M>) => Promise<RelayResult<M>>;
   /** Starts forwarding file changes of a session's worktree; a no-op if already watched. */
   watchFiles: (sessionId: SessionId) => Promise<void>;
@@ -62,7 +70,9 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
     return live;
   };
   const files = fileWatching(current);
+  const terminals = terminalSignals();
   const link: Link = {
+    onTerminal: terminals.listen,
     call: (method, params) => current().client.call(method, params),
     refreshSessions: () => current().refreshSessions(),
     watchFiles: files.watch,
@@ -71,12 +81,14 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
     live = next;
     files.reset();
     forwardFileChanges(next.client, target);
+    terminals.forward(next.client);
   };
   return {
     link,
     attach,
     detach: () => {
       live = undefined;
+      terminals.lost();
     },
   };
 }

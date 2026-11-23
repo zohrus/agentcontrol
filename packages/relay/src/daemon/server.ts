@@ -5,14 +5,16 @@ import { createInterface } from "node:readline";
 import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
-import { VERSION } from "@agentcontrol/protocol";
+import { type SessionId, VERSION } from "@agentcontrol/protocol";
 import { createEventLog } from "../event-log/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
 import { createSessions, type Sessions } from "../sessions/index.ts";
+import { createTerminals, type Terminals } from "../terminal/index.ts";
 import { configHandlers } from "./handlers-config.ts";
 import { fileHandlers } from "./handlers-files.ts";
 import { sessionHandlers } from "./handlers-sessions.ts";
+import { terminalHandlers } from "./handlers-terminal.ts";
 import { usageHandlers } from "./handlers-usage.ts";
 import { workspaceHandlers } from "./handlers-workspace.ts";
 import { socketPathIn, tryConnect } from "./socket.ts";
@@ -58,10 +60,13 @@ async function buildSessions(options: {
   dataDir: string;
   repos: RepoStore;
   hostEnv: HostEnv;
+  terminals: Terminals;
 }): Promise<Sessions> {
-  const { dataDir, repos, hostEnv } = options;
+  const { dataDir, repos, hostEnv, terminals } = options;
   const log = createEventLog({ dir: join(dataDir, "sessions"), now: () => new Date() });
-  return createSessions({ log, repos, worktreesDir: join(dataDir, "worktrees"), hostEnv });
+  const worktreesDir = join(dataDir, "worktrees");
+  const endTerminals = (sessionId: SessionId): Promise<void> => terminals.closeSession(sessionId);
+  return createSessions({ log, repos, worktreesDir, hostEnv, endTerminals });
 }
 
 export interface Daemon {
@@ -121,12 +126,15 @@ async function closeClients(sockets: Set<Socket>): Promise<void> {
 async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Promise<{
   handlers: Handlers;
   sessions: Sessions;
+  terminals: Terminals;
 }> {
   const { dataDir, hostEnv } = options;
   const repos = createRepoStore({ dataDir });
-  const sessions = await buildSessions({ dataDir, repos, hostEnv });
+  const terminals = createTerminals({ hostEnv });
+  const sessions = await buildSessions({ dataDir, repos, hostEnv, terminals });
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
+    ...terminalHandlers({ sessions, terminals }),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
     ...workspaceHandlers({
@@ -138,7 +146,7 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
     }),
     ...configHandlers(configHome(hostEnv)),
   };
-  return { handlers, sessions };
+  return { handlers, sessions, terminals };
 }
 
 /** The process environment plus `options.env`; adapters are downloaded into the relay's folder. */
@@ -154,7 +162,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const socketPath = socketPathIn(dataDir);
   await claimSocket(socketPath);
   const hostEnv = hostEnvFor(options);
-  const { handlers, sessions } = await buildHandlers({ ...options, hostEnv });
+  const { handlers, sessions, terminals } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
   await listenPrivately(server, socketPath);
   await writeFile(pidFileIn(dataDir), String(process.pid));
@@ -163,6 +171,7 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
     stop: async () => {
       server.close();
       await sessions.shutdown();
+      await terminals.closeAll();
       await closeClients(sockets);
       await rm(socketPath, { force: true });
       await rm(pidFileIn(dataDir), { force: true });

@@ -12,6 +12,7 @@ import {
 } from "./sessions-commands.ts";
 import { sessionReadRoutes } from "./sessions-read.ts";
 import { streamRoute } from "./stream.ts";
+import { terminalRoutes } from "./terminal.ts";
 import { workspaceRoutes } from "./workspace.ts";
 import { workspacesRoutes } from "./workspaces.ts";
 
@@ -28,6 +29,7 @@ export function createApi(deps: ApiDeps) {
     .route("/sessions", sessionControlRoutes(deps))
     .route("/sessions", fileRoutes(deps))
     .route("/sessions", previewTicketRoutes(deps))
+    .route("/sessions", terminalRoutes(deps))
     .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))
     .route("/workspaces", workspacesRoutes(deps))
