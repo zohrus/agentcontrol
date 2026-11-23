@@ -12,7 +12,8 @@ export const HelloParams = z.object({ clientVersion: z.string() });
  */
 export const HelloResult = z.object({
   relayVersion: z.string(),
-  normaliserVersion: z.number().int().positive(),
+  /** Absent from a relay of an older release: the app then knows nothing to re-read. */
+  normaliserVersion: z.number().int().positive().optional(),
   agents: z.array(AgentKind),
 });
 

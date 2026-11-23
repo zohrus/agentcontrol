@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { createModify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
+import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import type { RelayClient } from "./relays/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
@@ -50,6 +50,19 @@ function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; sync: Sy
   });
 }
 
+/** Ends what a started app holds, in order: the Modify agent's session first, the database last. */
+async function shutDown(parts: {
+  modify: Modify;
+  ui: UiHandler | undefined;
+  sync: Sync;
+  store: Store;
+}): Promise<void> {
+  await parts.modify.stop();
+  await parts.ui?.close();
+  await parts.sync.stop();
+  parts.store.close();
+}
+
 const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };
 
 /**
@@ -70,19 +83,14 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
     const deps = { store, hub, workspace: LOCAL, relay: sync, modify };
     return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
   }).catch(async (error: unknown) => {
-    await ui?.close();
-    await sync.stop();
-    store.close();
+    await shutDown({ modify, ui, sync, store });
     throw error;
   });
   return {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
-      await modify.stop();
-      await ui?.close();
-      await sync.stop();
-      store.close();
+      await shutDown({ modify, ui, sync, store });
     },
   };
 }

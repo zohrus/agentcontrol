@@ -46,8 +46,8 @@ export class Peer {
     const id = this.nextId++;
     // A send that throws (the relay process is already gone) rejects this call, never leaves it unhandled.
     return new Promise<unknown>((resolve, reject) => {
-      this.waiting.set(id, { resolve, reject });
       this.send(`${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`);
+      this.waiting.set(id, { resolve, reject });
     });
   }
 

@@ -39,7 +39,8 @@ async function backUpAndWrite(plan: StoredPlan): Promise<string> {
     await rollbackConfig({ backupId, homeDir, force: true });
     throw error;
   }
-  await recordApplied({ homeDir, backupId });
+  // Best effort: without the note a later rollback just cannot tell which files changed since.
+  await recordApplied({ homeDir, backupId }).catch(() => undefined);
   return backupId;
 }
 

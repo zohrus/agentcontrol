@@ -52,6 +52,7 @@ async function refresh() {
   const html = await fetch("/_safe").then((r) => r.text()).catch(() => undefined);
   if (!html) return;
   const next = new DOMParser().parseFromString(html, "text/html");
+  if (!next.getElementById("status") || !next.getElementById("versions")) return;
   for (const id of ["status", "versions"]) document.getElementById(id).replaceWith(next.getElementById(id));
   document.body.dataset.status = next.body.dataset.status;
 }

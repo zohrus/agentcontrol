@@ -89,7 +89,7 @@ export async function startSyncSession(client: RelayClient, deps: SyncDeps): Pro
   const onSummaries = saveSummaries(deps);
   relayPushes({ client, onEvent: events.add, onSummaries });
   const hello = await client.call(RelayName.hello, { clientVersion: VERSION });
-  normaliserVersion = hello.normaliserVersion;
+  normaliserVersion = hello.normaliserVersion ?? 0;
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const refreshSessions = await followAndList({ client, deps, onSummaries });
   void renormaliseStaleSessions({ client, deps, version: normaliserVersion }).catch(
