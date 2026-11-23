@@ -55,13 +55,14 @@ function intended(error: Error): ApiFailure | undefined {
   return error instanceof ModifyRefusal ? fromModify(error) : undefined;
 }
 
+/** Errors that say the relay cannot be reached (never there, or the connection ended). */
+const RELAY_GONE = [RelayUnavailableError, RelayConnectionClosedError];
+
 /** The API failure a thrown error stands for (an unknown one is a 500). */
 export function failureOf(error: Error): ApiFailure {
   const known = intended(error);
   if (known) return known;
-  const gone =
-    error instanceof RelayUnavailableError || error instanceof RelayConnectionClosedError;
-  if (!gone) return otherFailure(error);
+  if (!RELAY_GONE.some((kind) => error instanceof kind)) return otherFailure(error);
   return new ApiFailure(503, { code: "relay-unavailable", message: error.message });
 }
 

@@ -19,11 +19,18 @@ export interface Ran {
   readonly output: string;
 }
 
+/** The caller's environment, minus the switch that turns the dependency guard off. */
+function environmentWithTheGuardOn(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(Bun.env).filter(([name]) => name !== "ALLOW_DEP_CHANGE"),
+  );
+}
+
 /** Runs a command in a folder; never throws, so a failing git command can be part of a story. */
 async function run(cwd: string, command: string[], env: Record<string, string> = {}): Promise<Ran> {
   const child = Bun.spawn(command, {
     cwd,
-    env: { ...Bun.env, ...env },
+    env: { ...environmentWithTheGuardOn(), ...env },
     stdout: "pipe",
     stderr: "pipe",
   });

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestEnd } from "./cleanup.ts";
@@ -35,4 +35,30 @@ export async function aUiServerIsLeftRunning(app: { dataDir: string }): Promise<
   });
   await writeFile(join(app.dataDir, "ui-server.pid"), String(leftover.pid));
   return { exited: leftover.exited };
+}
+
+/**
+ * From now on (until the test ends) the app's UI server is a program that prints where it
+ * listens and then ignores SIGTERM, the signal that asks a server to quit.
+ */
+export async function theUiServerIgnoresTheQuitSignal(): Promise<void> {
+  const folder = await mkdtemp(join(tmpdir(), "agentcontrol-stubborn-"));
+  onTestEnd(() => rm(folder, { recursive: true, force: true }));
+  await mkdir(join(folder, "ui-template"));
+  await writeFile(join(folder, "ui-template", "package.json"), "{}\n");
+  const lines = ['process.on("SIGTERM", () => undefined);', "console.log('{\"port\":1}');"];
+  const stubborn = `${lines.join("\n")}\nsetInterval(() => undefined, 1000);\n`;
+  await writeFile(join(folder, "ui-template", "server.ts"), stubborn);
+  const before = process.env["AGENTCONTROL_RESOURCES"];
+  process.env["AGENTCONTROL_RESOURCES"] = folder;
+  onTestEnd(() => {
+    if (before === undefined) delete process.env["AGENTCONTROL_RESOURCES"];
+    else process.env["AGENTCONTROL_RESOURCES"] = before;
+    return Promise.resolve();
+  });
+}
+
+/** The process id the app recorded for the process that serves its UI. */
+export async function theUiServerProcessOf(app: { dataDir: string }): Promise<number> {
+  return Number(await readFile(join(app.dataDir, "ui-server.pid"), "utf8"));
 }
