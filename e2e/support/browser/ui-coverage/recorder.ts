@@ -44,16 +44,28 @@ async function sourceOfScript(
   return fetched?.scriptSource;
 }
 
+/** True when any of the script's code ran since the last handover. */
+const ranAny = (script: Reported): boolean =>
+  script.functions.some((fn) => fn.ranges.some((range) => range.count > 0));
+
+/** Adds what a UI source ran to the total; other scripts (libraries, the page itself) are skipped. */
+async function takeScript(
+  session: CDPSession,
+  call: { script: Reported; total: FileHits; known: Map<string, string> },
+) {
+  const { script, total, known } = call;
+  const file = sourceFileOf(script.url);
+  if (file === undefined) return;
+  const source = await sourceOfScript(session, known, script.scriptId);
+  if (source === undefined && ranAny(script)) {
+    throw new Error(`The text of ${file} was gone before its coverage was taken.`);
+  }
+  if (source !== undefined) addHits(total, file, lineHitsOf({ ...script, source }));
+}
+
 async function takeInto(session: CDPSession, total: FileHits, known: Map<string, string>) {
   const { result } = await session.send("Profiler.takePreciseCoverage");
-  for (const script of result as Reported[]) {
-    const file = sourceFileOf(script.url);
-    const source =
-      file === undefined ? undefined : await sourceOfScript(session, known, script.scriptId);
-    if (file !== undefined && source !== undefined) {
-      addHits(total, file, lineHitsOf({ ...script, source }));
-    }
-  }
+  for (const script of result as Reported[]) await takeScript(session, { script, total, known });
 }
 
 /** Everything the page ran so far, as lines per UI source. Resolves when the last handover is in. */

@@ -50,7 +50,8 @@ export function lineHitsOf(script: ScriptCoverage): LineHits {
   const mappings = inlineMappings(script.source);
   const counts = countsOf(script);
   const starts = lineStarts(script.source);
-  for (const segment of decodeMappings(mappings)) {
+  // A module's map names one source (the file itself); anything else is not this file's code.
+  for (const segment of decodeMappings(mappings).filter(({ source }) => source === 0)) {
     const ran = counts[(starts[segment.line] ?? 0) + segment.column] ?? 0;
     hits.set(segment.originalLine, Math.max(hits.get(segment.originalLine) ?? 0, ran));
   }

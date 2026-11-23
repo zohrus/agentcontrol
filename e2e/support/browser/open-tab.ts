@@ -7,12 +7,15 @@ let shared: Promise<Browser> | undefined;
 
 /** One Chromium for the whole test file, started by its first test and closed after its last. */
 function sharedChromium(): Promise<Browser> {
-  shared ??= launchChromium();
+  shared ??= launchChromium().catch((error: unknown) => {
+    shared = undefined;
+    throw error;
+  });
   return shared;
 }
 
 afterAll(async () => {
-  const browser = await shared;
+  const browser = await shared?.catch(() => undefined);
   shared = undefined;
   await browser?.close();
 });

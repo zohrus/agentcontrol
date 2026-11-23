@@ -125,3 +125,27 @@ test(
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
+
+test(
+  "a file whose contents the page cannot read is reported in a message",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session whose agent edited README.md, and file contents that arrive garbled
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    await app.page.getsUnreadableFileContents();
+    app.mockAgent.willEditFile("README.md");
+    const session = await app.user.startsSession({ prompt: "Reword the readme" });
+
+    // ********************************************************************
+    // ** WHEN the user opens the session, which shows its first changed file
+    // ********************************************************************
+    await app.page.opensSession(session.title);
+
+    // ********************************************************************
+    // ** THEN a message says something went wrong in the page
+    // ********************************************************************
+    await expectToastToShow(app, "Something went wrong in the page.");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);

@@ -83,12 +83,12 @@ test(
     // ********************************************************************
     // ** WHEN the user swaps the file to copy, adds a setup script and saves
     // ********************************************************************
-    await app.page.removesFilePattern(".env*");
-    await app.page.addsFilePattern();
-    await app.page.typesFilePattern(1, "config/local.json");
+    await app.page.swapsFileToCopy({ remove: ".env*", add: "config/local.json" });
     await app.page.typesSetupScript("echo ready");
     await expectSaveSetupToBe(app, "enabled");
     await app.page.savesTheSetup();
+    // AND the page has taken the saved setup in, so there is nothing left to save
+    await expectSaveSetupToBe(app, "disabled");
 
     // ********************************************************************
     // ** THEN the app keeps the new files and script for the repository

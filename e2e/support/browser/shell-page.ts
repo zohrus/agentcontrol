@@ -61,6 +61,12 @@ function badAnswers(page: Page) {
         route.fulfill({ status: 200, contentType: "text/plain", body: "this is not json" }),
       );
     },
+    /** What the app answers to a read of a file's contents is something the page cannot read. */
+    getsUnreadableFileContents: async (): Promise<void> => {
+      await page.route(/\/api\/sessions\/[^/]+\/file\?/, (route) =>
+        route.fulfill({ status: 200, contentType: "text/plain", body: "this is not json" }),
+      );
+    },
     /** The app's answer to this path is valid but not what the page expects. */
     getsAnUnexpectedAnswerFrom: async (path: string): Promise<void> => {
       await page.route(`**${path}`, (route) =>
