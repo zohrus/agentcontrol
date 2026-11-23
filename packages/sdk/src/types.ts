@@ -53,6 +53,8 @@ export type {
   SessionSummary,
   UsageRow,
   WaitingReason,
+  ConnectionState,
+  WorkspaceInfo,
 } from "@agentcontrol/protocol";
 
 export type {

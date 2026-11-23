@@ -5,10 +5,15 @@ import { reportFailure } from "./errors.ts";
 import { fileRoutes } from "./files.ts";
 import { modifyRoutes } from "./modify.ts";
 import { previewTicketRoutes } from "./preview.ts";
-import { sessionControlRoutes, sessionConversationRoutes } from "./sessions-commands.ts";
+import {
+  sessionControlRoutes,
+  sessionConversationRoutes,
+  sessionStartRoute,
+} from "./sessions-commands.ts";
 import { sessionReadRoutes } from "./sessions-read.ts";
 import { streamRoute } from "./stream.ts";
 import { workspaceRoutes } from "./workspace.ts";
+import { workspacesRoutes } from "./workspaces.ts";
 
 export type { ApiDeps } from "./deps.ts";
 export { previewSource } from "./preview.ts";
@@ -18,12 +23,14 @@ export function createApi(deps: ApiDeps) {
   return new Hono()
     .onError(reportFailure)
     .route("/sessions", sessionReadRoutes(deps))
+    .route("/sessions", sessionStartRoute(deps))
     .route("/sessions", sessionConversationRoutes(deps))
     .route("/sessions", sessionControlRoutes(deps))
     .route("/sessions", fileRoutes(deps))
     .route("/sessions", previewTicketRoutes(deps))
     .route("/modify", modifyRoutes(deps))
     .route("/config", configRoutes(deps))
+    .route("/workspaces", workspacesRoutes(deps))
     .route("/", workspaceRoutes(deps))
     .route("/", streamRoute(deps));
 }

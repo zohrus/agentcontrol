@@ -24,8 +24,11 @@ export const CheckStep = z.object({
   status: z.enum(["ok", "failed", "skipped"]),
   detail: z.string().optional(),
 });
-/** Params of relay/workspace.check. */
-export const WorkspaceCheckParams = Empty;
+/**
+ * Params of relay/workspace.check. With `agents` the check also starts each configured agent for an
+ * ACP handshake (no prompt, no tokens), which is slower than the machine checks alone.
+ */
+export const WorkspaceCheckParams = z.object({ agents: z.boolean().optional() });
 /** Result of relay/workspace.check. */
 export const WorkspaceCheckResult = z.object({ steps: z.array(CheckStep) });
 

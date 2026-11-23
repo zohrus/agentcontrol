@@ -5,6 +5,9 @@ import {
 } from "../support/expect/workspace-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import {
+  machineWhereCodexCannotStart,
+  machineWhereCodexNeverAnswers,
+  machineWithAgentsThatStart,
   machineWithOldGit,
   machineWithoutGit,
   machineWithoutGitIdentity,
@@ -101,4 +104,58 @@ test("the workspace check says when the free disk space cannot be read", async (
   // ** THEN the checklist says the free disk space could not be read
   // ********************************************************************
   expectChecklistStep(check, { id: "disk", status: "failed", saying: "Could not read" });
+});
+
+test("the workspace check starts each agent and says its ACP handshake worked", async () => {
+  // ********************************************************************
+  // ** GIVEN the relay is running on a machine where Claude Code and Codex start
+  // ********************************************************************
+  const relay = await startRelayWithLocalRepo({ env: machineWithAgentsThatStart });
+
+  // ********************************************************************
+  // ** WHEN the user runs the workspace check with the agents
+  // ********************************************************************
+  const check = await relay.user.checksTheWorkspaceAndItsAgents();
+
+  // ********************************************************************
+  // ** THEN the checklist says each agent's handshake worked
+  // ********************************************************************
+  expectChecklistStep(check, { id: "agent-claude-code", status: "ok", saying: "handshake worked" });
+  expectChecklistStep(check, { id: "agent-codex", status: "ok", saying: "handshake worked" });
+});
+
+test("the workspace check says an agent could not be started", async () => {
+  // ********************************************************************
+  // ** GIVEN the relay is running on a machine where Codex dies as soon as it is started
+  // ********************************************************************
+  const relay = await startRelayWithLocalRepo({ env: machineWhereCodexCannotStart });
+
+  // ********************************************************************
+  // ** WHEN the user runs the workspace check with the agents
+  // ********************************************************************
+  const check = await relay.user.checksTheWorkspaceAndItsAgents();
+
+  // ********************************************************************
+  // ** THEN the checklist says Codex could not be started
+  // ********************************************************************
+  expectChecklistStep(check, { id: "agent-codex", status: "failed", saying: "Could not start" });
+  // AND the agent that works is still reported as working
+  expectChecklistStep(check, { id: "agent-claude-code", status: "ok", saying: "handshake worked" });
+});
+
+test("the workspace check gives up on an agent that does not answer", async () => {
+  // ********************************************************************
+  // ** GIVEN the relay is running on a machine where Codex starts but never answers
+  // ********************************************************************
+  const relay = await startRelayWithLocalRepo({ env: machineWhereCodexNeverAnswers });
+
+  // ********************************************************************
+  // ** WHEN the user runs the workspace check with the agents
+  // ********************************************************************
+  const check = await relay.user.checksTheWorkspaceAndItsAgents();
+
+  // ********************************************************************
+  // ** THEN the checklist says Codex did not answer in time
+  // ********************************************************************
+  expectChecklistStep(check, { id: "agent-codex", status: "failed", saying: "did not answer" });
 });

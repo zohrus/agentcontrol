@@ -133,7 +133,8 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
       repos,
       env: hostEnv,
       normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
-      relayVersion: options.relayVersion ?? VERSION,
+      // AGENTCONTROL_RELAY_VERSION is only set by tests, to look like another release.
+      relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
     }),
     ...configHandlers(configHome(hostEnv)),
   };

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { SessionSummary } from "@agentcontrol/protocol";
-import { createClient, type SessionEvent } from "@agentcontrol/sdk";
-import type { ModifyConfig } from "@agentcontrol/app";
+import { createClient, type SessionEvent, type WorkspaceInfo } from "@agentcontrol/sdk";
+import type { ModifyConfig, SshSettings } from "@agentcontrol/app";
 import type { AppAccess, FileChange } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
@@ -41,7 +41,7 @@ interface Heard {
   fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   relayConnectionsEnded: Timeline<number>;
-  workspaceConnections: Timeline<string>;
+  workspaceChanges: Timeline<WorkspaceInfo>;
 }
 
 /** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
@@ -54,8 +54,8 @@ function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => vo
       onFilesChanged: (change) => {
         heard.fileChanges.record(change);
       },
-      onWorkspaceConnection: ({ state }) => {
-        heard.workspaceConnections.record(state);
+      onWorkspace: (workspace) => {
+        heard.workspaceChanges.record(workspace);
       },
       onOpen: () => {
         resolve(stop);
@@ -69,7 +69,7 @@ function newHeard(): Heard {
     streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
     fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
     relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
-    workspaceConnections: new Timeline<string>(STREAM_WAIT_MS),
+    workspaceChanges: new Timeline<WorkspaceInfo>(STREAM_WAIT_MS),
   };
 }
 
@@ -84,6 +84,7 @@ export interface StartOptions {
   previewLifetimeMs?: number;
   /** Extra environment for the relay, for example the command behind an agent name. */
   relayEnv?: Record<string, string>;
+  ssh?: Partial<SshSettings>;
   /** The repo holds this many files besides its readme, so a worktree has plenty. */
   repoFiles?: number;
   /** The version the relay reports it is (in-process runs only), for a relay that is not this release. */
@@ -130,7 +131,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const fixed = { dataDir, env, host, heard, ui, relayDown: options.relayStopped };
   const lifetime = { previewLifetimeMs: options.previewLifetimeMs };
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ ...fixed, ...lifetime, ...extra });
+    openApp({ ...fixed, ...lifetime, ssh: options.ssh, ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -159,24 +160,26 @@ interface Opened {
   close(): Promise<void>;
 }
 
-/** Records, each time the app sees a relay connection end, how many have ended so far. */
 function countEndedConnections(heard: Heard): () => void {
   return () => {
     heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
   };
 }
 
-async function openApp(options: {
+interface OpenOptions {
   dataDir: string;
   env: Record<string, string>;
   host: RelayHost;
   heard: Heard;
   ui: { root?: string; dist?: string };
+  ssh?: Partial<SshSettings> | undefined;
   relayDown: boolean | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
   previewLifetimeMs?: number | undefined;
-}): Promise<Opened> {
+}
+
+async function openApp(options: OpenOptions): Promise<Opened> {
   const { heard } = options;
   const app: AppProcess = await launchApp({
     ...options,

@@ -1,5 +1,10 @@
 export { localRelayCommand } from "./command.ts";
 export type { RelayClient, RelayTransport } from "./connect.ts";
 export { relayClientOver } from "./connect.ts";
+export { localTarget } from "./local-target.ts";
 export { RelayCallError, RelayConnectionClosedError } from "./peer.ts";
-export { spawnRelayBridge } from "./spawn-bridge.ts";
+export { spawnBridge, spawnRelayBridge } from "./spawn-bridge.ts";
+export { sshConfigHosts } from "./ssh-hosts.ts";
+export { isSafeHost } from "./ssh-quote.ts";
+export { sshTarget } from "./ssh-target.ts";
+export type { ForwardedPort, HostInfo, WorkspaceTarget } from "./target.ts";

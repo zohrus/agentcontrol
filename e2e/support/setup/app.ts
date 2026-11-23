@@ -1,4 +1,4 @@
-import type { Client, SessionEvent } from "@agentcontrol/sdk";
+import type { Client, SessionEvent, WorkspaceInfo } from "@agentcontrol/sdk";
 import type { MockAgent } from "./mock-agent-script.ts";
 import type { Session } from "./relay.ts";
 import type { Timeline } from "./timeline.ts";
@@ -29,6 +29,6 @@ export interface AppAccess {
   readonly fileChanges: Timeline<FileChange>;
   /** One entry per relay connection the app has seen end, numbered from 1. */
   readonly relayConnectionsEnded: Timeline<number>;
-  /** Every change of the workspace's relay connection the live stream has reported. */
-  readonly workspaceConnections: Timeline<string>;
+  /** Every change of a workspace's connection state the live stream has delivered, in order. */
+  readonly workspaceChanges: Timeline<WorkspaceInfo>;
 }

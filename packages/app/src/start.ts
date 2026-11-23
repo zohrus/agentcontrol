@@ -3,11 +3,18 @@ import { join } from "node:path";
 import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "./modify/index.ts";
 import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
+import { findResources } from "./resources/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
-import { createStore, type Store, type Workspace } from "./store/index.ts";
-import { createHub, type Hub, startSync, type Sync } from "./sync/index.ts";
+import { createStore, type Store } from "./store/index.ts";
+import { createHub, type Hub } from "./sync/index.ts";
 import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
+import {
+  createWorkspaces,
+  relayBinariesIn,
+  type SshSettings,
+  type Workspaces,
+} from "./workspaces/index.ts";
 
 export interface AppOptions {
   dataDir: string;
@@ -15,6 +22,13 @@ export interface AppOptions {
   port: number;
   /** Opens a fresh connection to the local relay; called again after every drop. */
   connectRelay: () => RelayClient;
+  /** Stops the local relay daemon; given, an idle relay of another version is replaced at start. */
+  stopLocalRelay?: () => Promise<void>;
+  /**
+   * How ssh workspaces are reached. By default the system's ssh config is used and relay binaries
+   * come from the release's `relays/` folder (or `dist/` in a source checkout).
+   */
+  ssh?: Partial<SshSettings>;
   /**
    * Which agent edits the UI and where the default UI is. Given: the live and staging UI folders
    * are prepared before the app listens. Absent: they are prepared on the first Modify request.
@@ -29,19 +43,25 @@ export interface AppOptions {
 export interface RunningApp {
   /** Where the app is listening, e.g. `http://127.0.0.1:4747`. */
   url: string;
-  /** Stops serving, closes the relay connection (the relay keeps running) and the database. */
+  /** Stops serving, closes the relay connections (the relays keep running) and the database. */
   stop(): Promise<void>;
 }
 
-function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; sync: Sync }) {
-  const { store, hub, sync } = parts;
+const sourceCheckoutBinaries = join(import.meta.dir, "../../../dist");
+
+function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; workspaces: Workspaces }) {
+  const { store, hub, workspaces } = parts;
   return createModify({
     dataDir: options.dataDir,
     ...(options.modify ?? readModifyConfig(process.env)),
-    relay: sync,
+    relay: workspaces.localLink,
     events: {
       after: (query) =>
-        store.eventsAfter({ ...query, workspaceId: LOCAL.id, limit: Number.MAX_SAFE_INTEGER }),
+        store.eventsAfter({
+          ...query,
+          workspaceId: workspaces.localId,
+          limit: Number.MAX_SAFE_INTEGER,
+        }),
       onEvent: (listener) =>
         hub.subscribe((message) => {
           if (message.type === "event") listener(message.event);
@@ -53,6 +73,11 @@ function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; sync: Sy
   });
 }
 
+function previewsOf(options: AppOptions) {
+  const { previewLifetimeMs } = options;
+  return createPreviews(previewLifetimeMs === undefined ? {} : { lifetimeMs: previewLifetimeMs });
+}
+
 /** A busy port gets a plain message that says what to do; every other failure is kept as it is. */
 function explainStartFailure(error: unknown, port: number): unknown {
   if (!(error instanceof Error) || (error as { code?: string }).code !== "EADDRINUSE") return error;
@@ -62,58 +87,79 @@ function explainStartFailure(error: unknown, port: number): unknown {
   );
 }
 
-function previewsOf(options: AppOptions) {
-  const { previewLifetimeMs } = options;
-  return createPreviews(previewLifetimeMs === undefined ? {} : { lifetimeMs: previewLifetimeMs });
+/** The relay binaries to install on ssh hosts: the release's `relays/` folder, else a checkout's `dist/`. */
+function relaysFolder(): string {
+  const found = findResources({ env: process.env, execPath: process.execPath });
+  return found.relaysDir ?? sourceCheckoutBinaries;
 }
 
-const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };
-
-/** What the API serves besides the store, hub and Modify: the workspace, its relay, the previews. */
-function serving(options: AppOptions, sync: Sync) {
-  return { workspace: LOCAL, relay: sync, previews: previewsOf(options) };
+function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): Workspaces {
+  const ssh = { relayBinaryFor: relayBinariesIn(relaysFolder()), ...options.ssh };
+  const { stopLocalRelay } = options;
+  return createWorkspaces({
+    ...parts,
+    connectLocal: options.connectRelay,
+    ssh,
+    ...(stopLocalRelay && { stopLocalRelay }),
+  });
 }
 
 /** Ends what a started app holds, in order: the Modify agent's session first, the database last. */
 async function closeParts(parts: {
   modify: Modify;
   ui: UiHandler | undefined;
-  sync: Sync;
+  workspaces: Workspaces;
   store: Store;
 }): Promise<void> {
   await parts.modify.stop();
   await parts.ui?.close();
-  await parts.sync.stop();
+  await parts.workspaces.stop();
   parts.store.close();
 }
 
+interface Parts {
+  store: Store;
+  hub: Hub;
+  workspaces: Workspaces;
+  modify: Modify;
+  token: ReturnType<typeof createToken>;
+  /** Filled in once the UI is up, so a failure after that can close it. */
+  opened: { ui?: UiHandler | undefined };
+}
+
+async function listen(options: AppOptions, parts: Parts) {
+  const { store, hub, workspaces, modify, token, opened } = parts;
+  // The live UI folder is made from the default UI first, because the UI may be served from it.
+  if (options.modify) await modify.ready();
+  const ui = await startUi(options.ui ?? {}, options.dataDir);
+  opened.ui = ui;
+  const deps = { store, hub, workspaces, modify, previews: previewsOf(options) };
+  return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
+}
+
 /**
- * Starts the app on 127.0.0.1 with its own database under `dataDir`. It does not wait for the
- * relay: it keeps trying in the background, and the workspace reads as disconnected until it is up.
+ * Starts the app on 127.0.0.1 with its own database under `dataDir`. It does not wait for any
+ * relay: each workspace keeps trying in the background, and reads as disconnected until it is up.
  */
 export async function startApp(options: AppOptions): Promise<RunningApp> {
   await mkdir(options.dataDir, { recursive: true });
   const token = createToken();
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
-  const sync = startSync({ store, hub, workspace: LOCAL, connect: options.connectRelay });
-  let ui: UiHandler | undefined;
-  const modify = modifyOf(options, { store, hub, sync });
-  const server = await Promise.try(async () => {
-    // The live UI folder is made from the default UI first, because the UI may be served from it.
-    if (options.modify) await modify.ready();
-    ui = await startUi(options.ui ?? {}, options.dataDir);
-    const deps = { store, hub, modify, ...serving(options, sync) };
-    return startServer({ port: options.port, deps, ui, token, dataDir: options.dataDir });
-  }).catch(async (error: unknown) => {
-    await closeParts({ modify, ui, sync, store });
-    throw explainStartFailure(error, options.port);
-  });
+  const workspaces = workspacesOf(options, { store, hub });
+  const modify = modifyOf(options, { store, hub, workspaces });
+  const opened: Parts["opened"] = {};
+  const server = await listen(options, { store, hub, workspaces, modify, token, opened }).catch(
+    async (error: unknown) => {
+      await closeParts({ modify, ui: opened.ui, workspaces, store });
+      throw explainStartFailure(error, options.port);
+    },
+  );
   return {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
-      await closeParts({ modify, ui, sync, store });
+      await closeParts({ modify, ui: opened.ui, workspaces, store });
     },
   };
 }

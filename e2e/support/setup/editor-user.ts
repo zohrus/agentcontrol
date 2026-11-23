@@ -37,5 +37,10 @@ export function editorUserOf(relay: RelayAccess) {
       await relay.call(RelayName.fsWatch, { sessionId: session.id });
     },
     checksTheWorkspace: () => relay.call(RelayName.workspaceCheck, {}),
+    /** The check that also starts each agent for an ACP handshake, as "Add workspace" does. */
+    checksTheWorkspaceAndItsAgents: async () => {
+      await relay.mockAgent.writeScript();
+      return relay.call(RelayName.workspaceCheck, { agents: true });
+    },
   };
 }

@@ -16,6 +16,8 @@ export interface RelayTransport {
   readonly closed: Promise<unknown>;
   /** Ends the channel; the relay daemon itself keeps running. */
   close(): Promise<void>;
+  /** Why the channel could not be used, in plain words, when the process behind it said so. */
+  failure?: () => string | undefined;
 }
 
 /** A live connection to a relay: typed calls, pushed notifications, and when it ends. */
@@ -26,6 +28,8 @@ export interface RelayClient {
   readonly closed: Promise<void>;
   /** Closes the connection; the relay daemon itself keeps running. */
   close(): Promise<void>;
+  /** Why the connection failed, in plain words, when the channel knows (an ssh error, say). */
+  failure(): string | undefined;
 }
 
 /** Talks JSON-RPC to a relay over the given transport. */
@@ -39,6 +43,7 @@ export function relayClientOver(transport: RelayTransport): RelayClient {
   });
   return {
     closed,
+    failure: () => transport.failure?.(),
     onNotification: (listener) => {
       peer.onNotification(listener);
     },

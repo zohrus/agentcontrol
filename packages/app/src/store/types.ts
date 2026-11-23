@@ -6,6 +6,8 @@ export interface Workspace {
   kind: "local" | "ssh";
   sshHost?: string;
   lastSeenAt?: string;
+  /** When the user removed the workspace; its sessions stay readable. */
+  removedAt?: string;
 }
 
 /** A relay's summary plus the workspace it came from; session ids are only unique per workspace. */
@@ -21,6 +23,8 @@ export interface SessionFilter {
 
 export interface Store {
   upsertWorkspace(workspace: Workspace): void;
+  /** Every workspace ever added, removed ones included, oldest first. */
+  listWorkspaces(): Workspace[];
   /**
    * Idempotent: an event already stored (same workspace, session, seq) is ignored. The events were
    * made with this version of the relay's event translation, which the store notes per session.
@@ -48,6 +52,8 @@ export interface Store {
   saveSessionSummaries(workspaceId: string, summaries: SessionSummary[]): void;
   listSessions(filter?: SessionFilter): StoredSession[]; // newest first
   getSession(key: { workspaceId: string; sessionId: SessionId }): StoredSession | undefined;
+  /** The sessions with this id in any workspace (ids are only unique per workspace). */
+  findSessions(sessionId: SessionId): StoredSession[];
   /** Replaces every harness-config item with the given ones. */
   replaceConfigItems(items: ScopedItem[]): void;
   /** The harness-config items, one entry per item and scope. */

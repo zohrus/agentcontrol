@@ -19,6 +19,11 @@ export interface StartSession {
   prompt: string;
   /** A short name for the session list; defaults to the prompt. */
   title?: string;
+  /**
+   * The workspace to run on (an id from `workspaces.list()`); "local" when left out. `repoPath` is
+   * a path on that workspace's machine.
+   */
+  workspaceId?: string;
 }
 
 const flag = (value: boolean) => (value ? ("true" as const) : ("false" as const));
@@ -68,7 +73,9 @@ function sessionActions(api: Api) {
   return {
     /** Starts a session in a new git worktree and sends the first prompt. Resolves with its id. */
     start: async (session: StartSession): Promise<SessionId> => {
-      const { sessionId } = await read(api.sessions.$post({ json: session }));
+      const { workspaceId, ...json } = session;
+      const query = workspaceId === undefined ? {} : { workspace: workspaceId };
+      const { sessionId } = await read(api.sessions.$post({ query, json }));
       return sessionId;
     },
     /** Sends the user's next message to the agent. */

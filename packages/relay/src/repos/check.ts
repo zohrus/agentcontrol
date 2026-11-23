@@ -4,6 +4,7 @@ import type { CheckStep as CheckStepSchema } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import type { HostEnv } from "../agents/index.ts";
 import { runGit } from "../git/index.ts";
+import { checkAgents } from "./check-agents.ts";
 
 type CheckStep = z.infer<typeof CheckStepSchema>;
 
@@ -68,8 +69,15 @@ async function identityStep(gitStatus: CheckStep["status"], env: HostEnv): Promi
   return { id: "gitIdentity", label, status: "failed", detail };
 }
 
-/** Local checks for the "Add workspace" checklist. */
-export async function checkWorkspace(env: HostEnv): Promise<{ steps: CheckStep[] }> {
+/**
+ * Checks for the "Add workspace" checklist. With `withAgents` each configured agent is also started
+ * for an ACP handshake.
+ */
+export async function checkWorkspace(
+  env: HostEnv,
+  options: { withAgents?: boolean | undefined } = {},
+): Promise<{ steps: CheckStep[] }> {
   const git = await gitStep(env);
-  return { steps: [osStep(), await diskStep(env), git, await identityStep(git.status, env)] };
+  const machine = [osStep(), await diskStep(env), git, await identityStep(git.status, env)];
+  return { steps: [...machine, ...(options.withAgents ? await checkAgents(env) : [])] };
 }

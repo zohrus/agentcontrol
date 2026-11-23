@@ -8,4 +8,5 @@ export * from "./sessions/index.ts";
 export * from "./usage/index.ts";
 export * from "./version/index.ts";
 export * from "./workspace/index.ts";
+export * from "./workspaces/index.ts";
 export * from "./worktrees/index.ts";

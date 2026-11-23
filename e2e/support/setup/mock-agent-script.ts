@@ -27,6 +27,8 @@ export interface MockAgent {
   willFinishWith(stopReason: StopReason): void;
   /** The turn stays open until the user cancels it, then ends with stop reason `cancelled`. */
   willWaitUntilCancelled(): void;
+  /** The turn stays open until a file exists at this path (the test creates it to let the agent go on). */
+  willWaitForFile(path: string): void;
   /** The turn reports this usage, in a `usage_update` and in the prompt result, like the adapters. */
   willReportUsage(usage: ReportedUsage): void;
   /**
@@ -58,9 +60,16 @@ function turnEndingSteps(
   add: (step: Step) => void,
 ): Pick<
   MockAgent,
-  "willCompactContext" | "willSendUpdate" | "willFinishWith" | "willWaitUntilCancelled"
+  | "willCompactContext"
+  | "willSendUpdate"
+  | "willFinishWith"
+  | "willWaitUntilCancelled"
+  | "willWaitForFile"
 > {
   return {
+    willWaitForFile: (path) => {
+      add({ kind: "waitForFile", path });
+    },
     willCompactContext: () => {
       add({ kind: "compactContext" });
     },

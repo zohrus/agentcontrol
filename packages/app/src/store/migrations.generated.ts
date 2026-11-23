@@ -20,4 +20,8 @@ export const EMBEDDED_MIGRATIONS = [
     when: 1795460000000,
     sql: "CREATE TABLE `session_normalisation` (\n\t`workspace_id` text NOT NULL,\n\t`session_id` text NOT NULL,\n\t`version` integer NOT NULL,\n\tPRIMARY KEY(`workspace_id`, `session_id`)\n);\n--> statement-breakpoint\nINSERT INTO `session_normalisation` (`workspace_id`, `session_id`, `version`)\nSELECT DISTINCT `workspace_id`, `session_id`, 0 FROM `events`;\n",
   },
+  {
+    when: 1795470000000,
+    sql: "ALTER TABLE `workspaces` ADD `removed_at` text;",
+  },
 ] as const;

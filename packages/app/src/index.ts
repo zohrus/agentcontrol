@@ -18,3 +18,6 @@ export type { AppOptions, RunningApp } from "./start.ts";
 export { startApp } from "./start.ts";
 export type { RelayClient, RelayTransport } from "./relays/index.ts";
 export { relayClientOver, spawnRelayBridge } from "./relays/index.ts";
+export type { ForwardedPort, HostInfo, WorkspaceTarget } from "./relays/index.ts";
+export { localTarget, spawnBridge, sshTarget } from "./relays/index.ts";
+export type { SshSettings } from "./workspaces/index.ts";

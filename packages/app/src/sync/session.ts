@@ -14,8 +14,17 @@ import { saveChangedSummaries } from "./summaries.ts";
 
 const EVENT_BATCH_MS = 20;
 
+/** The relay was of another version and has been stopped; the next connection reaches a new one. */
+export class RelayReplaced extends Error {
+  constructor() {
+    super("The relay of another version was replaced.");
+  }
+}
+
 export interface SyncSession {
   hello: HelloResult;
+  /** Why the relay needs an update, when it is another version than the app and was left running. */
+  outdated: string | undefined;
   /** Fetches the relay's session list now and publishes what changed. */
   refreshSessions: () => Promise<void>;
   /** Saves and publishes whatever events are still waiting. */
@@ -77,6 +86,29 @@ async function followAndList(call: {
   return refreshSessions;
 }
 
+const outdatedReason = (relayVersion: string): string =>
+  `The relay is version ${relayVersion}, but this app is version ${VERSION}.`;
+
+/** Asks the replace hook about an outdated relay; no hook, or one that fails, leaves it as it is. */
+async function tryToReplace(call: { client: RelayClient; deps: SyncDeps; relayVersion: string }) {
+  const { client, deps, relayVersion } = call;
+  const stays = { replaced: false, reason: outdatedReason(relayVersion) };
+  const hook = deps.replaceRelay;
+  return hook ? await hook({ client, relayVersion }).catch(() => stays) : stays;
+}
+
+/** Replaces a relay of another version if the app can; else says why it stays as it is. */
+async function checkVersion(call: {
+  client: RelayClient;
+  deps: SyncDeps;
+  relayVersion: string;
+}): Promise<string | undefined> {
+  if (call.relayVersion === VERSION) return undefined;
+  const answer = await tryToReplace(call);
+  if (answer.replaced) throw new RelayReplaced();
+  return answer.reason;
+}
+
 /**
  * Handshake, resume every session after the last stored seq, and list the sessions once. Sessions
  * saved with an older event translation than the relay's are read again in the background. From then
@@ -90,10 +122,11 @@ export async function startSyncSession(client: RelayClient, deps: SyncDeps): Pro
   relayPushes({ client, onEvent: events.add, onSummaries });
   const hello = await client.call(RelayName.hello, { clientVersion: VERSION });
   normaliserVersion = hello.normaliserVersion ?? 0;
+  const outdated = await checkVersion({ client, deps, relayVersion: hello.relayVersion });
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const refreshSessions = await followAndList({ client, deps, onSummaries });
   void renormaliseStaleSessions({ client, deps, version: normaliserVersion }).catch(
     () => undefined,
   );
-  return { hello, refreshSessions, flush: events.flush };
+  return { hello, outdated, refreshSessions, flush: events.flush };
 }

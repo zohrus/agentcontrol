@@ -6,6 +6,8 @@ export const workspaces = sqliteTable("workspaces", {
   kind: text("kind", { enum: ["local", "ssh"] }).notNull(),
   sshHost: text("ssh_host"),
   lastSeenAt: text("last_seen_at"),
+  /** Set when the user removed the workspace: its past sessions stay, nothing connects to it. */
+  removedAt: text("removed_at"),
 });
 
 /** Session ids are only unique per relay, so a session is keyed by its workspace and its id. */

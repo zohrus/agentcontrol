@@ -25,7 +25,7 @@ export function workspaceHandlers(call: {
         normaliserVersion,
         agents: availableAgents(env),
       }),
-    [N.workspaceCheck]: () => checkWorkspace(env),
+    [N.workspaceCheck]: ({ agents }) => checkWorkspace(env, { withAgents: agents }),
     [N.reposAdd]: async ({ path }) => {
       const { repoId, defaultBranch, path: root } = await repos.add(path);
       return { repoId, defaultBranch, path: root };

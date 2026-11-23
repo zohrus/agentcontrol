@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { type ModifyConfig, relayClientOver, startApp } from "@agentcontrol/app";
+import { type ModifyConfig, relayClientOver, type SshSettings, startApp } from "@agentcontrol/app";
 import { readApiToken } from "./api-token.ts";
 import { eventually } from "./eventually.ts";
 import { inSubprocesses, type RelayHost } from "./relay-host.ts";
@@ -75,10 +75,21 @@ interface LaunchOptions extends ProcessLaunch {
   relayDown?: boolean | undefined;
   /** The default UI and Modify agent; in-process runs only. */
   modify?: ModifyConfig | undefined;
+  /** How ssh workspaces are reached; in-process runs only. */
+  ssh?: Partial<SshSettings> | undefined;
   /** How long a preview link lasts after its last use; in-process runs only. */
   previewLifetimeMs?: number | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
+}
+
+/** The settings that are only given to the app when a test asks for them. */
+function extraSettings(options: LaunchOptions) {
+  const { ssh, previewLifetimeMs } = options;
+  return {
+    ...(ssh && { ssh }),
+    ...(previewLifetimeMs !== undefined && { previewLifetimeMs }),
+  };
 }
 
 /** Starts the app inside this test process, talking to the relay over its socket. */
@@ -88,9 +99,7 @@ async function launchAppInProcess(options: LaunchOptions): Promise<AppProcess> {
     port: options.port ?? 0,
     ...(options.ui && { ui: options.ui }),
     ...(options.modify && { modify: options.modify }),
-    ...(options.previewLifetimeMs !== undefined && {
-      previewLifetimeMs: options.previewLifetimeMs,
-    }),
+    ...extraSettings(options),
     connectRelay: () => {
       const wire = options.host.wire();
       void wire.closed.then(options.onRelayConnectionEnded);

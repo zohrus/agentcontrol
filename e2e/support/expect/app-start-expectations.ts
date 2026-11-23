@@ -14,8 +14,8 @@ async function health(app: Readable): Promise<string> {
 /** The app serves requests and says, in its workspace and its health check, the relay is not there. */
 export async function expectAppToServeAndReportTheRelayDisconnected(app: Readable): Promise<void> {
   const workspace = await app.sdk.workspace.get();
-  if (workspace.connection !== "disconnected") {
-    throw new Error(`expected the workspace to be disconnected, but it is ${workspace.connection}`);
+  if (workspace.state === "connected" || workspace.state === "needs-relay-update") {
+    throw new Error(`expected the workspace to be disconnected, but it is ${workspace.state}`);
   }
   const seen = await health(app);
   if (seen !== "ok, relay disconnected") {
@@ -29,7 +29,7 @@ export async function expectAppToServeAndReportTheRelayDisconnected(app: Readabl
 export async function expectAppToFindTheRelay(app: Readable): Promise<void> {
   await eventually("expected the app to find the relay", async () => {
     const workspace = await app.sdk.workspace.get();
-    return workspace.connection === "connected" ? undefined : "it is still disconnected";
+    return workspace.state === "connected" ? undefined : "it is still disconnected";
   });
   const seen = await health(app);
   if (seen !== "ok, relay connected") {
@@ -39,8 +39,8 @@ export async function expectAppToFindTheRelay(app: Readable): Promise<void> {
 
 /** The live stream told the UI that the relay connected. */
 export async function expectLiveStreamToReportTheRelayConnected(app: AppAccess): Promise<void> {
-  await app.workspaceConnections.waitFor(
-    (state) => state === "connected",
+  await app.workspaceChanges.waitFor(
+    (change) => change.id === "local" && change.state === "connected",
     "expected the live stream to report the relay as connected",
   );
 }

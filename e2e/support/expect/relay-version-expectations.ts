@@ -14,12 +14,12 @@ export async function expectRelayToBeOfThisRelease(app: AppAccess): Promise<void
   const workspace = await app.sdk.workspace.get();
   const version = await releaseVersion();
   if (
-    workspace.connection !== "connected" ||
+    workspace.state !== "connected" ||
     workspace.relayVersion !== version ||
     workspace.appVersion !== version
   ) {
     throw new Error(
-      `expected the workspace to be connected to a relay of version ${version}, but it is ${workspace.connection} with relay ${workspace.relayVersion ?? "unknown"}`,
+      `expected the workspace to be connected to a relay of version ${version}, but it is ${workspace.state} with relay ${workspace.relayVersion ?? "unknown"}`,
     );
   }
 }
@@ -30,9 +30,9 @@ export async function expectWorkspaceToNeedARelayUpdate(
   relayVersion: string,
 ): Promise<void> {
   const workspace = await app.sdk.workspace.get();
-  if (workspace.connection !== "needs-relay-update" || workspace.relayVersion !== relayVersion) {
+  if (workspace.state !== "needs-relay-update" || workspace.relayVersion !== relayVersion) {
     throw new Error(
-      `expected the workspace to need a relay update from ${relayVersion}, but it is ${workspace.connection} with relay ${workspace.relayVersion ?? "unknown"}`,
+      `expected the workspace to need a relay update from ${relayVersion}, but it is ${workspace.state} with relay ${workspace.relayVersion ?? "unknown"}`,
     );
   }
 }

@@ -12,22 +12,23 @@ const WriteBody = FsWriteParams.pick({ path: true, content: true, expectedHash: 
 
 /** A session's diff and worktree files. Writes fail with 409 when the file changed meanwhile. */
 export function fileRoutes(deps: ApiDeps) {
-  const relay = (): Link => routeRequest(deps).link;
+  const relay = (sessionId: SessionId): Link => routeRequest(deps, { sessionId }).link;
   return new Hono()
-    .get("/:id/diff", validate("param", IdParam), async (c) =>
-      c.json(await relay().call(N.diff, { sessionId: c.req.valid("param").id })),
-    )
+    .get("/:id/diff", validate("param", IdParam), async (c) => {
+      const { id: sessionId } = c.req.valid("param");
+      return c.json(await relay(sessionId).call(N.diff, { sessionId }));
+    })
     .get("/:id/files", validate("param", IdParam), async (c) => {
       const { id: sessionId } = c.req.valid("param");
-      await relay().watchFiles(sessionId);
-      return c.json(await relay().call(N.fsTree, { sessionId }));
+      await relay(sessionId).watchFiles(sessionId);
+      return c.json(await relay(sessionId).call(N.fsTree, { sessionId }));
     })
     .get("/:id/file", validate("param", IdParam), validate("query", ReadQuery), async (c) => {
       const sessionId = c.req.valid("param").id;
-      return c.json(await relay().call(N.fsRead, { sessionId, ...c.req.valid("query") }));
+      return c.json(await relay(sessionId).call(N.fsRead, { sessionId, ...c.req.valid("query") }));
     })
     .put("/:id/file", validate("param", IdParam), validate("json", WriteBody), async (c) => {
       const sessionId = c.req.valid("param").id;
-      return c.json(await relay().call(N.fsWrite, { sessionId, ...c.req.valid("json") }));
+      return c.json(await relay(sessionId).call(N.fsWrite, { sessionId, ...c.req.valid("json") }));
     });
 }
