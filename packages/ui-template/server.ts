@@ -3,7 +3,7 @@
 // http, so it listens on a private port, prints `{"port":N}` on its first line when it is ready,
 // and the app's own server forwards the UI's requests to it. It quits on SIGTERM, and when the
 // app that started it is gone.
-import { realpath } from "node:fs/promises";
+import { lstat, realpath } from "node:fs/promises";
 import { createServer as createHttpServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { join, resolve } from "node:path";
@@ -43,16 +43,22 @@ async function allowedFolders(root: string): Promise<string[]> {
 }
 
 /**
- * Starts Vite for the UI project in `root`, with hot reload and index.html for every unknown
- * path. Its cache lives in the project's own `.vite` folder, so nothing is written into the
- * shared node_modules (inside an installed app, that folder must stay as it was shipped).
+ * Where Vite keeps its cache. Vite's own place is `node_modules/.vite`; when that folder is a link
+ * to the dependencies shipped with the app, the cache goes into the project's own `.vite` folder
+ * instead, because nothing may be written into the shipped folder (an installed app is signed).
  */
+async function cacheFolder(root: string): Promise<{ cacheDir?: string }> {
+  const modules = await lstat(join(root, "node_modules")).catch(() => undefined);
+  return modules?.isSymbolicLink() === true ? { cacheDir: join(root, ".vite") } : {};
+}
+
+/** Starts Vite for the UI project in `root`, with hot reload and index.html for every unknown path. */
 async function startUiDevServer(
   root: string,
 ): Promise<{ port: number; close: () => Promise<void> }> {
   const vite = await createViteServer({
     root,
-    cacheDir: join(root, ".vite"),
+    ...(await cacheFolder(root)),
     configLoader: "runner",
     appType: "spa",
     server: {
