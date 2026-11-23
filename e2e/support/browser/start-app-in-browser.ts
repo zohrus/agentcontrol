@@ -1,7 +1,6 @@
-import { onTestEnd } from "../setup/cleanup.ts";
 import { type RunningApp, startAppWithLocalWorkspace } from "../setup/start-app.ts";
 import { type AppPage, appPageOf } from "./app-page.ts";
-import { type Browser, launchChromium, type Page } from "./playwright.ts";
+import { openTab, type Page } from "./playwright.ts";
 import { recordBrowserCoverage } from "./ui-coverage/collect.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
@@ -44,10 +43,8 @@ export async function openInBrowser<A extends RunningApp>(
   app: A,
   options: BrowserOptions = {},
 ): Promise<A & { readonly page: AppPage }> {
-  const browser: Browser = await launchChromium();
-  onTestEnd(() => browser.close());
   const { viewport, colorScheme } = options;
-  const tab = await browser.newPage({
+  const tab = await openTab({
     ...(viewport && { viewport }),
     ...(colorScheme && { colorScheme }),
   });
