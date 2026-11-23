@@ -13,17 +13,20 @@ untouched. `AgentControl` is a working name.
 
 Pre-release. There is no installer yet. **Running from source is the supported way today.**
 
-- The target is macOS. It has been developed and tested on Linux only. Nothing has run on a Mac:
-  the menu bar app (Swift) has never been compiled, and the macOS binaries have been built but never
-  executed (see [docs/releasing.md](docs/releasing.md)).
+- The target is macOS. It has been developed and tested on Linux. On a CI Mac runner (Apple Silicon)
+  the build is green: the menu bar app (Swift) and the compiled app build for both chip types, and
+  the compiled app passes a smoke test from the app bundle and from the mounted `.dmg`. No person has
+  opened the `.dmg` on a real Mac yet, the menu bar app has not been launched, and the Intel build
+  has not been run (see [docs/releasing.md](docs/releasing.md)).
 - Claude Code has been driven for real from this UI (a one-word prompt worked). Codex has not been
   tried with a real account yet.
 - When a `.dmg` is published, it will be **unsigned** (no Apple Developer ID yet). macOS will block
   it on first open. Open it through System Settings > Privacy & Security > Open Anyway, or run
   `xattr -dr com.apple.quarantine /Applications/AgentControl.app`.
 - No Homebrew install and no automatic updates yet.
-- Not finished: "Analytics" in the toolbar, the "Modify this UI" panel (new, not yet tried by hand here), remote
-  (SSH) workspaces, the Preview tab.
+- Not finished: the screens for remote (SSH) workspaces (the backend works, the picker and add dialog
+  are in progress), the Config screen, the Terminal tab and the Analytics screen (all in progress).
+  The "Modify this UI" panel and the Preview tab exist but have not been tried by hand much.
 
 ## Requirements
 
@@ -145,7 +148,7 @@ reach `main` through `bun run integrate`, not pull requests. Read [AGENTS.md](AG
 | `packages/app` | The local server: talks to the relay, stores state, serves the API and the UI. |
 | `packages/sdk` | `@agentcontrol/sdk`, the typed client the UI uses. |
 | `packages/ui-template` | The default web UI (React, Vite, Tailwind). |
-| `packages/mac` | The menu bar app in Swift (never built yet). |
+| `packages/mac` | The menu bar app in Swift (built on a CI Mac runner; not launched by a person yet). |
 | `e2e/` | End-to-end tests and the mock agent. |
 | `scripts/` | Check, build, release and integrate scripts. |
 | `docs/` | Plan, status and decisions. Index: [docs/README.md](docs/README.md). |
@@ -155,11 +158,13 @@ reach `main` through `bun run integrate`, not pull requests. Read [AGENTS.md](AG
 | Phase | State |
 |---|---|
 | Relay, local app, SDK and default UI | Working from source |
-| Modify agent (backend, `/_safe`) | Backend done; the panel is connected, but I have not tried it by hand |
-| Mac app and `.dmg` | Written, not run on a Mac; unsigned when released |
-| Remote (SSH) workspaces | In progress |
-| Harness config (MCP, skills, hooks) | Backend done; no UI yet |
-| Analytics | In progress; the Analytics button only says it is not ready |
+| Modify agent (backend, `/_safe`, panel) | Working; the panel has browser tests but little hand use |
+| Preview tab (HTML and Markdown) | Working |
+| Mac app and `.dmg` | Built and smoke-tested on a CI Mac runner (Apple Silicon); unsigned; not yet tried by a person |
+| Remote (SSH) workspaces | Backend done and tested against a local `sshd`; UI in progress; no real remote host tried |
+| Harness config (MCP, skills, hooks) | Backend done; Config screen in progress |
+| Console (Terminal tab) | In progress |
+| Analytics | In progress; the Analytics button only says it is not ready until it lands |
 
 Live status: [docs/status.html](docs/status.html). The full plan: [docs/plan.html](docs/plan.html).
 
