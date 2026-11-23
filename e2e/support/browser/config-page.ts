@@ -13,8 +13,7 @@ function items(page: Page) {
     deletes: (title: string) =>
       screen.getByRole("listitem", { name: title }).getByRole("button", { name: "Delete" }).click(),
     /** The text of the Config screen, or "" while it is covered or closed. */
-    configText: async (): Promise<string> =>
-      (await screen.count()) === 0 ? "" : screen.innerText(),
+    configText: async (): Promise<string> => (await screen.allInnerTexts()).join("\n"),
   };
 }
 
@@ -40,10 +39,10 @@ function changes(page: Page) {
         .click(),
     /** What the review says under one agent's name, or "" when it has no section. */
     reviewOfAgent: async (agent: string): Promise<string> =>
-      (await region(agent).count()) === 0 ? "" : region(agent).innerText(),
+      (await region(agent).allInnerTexts()).join("\n"),
     /** The review's note on what was not written, or "". */
     notWrittenNote: async (): Promise<string> =>
-      (await region("Not written").count()) === 0 ? "" : region("Not written").innerText(),
+      (await region("Not written").allInnerTexts()).join("\n"),
   };
 }
 
@@ -60,11 +59,11 @@ function importAndDrift(page: Page) {
     overwritesMyManualEdit: () => screen.getByRole("button", { name: "Overwrite" }).click(),
     /** The text of the "edited by hand" banner, or "" when there is none. */
     driftBannerText: async (): Promise<string> =>
-      (await region("Edited by hand").count()) === 0 ? "" : region("Edited by hand").innerText(),
+      (await region("Edited by hand").allInnerTexts()).join("\n"),
     /** What the files-changed-since confirmation says, or "". */
     undoWarningText: async (): Promise<string> => {
       const warning = page.getByRole("dialog", { name: "Files changed since" });
-      return (await warning.count()) === 0 ? "" : warning.innerText();
+      return (await warning.allInnerTexts()).join("\n");
     },
   };
 }
