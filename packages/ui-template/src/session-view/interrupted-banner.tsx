@@ -11,9 +11,7 @@ export function InterruptedBanner({ onResume }: { onResume: () => void }) {
       className="flex items-center gap-2 border-t border-line bg-code px-4 py-3 text-xs text-muted"
     >
       <RotateCcw className="size-4 flex-none" />
-      <span className="flex-1">
-        Interrupted: the agent stopped when the relay did. Resume it, or just reply.
-      </span>
+      <span className="flex-1">The agent is not running. Resume it, or just reply.</span>
       <button
         type="button"
         onClick={onResume}

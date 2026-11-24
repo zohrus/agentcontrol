@@ -34,7 +34,7 @@ private struct SessionList: Decodable {
 
 /// Asks the local server how many sessions are waiting on the user.
 enum SessionPoller {
-    /// The number of sessions with status "waiting", or nil when the server does not answer.
+    /// The number of sessions with status "waiting" or "interrupted" (only the user can resume one), or nil when the server does not answer.
     static func waitingCount() async -> Int? {
         var request = URLRequest(url: Server.sessions)
         request.timeoutInterval = 2
@@ -45,6 +45,6 @@ enum SessionPoller {
               (response as? HTTPURLResponse)?.statusCode == 200,
               let list = try? JSONDecoder().decode(SessionList.self, from: data)
         else { return nil }
-        return list.sessions.filter { $0.status == "waiting" }.count
+        return list.sessions.filter { $0.status == "waiting" || $0.status == "interrupted" }.count
     }
 }

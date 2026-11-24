@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { textOf } from "./read-text.ts";
 
 const panelOf = (page: Page) => page.getByRole("dialog", { name: "Modify this UI" });
 const buttonOf = (page: Page, name: string) =>
@@ -51,13 +52,11 @@ function modifyReads(page: Page) {
     pageAddress: (): string => page.url(),
     /** Everything the open panel shows, or "" when it is closed. */
     modifyPanelText: async (): Promise<string> => {
-      const panel = panelOf(page);
-      return (await panel.count()) === 0 ? "" : panel.innerText();
+      return textOf(panelOf(page));
     },
     /** The text of the "Changed files" list in the panel, or "" when it is not shown. */
     changedFilesText: async (): Promise<string> => {
-      const list = panelOf(page).getByRole("list", { name: "Changed files" });
-      return (await list.count()) === 0 ? "" : list.innerText();
+      return textOf(panelOf(page).getByRole("list", { name: "Changed files" }));
     },
   };
 }

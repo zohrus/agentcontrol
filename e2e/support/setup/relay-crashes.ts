@@ -40,6 +40,19 @@ export function relayIsKilledWhileTheAgentWaitsForApproval(
   });
 }
 
+/**
+ * The relay is stopped gracefully but killed between its two steps: the agents were stopped and
+ * their exits written, and the sessions were not yet marked interrupted.
+ */
+export function relayIsKilledBetweenStoppingItsAgentsAndMarkingThem(
+  relay: RunningRelay,
+  session: Session,
+): Promise<void> {
+  return relay.restartsTheRelay({
+    whileDown: () => logEndsAfter(logOf(relay, session), "agent-exited"),
+  });
+}
+
 /** The relay is killed in the middle of writing an event: the log's last line is cut off. */
 export function relayIsKilledMidWrite(relay: RunningRelay, session: Session): Promise<void> {
   const file = logOf(relay, session);

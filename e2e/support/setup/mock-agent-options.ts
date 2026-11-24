@@ -16,6 +16,8 @@ export interface MockAgentOptions {
   canLoadEarlierSession(history?: string[]): void;
   /** The agent says it can load an earlier session, but loading fails with an error. */
   failsToLoadEarlierSession(): void;
+  /** The agent process exits by itself a moment after it started, before any prompt. */
+  diesRightAfterStarting(): void;
 }
 
 /** The options of one script, set by writing into it. */
@@ -32,6 +34,9 @@ export function optionsOf(script: MockAgentScript): MockAgentOptions {
     },
     failsToLoadEarlierSession: () => {
       script.loadSession = { history: [], fails: true };
+    },
+    diesRightAfterStarting: () => {
+      script.exitsAfterStarting = true;
     },
   };
 }

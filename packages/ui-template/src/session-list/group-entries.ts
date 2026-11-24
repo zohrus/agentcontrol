@@ -12,9 +12,13 @@ export type WorkspaceGroup = {
   entries: SessionListEntry[];
 };
 
-/** True for a session that is blocked until the user answers (one nobody can answer is not). */
+/**
+ * True for a session that is blocked until the user acts: an answer is due, or an interrupted
+ * agent waits to be resumed (only the user can). One nobody can act on (read-only) is not.
+ */
 export function isWaiting(entry: SessionListEntry): boolean {
-  return entry.summary.status === "waiting" && !entry.readOnly;
+  const { status } = entry.summary;
+  return (status === "waiting" || status === "interrupted") && !entry.readOnly;
 }
 
 function groupFor(entry: SessionListEntry): Omit<WorkspaceGroup, "entries"> {

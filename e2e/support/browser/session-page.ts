@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { textOf } from "./read-text.ts";
 
 const streamOf = (page: Page) => page.getByRole("log");
 
@@ -51,13 +52,11 @@ export function sessionPage(page: Page) {
         .click(),
     /** Everything the conversation stream shows, or "" while no session is open. */
     streamText: async (): Promise<string> => {
-      const stream = streamOf(page);
-      return (await stream.count()) === 0 ? "" : stream.innerText();
+      return textOf(streamOf(page));
     },
     /** The usage chip of the open session's header ("1.5k tokens · $0.02"), or "" before any turn ended. */
     usageChipText: async (): Promise<string> => {
-      const chip = page.locator('[data-testid="usage-chip"]');
-      return (await chip.count()) === 0 ? "" : chip.innerText();
+      return textOf(page.locator('[data-testid="usage-chip"]'));
     },
     /** How long the header says the session has been going ("45s", "3h 05m", "2d 4h"). */
     elapsedTimeText: () => page.locator('[title^="Started "]').innerText(),

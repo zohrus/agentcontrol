@@ -16,6 +16,13 @@ export async function nextAgentCanLoadTheEarlierSessionAndReplies(
   await relay.mockAgent.writeScript();
 }
 
+/** The next agent starts and then dies by itself before it is given any prompt. */
+export async function nextAgentDiesRightAfterStarting(relay: RunningRelay): Promise<void> {
+  relay.mockAgent.startsNewScript();
+  relay.mockAgent.diesRightAfterStarting();
+  await relay.mockAgent.writeScript();
+}
+
 /** The next agent cannot load an earlier session at all, and replies. */
 export async function nextAgentCannotLoadAndReplies(
   relay: RunningRelay,

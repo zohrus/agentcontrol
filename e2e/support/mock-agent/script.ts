@@ -59,6 +59,8 @@ const scriptSchema = z.object({
    * messages, then answers; with `fails` it answers with an error instead.
    */
   loadSession: z.object({ history: z.array(z.string()), fails: z.boolean().optional() }).optional(),
+  /** The agent process exits shortly after it answered `session/new` or `session/load`. */
+  exitsAfterStarting: z.boolean().optional(),
   /** `session/set_mode` fails, as when the user's Claude Code policy forbids changing the mode. */
   refusesModeChange: z.boolean().optional(),
 });
