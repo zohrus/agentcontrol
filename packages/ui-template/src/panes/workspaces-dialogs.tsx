@@ -48,7 +48,8 @@ function AddWorkspace(shared: Shared) {
   const flow = useAddWorkspace(shared.open);
   const { steps } = useWorkspaceCheck(flow.id ?? "");
   const added = useWorkspace(flow.id);
-  const passed = steps.length > 0 && steps.every((step) => step.status === "ok");
+  // A skipped step is no failure: it is an optional one (code-server) or follows a failed step.
+  const passed = steps.length > 0 && steps.every((step) => step.status !== "failed");
   const connected = added?.state === "connected" && passed;
   return (
     <AddWorkspaceDialog
