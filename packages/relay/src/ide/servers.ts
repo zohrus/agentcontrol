@@ -78,6 +78,8 @@ export class Servers {
   }
 
   async stop(sessionId: SessionId): Promise<void> {
+    // A server still starting is waited for, so archiving cannot leave one behind.
+    await this.starting.get(sessionId)?.catch(() => undefined);
     const entry = this.running.get(sessionId);
     this.running.delete(sessionId);
     clearTimeout(entry?.idleTimer);
