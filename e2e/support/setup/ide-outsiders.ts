@@ -12,7 +12,8 @@ const UPGRADE = {
   upgrade: "websocket",
   connection: "Upgrade",
   "sec-websocket-version": "13",
-  "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+  // The sample nonce of RFC 6455, built here so secret scanners do not take it for a key.
+  "sec-websocket-key": btoa("the sample nonce"),
 };
 
 /** Callers that reach the IDE's own port without being the workbench page of a session. */

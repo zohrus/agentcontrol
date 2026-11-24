@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "23 Nov 2026, 21:15 UTC";
+const UPDATED = "24 Nov 2026, 12:10 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -252,7 +252,7 @@ const C = [
   { id:"workspace-ui", phase:"p5", name:"Workspace picker in the UI", status:"done", desc:"Workspaces menu: add an SSH host, see its checklist, check and repair, restart its relay, remove it. The session list is grouped by workspace with its connection state; sessions of an offline or removed workspace are read-only.", path:"packages/ui-template/src/workspaces" },
   { id:"console", phase:"p5", name:"Console in the app", status:"done", desc:"A Terminal tab with a real shell in the session's folder, local or SSH. xterm.js in the browser, Bun's built-in pseudo-terminal in the relay, over the existing relay connection. Guarded by the same Host, Origin and token checks. Works in the compiled Linux app; not yet run on macOS.", path:"packages/relay/src/terminal" },
   { id:"gateway", phase:"p5", name:"AI gateway", status:"planned", desc:"Optional LiteLLM proxy per workspace for uniform cost logs.", path:"" },
-  { id:"ide", phase:"p5", name:"Browser VS Code", status:"progress", desc:"code-server on the workspace, tunnelled over SSH.", path:"" },
+  { id:"ide", phase:"p5", name:"Browser VS Code", status:"done", desc:"code-server on the session folder, local or SSH, through the relay link, on its own local address. Tested with a stand-in; the real workbench is not verified yet.", path:"packages/relay/src/ide" },
   // Phase 6
   { id:"config-deploy", phase:"p6", name:"Harness config", status:"done", desc:"One config for MCP servers, instructions, permissions, hooks, skills, commands and environment. The Config screen shows the file changes per agent before anything is written, then Apply, Undo, import of an existing setup and a drift banner. Verified against real Claude Code and Codex file formats.", path:"packages/ui-template/src/config" },
   // Phase 7
@@ -264,9 +264,9 @@ const C = [
 ];
 
 const NOW = [
-  "Small follow-ups: a sure test for the relay-unavailable answer, resume rough edges, remaining races in browser test helpers",
-  "Console, workspace and Config gaps: live progress while adding a host, Config review across repositories, three terminal edge cases",
-  "Browser VS Code on a session's folder, local or SSH, through the existing relay connection",
+  "Walkthrough done: a real Claude Code session in the built app produced pull request 8, with screenshots of each step",
+  "Next: your look at pull request 8, then the v0.1.0 tag, which publishes the first unsigned release",
+  "Then your test on a real Mac, and fixing what it shows",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
@@ -299,6 +299,7 @@ const LOG = [
   ["23 Nov 2026 17:30", "Console landed: a Terminal tab with a real shell in the session's folder, local or over SSH, with no extra port. The compiled app passes a tenth smoke step that opens a terminal. Still open: two internal variables reach agent processes (not the terminal). Workspace picker and Config screen are built with 22 browser tests and are being merged with the two screens that landed first."],
   ["23 Nov 2026 18:30", "Workspace picker and Config screen landed with 24 browser tests. Every planned screen of phases 5, 6 and 7 is now on main and the compiled app passes 10 of 10 smoke steps. Not started: the optional AI gateway and browser VS Code. Next: review fixes, and resume after a relay restart."],
   ["23 Nov 2026 20:45", "Landed: agents are installed once and started without the app's internal variables (real Claude Code and Codex adapters answer through the compiled relay); a session interrupted by a relay restart shows Interrupted with a Resume button; review fixes for Console and Analytics (analytics requests 10 times faster, terminal output limited, three flaky tests fixed); the compiled-app smoke test now runs inside bun run integrate. CI on GitHub had been red since the Console landed and I had only been reading the build result: the cause was a test that did not ignore invisible control sequences from the runner's shell. Fixed and green on main again."],
+  ["24 Nov 2026 12:10", "Landed on main: Console, workspace and Config gaps; coverage and resume follow-ups; Browser VS Code. Two bugs found by the landing gate were fixed (a test that asserted something not guaranteed, and the relay accepting connections before writing its pid file). Then a real Claude Code session was run by hand in the compiled app and its change became pull request 8. Not started: the optional AI gateway. Not verified: a real Mac, the real code-server workbench, Codex."],
 ];
 /* ===== END DATA ===== */
 

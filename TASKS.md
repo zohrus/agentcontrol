@@ -132,6 +132,17 @@ Later:
 - [ ] Config editor limits (`packages/relay/src/config/FORMATS.md`): the TOML editor has no parser (quoted or dotted server names, a server hand-written with an `env` sub-table, header-looking lines in multi-line strings); a hook group with several commands imports as several items; removing the hand-written-notes item leaves the text in the file; plans are kept in memory (latest 20); JSON files are rewritten with 2-space indentation.
 - [ ] MCP servers passed in `session/new` for per-session use.
 
+## First walkthrough of the built app (24 Nov 2026)
+A real Claude Code session was run in the compiled Linux app through a browser, and its change became pull request zohrus/agentcontrol#8 (screenshots in its description). Seen on the way:
+- [ ] The tab row of the right pane is too narrow at 1440 px: "Open in browser VS Code" is cut off and "Open in VS Code" is out of view.
+- [ ] The diff in the Changes tab is short and opens at line 1, not at the first change.
+- [ ] A quoted line (`> ...`) in an agent reply shows a literal `>` instead of a quote block.
+- [ ] The Terminal prompt shows the full worktree path and wraps over three lines; start the shell with a short prompt or a shorter folder.
+- [ ] The session title is cut mid-word with no ellipsis.
+- [ ] No "create pull request" action: commit and push were done in the Terminal tab, the pull request on GitHub.
+- [ ] `agentcontrol --help` starts the app on the default port and data folder instead of printing help.
+- [ ] The flood test "a shell that ends in the middle of a flood" no longer fails every time without the product fix (only when the tail happens to be dropped): find a deterministic seam.
+
 ## Console
 - [x] Console access from inside the app (done 23 Nov 2026, `docs/decisions/2026-11-23-console.md`) (phase 5, remote workspaces; also works locally; in progress, 23 Nov 2026, with `@xterm/xterm` and `@xterm/addon-fit` approved and a WebSocket endpoint guarded by the same Host, Origin and token rules): a Terminal tab that opens a shell in the session's worktree on its workspace. Browser side: `@xterm/xterm` (xterm.js, MIT, zero dependencies, the VS Code terminal). Workspace side: the relay starts the shell in a pseudo-terminal with Bun's built-in terminal support (no `node-pty`); verify it works in the compiled Linux relay binary. Input, output and resize go over the existing relay connection as `relay/terminal.*` methods, so no extra port or second SSH login. The ACP `terminal` capability stays off for agents.
 
