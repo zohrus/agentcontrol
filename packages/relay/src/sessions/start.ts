@@ -123,7 +123,16 @@ export async function launchAgent(
   }
 }
 
+/** Tells the user, in the setup output, where the worktree started from when the relay chose it. */
+async function announceStart(ctx: SessionContext, session: NewSession): Promise<void> {
+  for (const note of session.worktree.notes) {
+    const payload = { stream: "stdout" as const, text: `${note}\n` };
+    await ctx.log.append(session.sessionId, { kind: "setup-output", payload });
+  }
+}
+
 async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
+  await announceStart(ctx, session);
   if (!(await runSetup(ctx, session))) return;
   const { sessionId, worktree } = session;
   const agent = await launchAgent(ctx, {
@@ -134,7 +143,8 @@ async function runSession(ctx: SessionContext, session: NewSession): Promise<voi
     ask: (request) => holdForUser(ctx, { sessionId, request }),
   });
   if (!agent) return;
-  await startTurn(ctx, { sessionId, agent, text: session.params.prompt });
+  const { prompt } = session.params;
+  if (prompt !== undefined) await startTurn(ctx, { sessionId, agent, text: prompt });
 }
 
 /** Runs everything after the session exists; every failure ends up as events in the log. */

@@ -62,7 +62,7 @@ export interface Sessions {
 }
 
 function titleOf(params: WorktreeSessionParams): string {
-  const firstLine = params.title ?? params.prompt.split("\n")[0] ?? "";
+  const firstLine = params.title ?? params.prompt?.split("\n")[0] ?? "";
   return firstLine.slice(0, 80);
 }
 
@@ -81,7 +81,7 @@ async function create(ctx: SessionContext, params: CreateParams): Promise<Sessio
     portBase,
   });
   const { worktreePath, branch } = worktree;
-  const created = { agent: params.agent, repoPath: repo.path, baseBranch: params.baseBranch };
+  const created = { agent: params.agent, repoPath: repo.path, baseBranch: worktree.baseBranch };
   const title = titleOf(params);
   await ctx.log.append(sessionId, {
     kind: "session-created",

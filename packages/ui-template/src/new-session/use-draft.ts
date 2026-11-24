@@ -13,7 +13,6 @@ type Typed = {
   repoPath: string;
   branch: string | undefined;
   agent: AgentKind | "";
-  prompt: string;
 };
 
 export type DraftForm = {
@@ -27,24 +26,21 @@ export type DraftForm = {
 };
 
 function initialTyped(): Typed {
-  return { repoPath: "", branch: undefined, agent: "", prompt: "" };
+  return { repoPath: "", branch: undefined, agent: "" };
 }
 
 const firstRepoPath = (repos: Inputs["repos"]): string => repos[0]?.path ?? "";
 const firstAgent = (agents: Inputs["agents"]): AgentKind | "" => agents[0] ?? "";
 
-const defaultBranchOf = (repos: Inputs["repos"], repoPath: string): string =>
-  repos.find((r) => r.path === repoPath)?.defaultBranch ?? "";
-
-/** What the form shows: what the user typed, else the first repository and agent, and its default branch. */
+/** What the form shows: what the user typed, else the first repository and agent; no branch. */
 function toDraft({ repos, agents }: Inputs, typed: Typed): Draft {
   const repoPath = typed.repoPath || firstRepoPath(repos);
   const agent = typed.agent || firstAgent(agents);
-  const baseBranch = typed.branch ?? defaultBranchOf(repos, repoPath);
+  const baseBranch = typed.branch ?? "";
   return { ...typed, repoPath, agent, baseBranch };
 }
 
-/** Form state for the new-session dialog; the base branch follows the repo until edited. */
+/** Form state for the new-session dialog; the base branch stays empty unless the user types one. */
 export function useNewSessionDraft(inputs: Inputs): DraftForm {
   const [typed, setTyped] = useState<Typed>(initialTyped);
   const [touched, setTouched] = useState<readonly DraftField[]>([]);

@@ -19,6 +19,7 @@ const dotKinds: Record<SessionStatus, DotKind> = {
   starting: "run",
   running: "run",
   waiting: "wait",
+  ready: "idle",
   idle: "idle",
   done: "done",
   failed: "fail",

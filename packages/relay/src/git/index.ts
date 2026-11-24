@@ -1,6 +1,8 @@
 export interface GitOptions {
   cwd: string;
   env?: Record<string, string | undefined>;
+  /** Stops git after this long, for commands that talk to a remote. */
+  timeoutMs?: number;
 }
 
 export interface GitResult {
@@ -30,6 +32,7 @@ export async function runGit(args: string[], options: GitOptions): Promise<GitRe
     env: { ...inheritedEnv(), ...options.env },
     stdout: "pipe",
     stderr: "pipe",
+    ...(options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs }),
   });
   const [stdout, stderr, exitCode] = await Promise.all([
     proc.stdout.text(),

@@ -11,6 +11,12 @@ async function whyNoAgent(ctx: SessionContext, sessionId: SessionId): Promise<Re
       "The setup script failed, so this session has no agent. Fix the setup and start a new session.",
     );
   }
+  if (ctx.summaries.summary(sessionId)?.status === "starting") {
+    return new RelayError(
+      ErrorCode.invalidRequest,
+      "This session is still being set up: send the message again once it is ready.",
+    );
+  }
   return new RelayError(ErrorCode.invalidRequest, "This session's agent is not running.");
 }
 

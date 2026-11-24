@@ -13,10 +13,16 @@ export interface StartSession {
   agent: WorktreeSessionParams["agent"];
   /** Absolute path of the git repo to work in. */
   repoPath: string;
-  /** The branch the session's worktree starts from, e.g. "main". */
-  baseBranch: string;
-  /** The first message to the agent. */
-  prompt: string;
+  /**
+   * The branch the session's worktree starts from, e.g. "main" or "origin/release". Left out, it
+   * starts from the latest trunk on the repository's remote (what `origin/HEAD` points at).
+   */
+  baseBranch?: string | undefined;
+  /**
+   * The first message to the agent. Left out, the session is created and made ready (status
+   * "ready"); send the first message later with `sendPrompt`.
+   */
+  prompt?: string | undefined;
   /** A short name for the session list; defaults to the prompt. */
   title?: string;
   /**

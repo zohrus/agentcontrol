@@ -28,7 +28,6 @@ test(
     await app.page.leavesRepositoryChoice();
     await app.page.typesBaseBranch("my branch");
     await app.page.leavesField("Base branch");
-    await app.page.leavesField("What should the agent do?");
 
     // ********************************************************************
     // ** THEN the dialog explains each problem and Start is not offered
@@ -37,8 +36,7 @@ test(
       app,
       "Choose a repository to work in.",
       "A branch name cannot contain spaces.",
-      "Tell the agent what to do.",
-      "Fill in every field to start.",
+      "Choose a repository and an agent to create the session.",
     );
     // AND closing the dialog with Cancel leaves nothing open
     await app.page.cancelsTheDialog();

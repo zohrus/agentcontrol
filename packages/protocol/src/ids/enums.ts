@@ -9,6 +9,8 @@ export const SessionStatus = z.enum([
   "starting",
   "running",
   "waiting",
+  /** The agent is up and no prompt has been sent yet: nothing runs and nobody is waited on. */
+  "ready",
   "idle",
   "done",
   "failed",

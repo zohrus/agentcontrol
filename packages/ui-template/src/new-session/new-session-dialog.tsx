@@ -2,7 +2,7 @@ import type { SyntheticEvent } from "react";
 import { Button, Dialog } from "../components/index.ts";
 import { RepoPicker } from "./repo-picker.tsx";
 import { WorkspaceField } from "./workspace-field.tsx";
-import { AgentField, BranchField, PromptField } from "./text-fields.tsx";
+import { AgentField, BranchField } from "./text-fields.tsx";
 import type { NewSessionDialogProps } from "./types.ts";
 import { useNewSessionDraft } from "./use-draft.ts";
 
@@ -12,34 +12,42 @@ function Footer({ valid, onCancel }: { valid: boolean; onCancel: () => void }) {
   return (
     <div className="flex items-center justify-end gap-2 border-t border-line pt-3">
       {!valid && (
-        <span className="mr-auto text-[11px] text-muted">Fill in every field to start.</span>
+        <span className="mr-auto text-[11px] text-muted">
+          Choose a repository and an agent to create the session.
+        </span>
       )}
       <Button type="button" onClick={onCancel}>
         Cancel
       </Button>
       <Button type="submit" variant="primary" disabled={!valid}>
-        Start
+        Create session
       </Button>
     </div>
   );
 }
 
+const trunkOf = (repos: FormProps["repos"], repoPath: string): string =>
+  repos.find((repo) => repo.path === repoPath)?.defaultBranch ?? "trunk";
+
+/** The base branch to send, or nothing when the user named none. */
+const branchOf = (typed: string): { baseBranch?: string } =>
+  typed.trim() === "" ? {} : { baseBranch: typed.trim() };
+
 function NewSessionForm(props: FormProps) {
   const { repos, agents, workspaceId, onStart, onAddRepository, onOpenChange } = props;
   const form = useNewSessionDraft({ repos, agents });
-  const { agent, repoPath, baseBranch, prompt } = form.draft;
+  const { agent, repoPath, baseBranch } = form.draft;
   const submit = (event: SyntheticEvent) => {
     event.preventDefault();
     if (!form.valid || agent === "") return;
-    onStart({ workspaceId, agent, repoPath, baseBranch, prompt: prompt.trim() });
+    onStart({ workspaceId, agent, repoPath, ...branchOf(baseBranch) });
     onOpenChange(false);
   };
   return (
     <form onSubmit={submit} className="flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
       <RepoPicker repos={repos} form={form} onAdd={onAddRepository} />
-      <BranchField form={form} />
+      <BranchField form={form} trunk={trunkOf(repos, repoPath)} />
       <AgentField form={form} agents={agents} />
-      <PromptField form={form} />
       <Footer
         valid={form.valid}
         onCancel={() => {
@@ -50,7 +58,7 @@ function NewSessionForm(props: FormProps) {
   );
 }
 
-/** "New session": pick repository, base branch and agent, write the prompt and start. */
+/** "New session": pick repository and agent and create it; the prompt is written in the session. */
 export function NewSessionDialog({ open, ...form }: NewSessionDialogProps) {
   return (
     <Dialog

@@ -13,8 +13,13 @@ export const SessionsListResult = z.object({ sessions: z.array(SessionSummary) }
 export const WorktreeSessionParams = z.object({
   agent: AgentKind,
   repoPath: z.string(),
-  baseBranch: z.string(),
-  prompt: z.string(),
+  /**
+   * The branch (local or remote) the worktree starts from. Left out, it starts from the latest
+   * trunk of the repository's remote; the relay says what it used in the session's setup lines.
+   */
+  baseBranch: z.string().optional(),
+  /** The first message. Left out, the session is created and made ready, and the user sends it later. */
+  prompt: z.string().optional(),
   title: z.string().optional(),
   model: z.string().optional(),
 });

@@ -27,6 +27,12 @@ const setupFailed = (fold: Fold): Status | undefined =>
 const needsPermission = (fold: Fold): Status | undefined =>
   fold.pendingRequests.length > 0 ? { status: "waiting", waitingReason: "permission" } : undefined;
 
+/** The agent is up and the user has not written to it yet. */
+const ready = (fold: Fold): Status | undefined =>
+  fold.agentStarted && fold.exitCode === undefined && fold.firstPrompt === undefined
+    ? { status: "ready" }
+    : undefined;
+
 const running = (fold: Fold): Status | undefined => {
   const working = fold.turnOpen || fold.lastStopReason === undefined;
   return fold.agentStarted && fold.exitCode === undefined && working
@@ -49,6 +55,7 @@ const rules = [
   failed,
   setupFailed,
   needsPermission,
+  ready,
   running,
   needsReply,
   idle,
@@ -65,6 +72,17 @@ function statusOf(fold: Fold): Status {
 const turnRunning = (fold: Fold): boolean =>
   fold.turnOpen && fold.exitCode === undefined && fold.archivedAt === undefined;
 
+const lastSegment = (path: string): string => path.split("/").filter(Boolean).at(-1) ?? path;
+
+const firstLineOf = (text: string | undefined): string => (text?.split("\n")[0] ?? "").slice(0, 80);
+
+/** The title the user gave, else the first prompt's first line, else "<repository> – new session". */
+function titleOf(fold: Fold, created: EventOf<"session-created">): string {
+  const { title, repoPath } = created.payload;
+  const placeholder = `${lastSegment(repoPath)} – new session`;
+  return title || firstLineOf(fold.firstPrompt) || placeholder;
+}
+
 function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSummary {
   const { status, waitingReason } = statusOf(fold);
   const { payload } = created;
@@ -73,7 +91,7 @@ function toSummary(fold: Fold, created: EventOf<"session-created">): SessionSumm
     agent: payload.agent,
     status,
     ...(waitingReason ? { waitingReason } : {}),
-    title: payload.title,
+    title: titleOf(fold, created),
     kind: payload.kind ?? "worktree",
     repoPath: payload.repoPath,
     branch: payload.branch,

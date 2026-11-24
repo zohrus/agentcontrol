@@ -6,8 +6,8 @@ export type NewSessionRequest = {
   workspaceId: string;
   agent: AgentKind;
   repoPath: string;
-  baseBranch: string;
-  prompt: string;
+  /** The branch to start from; left out, the session starts from the latest trunk on the remote. */
+  baseBranch?: string | undefined;
 };
 
 /** A machine a session can be started on. */

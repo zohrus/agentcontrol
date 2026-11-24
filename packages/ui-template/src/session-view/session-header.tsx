@@ -12,6 +12,9 @@ export function SessionHeader({ summary, usage }: Props) {
       <span className="font-mono text-[11px] text-muted">{agentLabel(summary.agent)}</span>
       <span className="font-mono text-[11px] text-muted">{summary.repoPath}</span>
       <span className="font-mono text-[11px] text-muted">{summary.branch}</span>
+      {summary.baseBranch !== "" && (
+        <span className="font-mono text-[11px] text-muted">from {summary.baseBranch}</span>
+      )}
       <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted">
         <StatusDot status={summary.status} />
         {summary.status}

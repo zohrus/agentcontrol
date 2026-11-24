@@ -28,6 +28,13 @@ export type SessionViewProps = {
   readOnlyNote?: string | undefined;
 };
 
+function placeholderOf(summary: SessionSummary): string {
+  const agent = agentLabel(summary.agent);
+  return summary.status === "ready" || summary.status === "starting"
+    ? `What should ${agent} do?`
+    : `Reply to ${agent}…`;
+}
+
 function Footer(props: SessionViewProps) {
   if (props.summary.status === "archived") {
     return <ArchivedBanner archivedAt={props.summary.archivedAt} />;
@@ -38,7 +45,9 @@ function Footer(props: SessionViewProps) {
       {props.summary.status === "interrupted" && <InterruptedBanner onResume={props.onResume} />}
       <Composer
         running={props.turnRunning ?? isTurnRunning(props.events)}
-        placeholder={`Reply to ${agentLabel(props.summary.agent)}…`}
+        placeholder={placeholderOf(props.summary)}
+        starting={props.summary.status === "starting"}
+        ready={props.summary.status === "ready"}
         onSendPrompt={props.onSendPrompt}
         onCancel={props.onCancel}
         onArchive={props.onArchive}

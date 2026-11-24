@@ -13,6 +13,8 @@ export interface Fold {
   interrupted: boolean;
   exitCode: number | null | undefined;
   turnOpen: boolean;
+  /** The text of the first prompt sent, once there is one. */
+  firstPrompt: string | undefined;
   lastStopReason: string | undefined;
   pendingRequests: PendingPermissionRequest[];
   archivedAt: string | undefined;
@@ -58,7 +60,12 @@ const reducers: Reducers = {
     ...fold,
     pendingRequests: fold.pendingRequests.filter((r) => r.requestId !== event.payload.requestId),
   }),
-  "prompt-sent": (fold) => ({ ...fold, turnOpen: true, lastStopReason: undefined }),
+  "prompt-sent": (fold, event) => ({
+    ...fold,
+    turnOpen: true,
+    lastStopReason: undefined,
+    firstPrompt: fold.firstPrompt ?? event.payload.text,
+  }),
   "turn-ended": (fold, event) => ({
     ...fold,
     turnOpen: false,
@@ -75,6 +82,7 @@ export const emptyFold: Fold = {
   interrupted: false,
   exitCode: undefined,
   turnOpen: false,
+  firstPrompt: undefined,
   lastStopReason: undefined,
   pendingRequests: [],
   archivedAt: undefined,

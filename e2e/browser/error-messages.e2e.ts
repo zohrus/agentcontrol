@@ -24,8 +24,8 @@ test(
     // ********************************************************************
     // ** WHEN the user starts a session from a base branch that does not exist
     // ********************************************************************
-    const mock = { repoPath: app.repoPath, agent: "Mock agent", prompt: "Add rate limiting" };
-    await app.page.startsSession({ ...mock, baseBranch: "no-such-branch" });
+    const mock = { repoPath: app.repoPath, agent: "Mock agent" };
+    await app.page.createsSession({ ...mock, baseBranch: "no-such-branch" });
 
     // ********************************************************************
     // ** THEN a message says the base branch is not a git reference

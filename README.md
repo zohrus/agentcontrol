@@ -71,8 +71,18 @@ only when these variables are set.
    `npm install`). The same menu adds a remote (SSH) workspace. **Config** opens the settings shared
    by your agents (MCP servers, instructions, hooks, skills); nothing is written to an agent's own
    files until you review the changes and press Apply.
-3. Pick the agent, write what it should do, and press **Start**. The first start of a real agent
-   downloads its adapter.
+   Running from source (`bun dev`), a remote workspace needs the relay built for the remote
+   machine first: `bun scripts/build.ts --only relay-linux` (once; it writes
+   `dist/agentcontrol-relay-linux-x64` and `-arm64`). An installed app already has them.
+3. Pick the agent and press **Create session**. There is no prompt to write yet: the session opens
+   at once, its worktree is made, the setup runs and the agent starts (the first start of a real
+   agent downloads its adapter). A new session starts from the latest trunk of the repository's
+   remote (what `origin/HEAD` points at, fetched when you create it). Under **Advanced** you can
+   name another branch instead. Without a remote it starts from the local branch, and when the
+   remote cannot be reached from the last known trunk; the session's setup lines say which. When
+   the session reads **ready**, write what the agent should do in the message box and send it. You
+   can write it while the setup still runs: it is queued and sent when the session is ready (and
+   stays in the box if the setup fails).
 4. When the session shows **approve**, press **Approve** in the list or **Allow** in the
    conversation.
 5. Open the **Changes** tab to see the diff since the base branch, the **Editor** tab to edit a file

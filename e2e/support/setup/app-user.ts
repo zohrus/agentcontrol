@@ -3,6 +3,7 @@ import { type ApiError, isStaleFile } from "@agentcontrol/sdk";
 import type { AppAccess, Session } from "./app.ts";
 import { modifyUserOf } from "./modify-user.ts";
 import { appWorkspaceUserOf, appWorktreeUserOf } from "./app-more-user.ts";
+import { appBaseUserOf } from "./app-base-user.ts";
 import { appPreviewUserOf } from "./preview-user.ts";
 import { optionOfKind } from "./permission-option.ts";
 
@@ -82,6 +83,7 @@ export function appUserOf(app: AppAccess) {
     ...sessionUserOf(app),
     ...appWorktreeUserOf(app),
     ...appWorkspaceUserOf(app),
+    ...appBaseUserOf(app),
     ...appPreviewUserOf(app),
   };
 }

@@ -88,8 +88,8 @@ function onOtherMachines(page: Page) {
       await dialogs.typesRepositoryFolder(call.repoPath);
       await dialogs.addsTheRepository();
       await dialogs.choosesAgent("Mock agent");
-      await dialogs.typesPrompt(call.prompt);
-      await dialogs.startsTheSession();
+      await dialogs.createsTheSession();
+      await dialogs.sendsTheFirstPrompt(call.prompt);
     },
   };
 }

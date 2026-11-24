@@ -1,4 +1,5 @@
 import { addRepositoryPage } from "./add-repository-page.ts";
+import { messageBoxPage } from "./message-box-page.ts";
 import type { Page } from "./playwright.ts";
 import { textOf } from "./read-text.ts";
 
@@ -14,6 +15,19 @@ async function addsTheRepository(page: Page): Promise<void> {
   await dialog.getByLabel("Repository folder").waitFor({ state: "hidden" });
 }
 
+/** Opens "Advanced" in the New session dialog, unless it is open already. */
+async function opensAdvanced(page: Page): Promise<void> {
+  const dialog = dialogOf(page);
+  if ((await dialog.locator("details").getAttribute("open")) !== null) return;
+  await dialog.getByText("Advanced", { exact: true }).click();
+}
+
+/** Opens "Advanced" and types the base branch. */
+async function typesBranch(page: Page, branch: string): Promise<void> {
+  await opensAdvanced(page);
+  await dialogOf(page).getByLabel("Base branch").fill(branch);
+}
+
 /** The New session dialog, field by field. */
 function newSessionForm(page: Page) {
   const dialog = dialogOf(page);
@@ -27,9 +41,9 @@ function newSessionForm(page: Page) {
     addsTheRepository: () => addsTheRepository(page),
     choosesAgent: (agent: string) =>
       dialog.getByRole("combobox", { name: /^Agent/ }).selectOption({ label: agent }),
-    typesBaseBranch: (branch: string) => dialog.getByLabel("Base branch").fill(branch),
-    typesPrompt: (prompt: string) => dialog.getByLabel("What should the agent do?").fill(prompt),
-    startsTheSession: () => dialog.getByRole("button", { name: "Start", exact: true }).click(),
+    typesBaseBranch: (branch: string) => typesBranch(page, branch),
+    createsTheSession: () =>
+      dialog.getByRole("button", { name: "Create session", exact: true }).click(),
     cancelsTheDialog: () => dialog.getByRole("button", { name: "Cancel", exact: true }).click(),
     /** Visits a field and leaves it again, so the dialog checks it and may complain. */
     leavesField: async (label: string): Promise<void> => {
@@ -42,26 +56,41 @@ function newSessionForm(page: Page) {
       await choice.focus();
       await choice.blur();
     },
-    startIsEnabled: () => dialog.getByRole("button", { name: "Start", exact: true }).isEnabled(),
   };
+}
+
+/** Writes the first prompt in the open session's message box and sends it. */
+async function sendsFirstPrompt(page: Page, prompt: string): Promise<void> {
+  const box = messageBoxPage(page);
+  await box.writesInTheMessageBox(prompt);
+  await box.pressesSend();
+}
+
+/** Opens New session, adds the repository, picks the agent and creates the session. */
+async function createsSession(page: Page, session: Omit<NewSession, "prompt">): Promise<void> {
+  const form = newSessionForm(page);
+  await form.opensNewSession();
+  await form.choosesToAddARepository();
+  await form.typesRepositoryFolder(session.repoPath);
+  await form.addsTheRepository();
+  await form.choosesAgent(session.agent);
+  if (session.baseBranch !== undefined) await form.typesBaseBranch(session.baseBranch);
+  await form.createsTheSession();
 }
 
 /** The dialogs: New session, and the archive warning. */
 export function dialogsPage(page: Page) {
-  const form = newSessionForm(page);
   return {
     ...addRepositoryPage(page),
-    ...form,
-    /** Opens New session, adds the repository by its folder, picks the agent and starts. */
+    ...newSessionForm(page),
+    ...messageBoxPage(page),
+    opensTheAdvancedOptions: () => opensAdvanced(page),
+    sendsTheFirstPrompt: (prompt: string) => sendsFirstPrompt(page, prompt),
+    createsSession: (session: Omit<NewSession, "prompt">) => createsSession(page, session),
+    /** Creates the session in the dialog, then writes its first prompt in the session. */
     startsSession: async (session: NewSession): Promise<void> => {
-      await form.opensNewSession();
-      await form.choosesToAddARepository();
-      await form.typesRepositoryFolder(session.repoPath);
-      await form.addsTheRepository();
-      await form.choosesAgent(session.agent);
-      await form.typesPrompt(session.prompt);
-      if (session.baseBranch !== undefined) await form.typesBaseBranch(session.baseBranch);
-      await form.startsTheSession();
+      await createsSession(page, session);
+      await sendsFirstPrompt(page, session.prompt);
     },
     archivesAnyway: () => dialogOf(page).getByRole("button", { name: "Archive anyway" }).click(),
     /** The text of the open dialog, or "" when none is open. */

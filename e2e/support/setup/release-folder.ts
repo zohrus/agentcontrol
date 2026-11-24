@@ -15,7 +15,7 @@ export interface ResourcesFolder {
 }
 
 /** A folder that is removed when the test ends. */
-async function temporaryFolder(prefix: string): Promise<string> {
+export async function temporaryFolder(prefix: string): Promise<string> {
   const folder = await mkdtemp(join(tmpdir(), prefix));
   onTestEnd(() => rm(folder, { recursive: true, force: true }));
   return folder;

@@ -38,6 +38,12 @@ function resumeBanner(page: Page) {
   };
 }
 
+/** Opens the "Worktree setup finished" block, which holds the setup lines. */
+const opensSetupOutput = (page: Page) =>
+  streamOf(page)
+    .locator("summary", { hasText: /^Worktree setup/ })
+    .click();
+
 /** The open session: its conversation stream, the permission card and the composer. */
 export function sessionPage(page: Page) {
   return {
@@ -50,6 +56,7 @@ export function sessionPage(page: Page) {
       streamOf(page)
         .locator("summary", { hasText: /^(Read|Searched) / })
         .click(),
+    opensTheSetupOutput: () => opensSetupOutput(page),
     /** Everything the conversation stream shows, or "" while no session is open. */
     streamText: async (): Promise<string> => {
       return textOf(streamOf(page));

@@ -3,25 +3,32 @@ import { Field, inputClass } from "../components/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { DraftForm } from "./use-draft.ts";
 
-export function BranchField({ form }: { form: DraftForm }) {
+/** The optional base branch, folded away: by default a session starts from the remote's trunk. */
+export function BranchField({ form, trunk }: { form: DraftForm; trunk: string }) {
   return (
-    <Field
-      label="Base branch"
-      hint="The agent's work starts from this branch."
-      error={form.shown.branch}
-    >
-      <input
-        className={inputClass}
-        aria-invalid={form.shown.branch !== undefined}
-        value={form.draft.baseBranch}
-        onBlur={() => {
-          form.touch("branch");
-        }}
-        onChange={(e) => {
-          form.update({ branch: e.target.value });
-        }}
-      />
-    </Field>
+    <details className="text-xs" open={form.shown.branch === undefined ? undefined : true}>
+      <summary className="cursor-pointer font-medium">Advanced</summary>
+      <div className="pt-2">
+        <Field
+          label="Base branch (optional)"
+          hint={`Starts from the latest ${trunk} on the remote. Change it only to start from another branch.`}
+          error={form.shown.branch}
+        >
+          <input
+            className={inputClass}
+            aria-invalid={form.shown.branch !== undefined}
+            placeholder={`origin/${trunk}`}
+            value={form.draft.baseBranch}
+            onBlur={() => {
+              form.touch("branch");
+            }}
+            onChange={(e) => {
+              form.update({ branch: e.target.value });
+            }}
+          />
+        </Field>
+      </div>
+    </details>
   );
 }
 
@@ -44,26 +51,6 @@ export function AgentField({ form, agents }: { form: DraftForm; agents: readonly
           </option>
         ))}
       </select>
-    </Field>
-  );
-}
-
-export function PromptField({ form }: { form: DraftForm }) {
-  return (
-    <Field label="What should the agent do?" error={form.shown.prompt}>
-      <textarea
-        rows={5}
-        className={inputClass}
-        aria-invalid={form.shown.prompt !== undefined}
-        placeholder="Add per-API-key rate limiting to the public API, with a test."
-        value={form.draft.prompt}
-        onBlur={() => {
-          form.touch("prompt");
-        }}
-        onChange={(e) => {
-          form.update({ prompt: e.target.value });
-        }}
-      />
     </Field>
   );
 }
