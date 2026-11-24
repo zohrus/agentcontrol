@@ -49,10 +49,6 @@ export function sshTarget(options: SshTargetOptions): WorkspaceTarget {
     ],
     loginPath: () => readLoginPath(destination),
     inspect: async () => parseHostInfo(await runSshOrFail({ destination, script: INSPECT_SCRIPT })),
-    isInstalled: async () => {
-      const result = await runSsh({ destination, script: `test -x ${remoteWord(binary)}` });
-      return result.exitCode === 0;
-    },
     install: (localBinary) =>
       installRelayBinary({ destination, localPath: localBinary, remotePath: binary }),
     forwardPort: (remotePort) => forwardOverSsh({ destination, remotePort }),

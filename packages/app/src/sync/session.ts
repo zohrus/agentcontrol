@@ -10,12 +10,13 @@ import type { RelayClient } from "../relays/index.ts";
 import { createBatcher } from "./batcher.ts";
 import type { SyncDeps } from "./deps.ts";
 import { renormaliseStaleSessions } from "./renormalise.ts";
+import { type RelayIdentity, relayMismatch } from "./relay-identity.ts";
 import { saveChangedSummaries } from "./summaries.ts";
 import { saveAllUsage, usageAfterTurns } from "./usage.ts";
 
 const EVENT_BATCH_MS = 20;
 
-/** The relay was of another version and has been stopped; the next connection reaches a new one. */
+/** The relay was not the app's own and has been stopped; the next connection reaches a new one. */
 export class RelayReplaced extends Error {
   constructor() {
     super("The relay of another version was replaced.");
@@ -91,25 +92,23 @@ async function followAndList(call: {
   return refreshSessions;
 }
 
-const outdatedReason = (relayVersion: string): string =>
-  `The relay is version ${relayVersion}, but this app is version ${VERSION}.`;
-
 /** Asks the replace hook about an outdated relay; no hook, or one that fails, leaves it as it is. */
-async function tryToReplace(call: { client: RelayClient; deps: SyncDeps; relayVersion: string }) {
-  const { client, deps, relayVersion } = call;
-  const stays = { replaced: false, reason: outdatedReason(relayVersion) };
+async function tryToReplace(call: { client: RelayClient; deps: SyncDeps; mismatch: string }) {
+  const { client, deps, mismatch } = call;
+  const stays = { replaced: false, reason: mismatch };
   const hook = deps.replaceRelay;
-  return hook ? await hook({ client, relayVersion }).catch(() => stays) : stays;
+  return hook ? await hook({ client, mismatch }).catch(() => stays) : stays;
 }
 
-/** Replaces a relay of another version if the app can; else says why it stays as it is. */
+/** Replaces a relay that is not the app's own if the app can; else says why it stays as it is. */
 async function checkVersion(call: {
   client: RelayClient;
   deps: SyncDeps;
-  relayVersion: string;
+  relay: RelayIdentity;
 }): Promise<string | undefined> {
-  if (call.relayVersion === VERSION) return undefined;
-  const answer = await tryToReplace(call);
+  const mismatch = relayMismatch(call.relay);
+  if (mismatch === undefined) return undefined;
+  const answer = await tryToReplace({ ...call, mismatch });
   if (answer.replaced) throw new RelayReplaced();
   return answer.reason;
 }
@@ -127,7 +126,8 @@ export async function startSyncSession(client: RelayClient, deps: SyncDeps): Pro
   relayPushes({ client, onEvent: events.add, onSummaries });
   const hello = await client.call(RelayName.hello, { clientVersion: VERSION });
   normaliserVersion = hello.normaliserVersion ?? 0;
-  const outdated = await checkVersion({ client, deps, relayVersion: hello.relayVersion });
+  const relay = { version: hello.relayVersion, build: hello.buildId };
+  const outdated = await checkVersion({ client, deps, relay });
   deps.store.upsertWorkspace({ ...deps.workspace, lastSeenAt: new Date().toISOString() });
   const refreshSessions = await followAndList({ client, deps, onSummaries });
   void renormaliseStaleSessions({ client, deps, version: normaliserVersion }).catch(

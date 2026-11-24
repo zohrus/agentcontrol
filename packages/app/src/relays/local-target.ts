@@ -19,7 +19,6 @@ export function localTarget(options: { command: string[]; dataDir: string }): Wo
         git: undefined,
       };
     },
-    isInstalled: () => Promise.resolve(true),
     install: () => Promise.resolve({ installed: false }),
     forwardPort: (remotePort) =>
       Promise.resolve({ localPort: remotePort, close: () => Promise.resolve() }),

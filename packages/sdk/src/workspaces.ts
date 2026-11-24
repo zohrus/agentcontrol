@@ -67,9 +67,9 @@ function workspaceRepairs(api: Api) {
       return steps;
     },
     /**
-     * Stops the relay on the host (its running agents end) and connects again, which starts the
-     * app's version. For a workspace in state "needs-relay-update" when the user does not want to
-     * wait for its sessions to finish.
+     * Stops the relay on the machine (its running agents end) and connects again, which starts the
+     * app's own relay. For a workspace in state "needs-relay-update" when the user does not want to
+     * wait for its sessions to finish. This Mac too.
      */
     restartRelay: (id: string): Promise<WorkspaceInfo> =>
       read(api.workspaces[":id"]["restart-relay"].$post({ param: { id } })),

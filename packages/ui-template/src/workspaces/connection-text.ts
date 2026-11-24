@@ -17,7 +17,7 @@ const explanations: Partial<Record<ConnectionState, string>> = {
     "The connection dropped. Agents keep running on the machine and AgentControl is trying again.",
   offline: "AgentControl cannot reach this machine. It keeps trying.",
   "needs-relay-update":
-    "Its relay is an older version and still has sessions working. Restart it when they are done.",
+    "Its relay is not the app's own and still has sessions working. Restart it when they are done.",
   removed: "This workspace was removed. Its past sessions stay readable.",
 };
 

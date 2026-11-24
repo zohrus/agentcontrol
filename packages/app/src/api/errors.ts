@@ -1,4 +1,4 @@
-import { ErrorCode } from "@agentcontrol/protocol";
+import { ErrorCode, isSchemaRefusal } from "@agentcontrol/protocol";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -31,7 +31,22 @@ const relayFailures: Record<number, { status: ContentfulStatusCode; code: string
 };
 const unknownFailure = { status: 500, code: "internal-error" } as const;
 
+/** What the user is told when the relay cannot make sense of a request the app checked itself. */
+const RELAY_DISAGREES =
+  "The relay and the app disagree about this request, which usually means the relay is still running older code than the app, so nothing was changed. Open Workspaces and use Restart relay, or quit AgentControl and open it again once no session is working.";
+
+/** The relay refused the shape of a request the app had accepted: the two are not the same build. */
+function relayDisagrees(error: RelayCallError): ApiFailure {
+  return new ApiFailure(502, {
+    code: "relay-disagrees",
+    message: RELAY_DISAGREES,
+    data: { detail: error.message },
+  });
+}
+
 function fromRelay(error: RelayCallError): ApiFailure {
+  if (error.code === ErrorCode.invalidParams && isSchemaRefusal(error))
+    return relayDisagrees(error);
   const { status, code } = relayFailures[error.code] ?? unknownFailure;
   return new ApiFailure(status, { code, message: error.message, data: error.data });
 }

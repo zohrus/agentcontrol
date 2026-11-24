@@ -6,6 +6,11 @@ interface RelayBinaryFor {
   (machine: { os: string; arch: string }): string;
   /** Said after "no relay" when the file does not exist, e.g. how to build it. */
   missingAdvice?: (machine: { os: string; arch: string }) => string;
+  /**
+   * Says why the file that exists is not built from this app's code, e.g. how to build it again;
+   * undefined when it is. Only a source checkout can have such a file: a release ships its own.
+   */
+  staleAdvice?: (machine: { os: string; arch: string }) => Promise<string | undefined>;
 }
 
 /** How the app reaches ssh workspaces. */
@@ -46,7 +51,7 @@ export interface Workspaces {
   remove(id: string): Promise<WorkspaceInfo>;
   /** The "Check and repair" checklist: connect, inspect, install the relay, agents, repositories. */
   check(id: string, options?: { requestId?: string | undefined }): Promise<CheckStep[]>;
-  /** Stops the relay on the host (its sessions end) and reconnects, which starts the app's version. */
+  /** Stops the relay on the machine (its sessions end) and reconnects, which starts the app's own. */
   restartRelay(id: string): Promise<WorkspaceInfo>;
   /** Host aliases from the user's ssh config, without patterns. */
   hosts(): Promise<string[]>;

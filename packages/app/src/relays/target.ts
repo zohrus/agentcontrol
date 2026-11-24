@@ -37,11 +37,10 @@ export interface WorkspaceTarget {
   loginPath(): Promise<string | undefined>;
   /** OS, CPU architecture, free disk and git of the target. Rejects with the reason it is unreachable. */
   inspect(): Promise<HostInfo>;
-  /** Whether the relay binary of this app's version is in place on the target. */
-  isInstalled(): Promise<boolean>;
   /**
-   * Copies the relay binary at `binaryPath` (this app's version, built for the target's OS and CPU)
-   * to its versioned place on the target. Does nothing when an identical file is already there.
+   * Copies the relay binary at `binaryPath` (this app's build, for the target's OS and CPU) to its
+   * versioned place on the target. Does nothing when an identical file is already there, so a
+   * binary left by an earlier build of the same version is replaced.
    */
   install(binaryPath: string): Promise<{ installed: boolean }>;
   /** Makes a TCP port of the target reachable on 127.0.0.1 here (ssh -L); local returns the same port. */

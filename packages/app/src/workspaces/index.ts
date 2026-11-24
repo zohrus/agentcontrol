@@ -1,8 +1,7 @@
 import { type RelayClient, sshConfigHosts } from "../relays/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
 import type { Hub, Link } from "../sync/index.ts";
-import { checkThroughRelay } from "./check.ts";
-import { reporterFor } from "./progress.ts";
+import { operationsOf } from "./local-operations.ts";
 import { createRegistry, type Entry } from "./registry.ts";
 import { replaceOldRelay } from "./ssh-connect.ts";
 import { sshWorkspaces } from "./ssh-workspaces.ts";
@@ -22,9 +21,6 @@ export interface WorkspacesOptions {
   stopLocalRelay?: () => Promise<void>;
   ssh: SshSettings;
 }
-
-const localReport = (hub: Hub, requestId: string | undefined) =>
-  reporterFor({ hub, requestId, workspaceId: LOCAL.id });
 
 const USABLE = new Set(["connected", "needs-relay-update"]);
 
@@ -57,15 +53,18 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
     .forEach(remote.start);
   return {
     ...remote.operations,
+    ...operationsOf({
+      local,
+      hub: options.hub,
+      list: registry.list,
+      stopLocalRelay: options.stopLocalRelay,
+      remote: remote.operations,
+    }),
     localId: LOCAL.id,
     localLink: local.sync,
     list: registry.list,
     info: (id) => registry.list().find((known) => known.id === id),
     link: (id) => usableLink(registry.entries.get(id)),
-    check: (id, checkOptions) =>
-      id === LOCAL.id
-        ? checkThroughRelay(local.sync, localReport(options.hub, checkOptions?.requestId))
-        : remote.operations.check(id, checkOptions),
     hosts: () => sshConfigHosts(ssh.configFile),
     stop: async () => {
       await Promise.all([...registry.entries.values()].map((entry) => entry.sync.stop()));

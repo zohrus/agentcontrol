@@ -28,11 +28,11 @@ function activeWorkspace(deps: ApiDeps, id: string): WorkspaceInfo {
   return info;
 }
 
-/** Like `activeWorkspace`, and it must be an ssh one: this Mac cannot be removed or restarted. */
+/** Like `activeWorkspace`, and it must be an ssh one: this Mac cannot be removed. */
 function activeSshWorkspace(deps: ApiDeps, id: string): WorkspaceInfo {
   const info = activeWorkspace(deps, id);
   if (info.kind === "local") {
-    const message = "This Mac is always a workspace; it cannot be removed or restarted from here.";
+    const message = "This Mac is always a workspace; it cannot be removed.";
     throw new ApiFailure(409, { code: "local-workspace", message });
   }
   return info;
@@ -65,7 +65,7 @@ export function workspacesRoutes(deps: ApiDeps) {
       return c.json({ steps: await workspaces.check(id, { requestId }) });
     })
     .post("/:id/restart-relay", validate("param", IdParam), async (c) => {
-      const { id } = activeSshWorkspace(deps, c.req.valid("param").id);
+      const { id } = activeWorkspace(deps, c.req.valid("param").id);
       return c.json(await workspaces.restartRelay(id));
     })
     .delete("/:id", validate("param", IdParam), async (c) => {

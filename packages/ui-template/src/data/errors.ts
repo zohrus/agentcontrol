@@ -37,6 +37,10 @@ function isRemoteDown(error: ApiError): boolean {
   return error.code === "relay-unavailable" && down.success && down.data.workspaceId !== "local";
 }
 
+/** Failures whose own message is already what to tell the user, not a detail to put after one. */
+const saysItself = (error: ApiError): boolean =>
+  isRemoteDown(error) || error.code === "relay-disagrees";
+
 function describeOther(error: unknown): string {
   return error instanceof TypeError
     ? "AgentControl cannot be reached right now. It keeps trying to reconnect."
@@ -46,7 +50,7 @@ function describeOther(error: unknown): string {
 /** A failure in plain words for a toast or an inline message. */
 export function describeError(error: unknown): string {
   if (!(error instanceof ApiError)) return describeOther(error);
-  if (isRemoteDown(error)) return error.message;
+  if (saysItself(error)) return error.message;
   const base = messages[error.code] ?? "Something went wrong.";
   return withDetail.has(error.code) ? `${base} ${error.message}` : base;
 }
