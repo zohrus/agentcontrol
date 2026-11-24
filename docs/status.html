@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "24 Nov 2026, 18:45 UTC";
+const UPDATED = "24 Nov 2026, 22:35 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -302,6 +302,7 @@ const LOG = [
   ["23 Nov 2026 18:30", "Workspace picker and Config screen landed with 24 browser tests. Every planned screen of phases 5, 6 and 7 is now on main and the compiled app passes 10 of 10 smoke steps. Not started: the optional AI gateway and browser VS Code. Next: review fixes, and resume after a relay restart."],
   ["23 Nov 2026 20:45", "Landed: agents are installed once and started without the app's internal variables (real Claude Code and Codex adapters answer through the compiled relay); a session interrupted by a relay restart shows Interrupted with a Resume button; review fixes for Console and Analytics (analytics requests 10 times faster, terminal output limited, three flaky tests fixed); the compiled-app smoke test now runs inside bun run integrate. CI on GitHub had been red since the Console landed and I had only been reading the build result: the cause was a test that did not ignore invisible control sequences from the runner's shell. Fixed and green on main again."],
   ["24 Nov 2026 12:10", "Landed on main: Console, workspace and Config gaps; coverage and resume follow-ups; Browser VS Code. Two bugs found by the landing gate were fixed (a test that asserted something not guaranteed, and the relay accepting connections before writing its pid file). Then a real Claude Code session was run by hand in the compiled app and its change became pull request 8. Not started: the optional AI gateway. Not verified: a real Mac, the real code-server workbench, Codex."],
+  ["24 Nov 2026 22:35", "Start and archive now show the time of each step in the session, and the avoidable time is gone: the agent starts alongside the git work, the checkout runs in parallel, and archive returns as soon as the folder is moved aside (deletion continues in the background). On a 20,000-file test repository: click to ready 13.1 s to 7.8 s, archive 0.94 s to 0.1 s. Not yet measured on a Mac or with the real agents."],
   ["24 Nov 2026 18:45", "After your first run on your Mac, four changes landed on main. New sessions start from the latest remote trunk and are created without a prompt (you write it in the session). The app replaces a relay that runs older code after an update, instead of failing with a schema dump. Every main action now reacts at once: create session went from about 2,100 ms to 37 ms and sending a message from about 1,900 ms to 6 ms with the back end held for two seconds. Research done for harness controls and a model catalog."],
 ];
 /* ===== END DATA ===== */
