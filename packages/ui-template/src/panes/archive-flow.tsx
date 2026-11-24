@@ -22,7 +22,7 @@ export function useArchiveFlow() {
     },
     confirm: async (chosen: Target): Promise<void> => {
       const force = chosen.files.length > 0;
-      const outcome = await controller.archive(chosen.ref.id, force);
+      const outcome = await controller.archive(chosen.ref, force);
       if (outcome.status === "blocked") setTarget({ ref: chosen.ref, files: outcome.files });
     },
   };

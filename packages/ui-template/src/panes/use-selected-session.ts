@@ -1,6 +1,6 @@
 import { SessionId } from "@agentcontrol/protocol";
 import { useMemo, useSyncExternalStore } from "react";
-import { LOCAL_WORKSPACE, type SessionRef } from "../data/index.ts";
+import { LOCAL_WORKSPACE, sameSession, type SessionRef } from "../data/index.ts";
 
 const PREFIX = "#/sessions/";
 
@@ -41,6 +41,11 @@ function refFromHash(hash: string): SessionRef | undefined {
 function select(ref: SessionRef): void {
   const workspace = encodeURIComponent(ref.workspaceId);
   window.location.hash = `${PREFIX}${workspace}/${encodeURIComponent(ref.id)}`;
+}
+
+/** Opens no session if this one is the open one: used when it could not be created. */
+export function clearSelectionIf(ref: SessionRef): void {
+  if (sameSession(refFromHash(window.location.hash), ref)) window.location.hash = "";
 }
 
 /** The session the URL points at (`#/sessions/<workspace>/<id>`), and a function that opens another one. */

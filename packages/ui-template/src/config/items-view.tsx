@@ -1,5 +1,12 @@
 import type { ConfigAgent, RepoInfo, ScopedItem, UnsupportedItem } from "@agentcontrol/protocol";
-import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from "../components/index.ts";
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  useWorking,
+} from "../components/index.ts";
 import { agentName, allAgents } from "./agents.ts";
 import { ItemEditor } from "./item-editor.tsx";
 import { ItemList } from "./item-list.tsx";
@@ -34,21 +41,31 @@ function AgentChoice({ agent, screen }: { agent: ConfigAgent; screen: Screen }) 
 }
 
 function Toolbar({ screen }: { screen: Screen }) {
+  const importing = useWorking();
+  const reviewing = useWorking();
   return (
     <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2 text-xs">
       <span className="font-medium">Write to</span>
       {allAgents.map((agent) => (
         <AgentChoice key={agent} agent={agent} screen={screen} />
       ))}
-      <Button className="ml-auto" onClick={() => void screen.importExisting()}>
-        Import existing setup
+      <Button
+        className="ml-auto"
+        disabled={importing.working}
+        onClick={() => {
+          importing.run(screen.importExisting);
+        }}
+      >
+        {importing.working ? "Looking…" : "Import existing setup"}
       </Button>
       <Button
         variant="primary"
-        disabled={screen.agents.length === 0}
-        onClick={() => void screen.review()}
+        disabled={screen.agents.length === 0 || reviewing.working}
+        onClick={() => {
+          reviewing.run(screen.review);
+        }}
       >
-        Review changes
+        {reviewing.working ? "Reviewing…" : "Review changes"}
       </Button>
     </div>
   );

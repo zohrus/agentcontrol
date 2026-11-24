@@ -17,6 +17,15 @@ type ToolItem = {
 /** What the stream shows, one shape per kind of item. `key` is stable across updates. */
 type ItemMap = {
   user: { type: "user"; key: string; text: string; messageId: string | undefined };
+  /** A message the user just sent that the history does not show yet. */
+  outgoing: {
+    type: "outgoing";
+    key: string;
+    localId: string;
+    text: string;
+    state: "sending" | "sent" | "failed";
+    error: string | undefined;
+  };
   message: { type: "message"; key: string; text: string; messageId: string | undefined };
   thought: { type: "thought"; key: string; text: string; messageId: string | undefined };
   plan: { type: "plan"; key: string; entries: PlanEntryView[] };

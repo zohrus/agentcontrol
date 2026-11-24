@@ -17,19 +17,28 @@ function RecoveryLink() {
   );
 }
 
+/** A new request can be made when no change is being made, and no update waits to be kept. */
+const canSendRequest = ({ change, update }: ModifyPanelProps): boolean =>
+  (change.status === "idle" || change.status === "failed") && update?.phase !== "merged";
+
+/** A request just sent reads as work in progress before the app has said so. */
+const statusOf = ({ change, sending }: ModifyPanelProps): ModifyPanelProps["change"]["status"] =>
+  sending === undefined ? change.status : "working";
+
 function ChatTab(props: ModifyPanelProps) {
   const { change, update, versions } = props;
-  const { status } = change;
   return (
     <>
       <ModifyChat
         events={props.events}
-        canSend={(status === "idle" || status === "failed") && update?.phase !== "merged"}
+        canSend={canSendRequest(props)}
+        sending={props.sending}
         onSendPrompt={props.onSendPrompt}
       />
       <ChangeDetails change={change} />
       <ReviewBar
-        status={status}
+        status={statusOf(props)}
+        pressed={props.pressed}
         canGoBack={versions.length > 1}
         hideKeepUndo={update?.phase === "merged"}
         onKeep={props.onKeep}

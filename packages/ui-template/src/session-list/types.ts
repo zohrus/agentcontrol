@@ -24,6 +24,8 @@ export type PendingPermission = {
   /** What the agent wants to do, for example "Run npm test". */
   title: string;
   options: readonly PermissionOption[];
+  /** The option chosen whose answer is on its way to the agent, when there is one. */
+  answering?: string | undefined;
 };
 
 /** One session in the list, with the workspace it runs on and an optional second line. */

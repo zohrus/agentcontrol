@@ -20,6 +20,7 @@ const reducers: Reducers = {
     state.root = payload.worktreePath;
   },
   "agent-started": ignore,
+  "base-resolved": ignore,
   "setup-output": reduceSetupOutput,
   "setup-finished": reduceSetupFinished,
   "agent-exited": (state, { seq, payload }) => {
