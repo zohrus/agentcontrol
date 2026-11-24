@@ -40,6 +40,9 @@ function changes(page: Page) {
     /** What the review says under one agent's name, or "" when it has no section. */
     reviewOfAgent: async (agent: string): Promise<string> =>
       (await region(agent).allInnerTexts()).join("\n"),
+    /** What the review says under one scope's heading ("All repositories", "Only in <path>"), or "". */
+    reviewOfScope: async (scope: string): Promise<string> =>
+      (await region(scope).allInnerTexts()).join("\n"),
     /** The review's note on what was not written, or "". */
     notWrittenNote: async (): Promise<string> =>
       (await region("Not written").allInnerTexts()).join("\n"),

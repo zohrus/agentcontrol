@@ -124,13 +124,14 @@ export class Bridge {
     } else if (signal.type === "lost") {
       this.finish({ type: "error", code: "relay-lost", message: LOST });
     } else if (signal.terminalId === this.terminalId) {
-      if (signal.type === "data") this.output(signal.data);
+      if (signal.type === "data") this.output.write(signal.data);
       else this.finish({ type: "exit", exitCode: signal.exitCode });
     }
   }
 
   private finish(last: TerminalServerMessage): void {
     this.stopListening();
+    this.output.end();
     this.options.send(last);
     this.options.hangUp(CLOSE_NORMAL, "terminal ended");
   }

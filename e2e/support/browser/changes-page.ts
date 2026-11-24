@@ -1,12 +1,12 @@
 import type { Locator, Page } from "./playwright.ts";
+import { textOf } from "./read-text.ts";
 
 const diffOf = (page: Page) => page.locator('[data-testid="diff-viewer"]');
 const editorOf = (page: Page) => page.locator('[data-testid="code-editor"]');
 
 /** The text of an element ("" when absent), with Monaco's non-breaking spaces made plain. */
 async function plainText(element: Locator): Promise<string> {
-  if ((await element.count()) === 0) return "";
-  return (await element.innerText()).replaceAll("\u00a0", " ");
+  return (await textOf(element)).replaceAll("\u00a0", " ");
 }
 
 /** The right-hand panel: the Changes tab with its diff, and the Editor tab. */
@@ -51,15 +51,13 @@ function editing(page: Page) {
       page.locator('[data-testid="changed-files"] li').allInnerTexts(),
     /** The note under the file list saying not all files are listed, or "" when it lists them all. */
     fileListNotice: async (): Promise<string> => {
-      const notice = page.locator('[data-testid="file-tree-notice"]');
-      return (await notice.count()) === 0 ? "" : notice.innerText();
+      return textOf(page.locator('[data-testid="file-tree-notice"]'));
     },
     diffText: (): Promise<string> => plainText(diffOf(page)),
     editorText: (): Promise<string> => plainText(editorOf(page)),
     /** The plain-language note above the editor, or "" when there is none. */
     editorNotice: async (): Promise<string> => {
-      const notice = page.getByRole("status").filter({ hasText: "changed on disk" });
-      return (await notice.count()) === 0 ? "" : notice.innerText();
+      return textOf(page.getByRole("status").filter({ hasText: "changed on disk" }));
     },
   };
 }

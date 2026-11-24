@@ -31,7 +31,11 @@ async function listFiles(dir: string): Promise<string[]> {
   }
 }
 
-export function makeCtx(input: { homeDir: string; repoPath?: string | undefined }): ConfigCtx {
+export function makeCtx(input: {
+  homeDir: string;
+  repoPath?: string | undefined;
+  repoPaths?: string[] | undefined;
+}): ConfigCtx {
   return { ...input, readFile: readText, listFiles };
 }
 

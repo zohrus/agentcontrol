@@ -1,4 +1,5 @@
 import type { Locator, Page } from "./playwright.ts";
+import { textsOf, textOf } from "./read-text.ts";
 
 const rowsOf = (page: Page) => page.locator("[data-session-item]");
 
@@ -16,6 +17,8 @@ function filters(page: Page) {
     showsAllSessions: () => page.getByRole("button", { name: "All", exact: true }).click(),
     /** The Inbox button's label, such as "Inbox (2)". */
     inboxLabel: () => page.getByRole("button", { name: /^Inbox/ }).innerText(),
+    /** The status bar's count of sessions waiting on the user, such as "2 waiting". */
+    statusBarWaitingText: () => page.getByTestId("status-waiting").innerText(),
     /** The titles of the rows the list shows now, top to bottom. */
     listedTitles: async (): Promise<string[]> =>
       Promise.all((await rowsOf(page).all()).map(titleOfRow)),
@@ -30,7 +33,7 @@ function keyboard(page: Page) {
     /** The title of the row that has the keyboard focus, or "" when none has. */
     focusedRowTitle: async (): Promise<string> => {
       const focused = rowsOf(page).filter({ has: page.locator(":focus") });
-      return (await focused.count()) === 0 ? "" : titleOfRow(focused);
+      return ((await textOf(focused)).split("\n")[0] ?? "").trim();
     },
   };
 }
@@ -50,8 +53,7 @@ export function sessionListPage(page: Page) {
       rowOf(page, title).getByRole("button", { name: /^Deny/ }).click(),
     /** The text of the session's row, or undefined when the list has no such row. */
     rowTextOf: async (title: string): Promise<string | undefined> => {
-      const row = rowOf(page, title);
-      return (await row.count()) === 0 ? undefined : row.innerText();
+      return (await textsOf(rowOf(page, title)))[0];
     },
     /** How many Approve buttons the session's row offers. */
     approveButtonsOf: (title: string) =>

@@ -13,6 +13,13 @@ function isDropped(call: { unread: number; text: string }): boolean {
   return call.unread > SOFT_LIMIT_BYTES && call.text.length > SMALL_PIECE;
 }
 
+/** A shell's output on its way to a client. */
+interface LimitedOutput {
+  write(text: string): void;
+  /** The shell has ended: says so if output was dropped and nothing came after it. */
+  end(): void;
+}
+
 /**
  * Passes a shell's output on while the client keeps up. When a lot is waiting to be read (a program
  * like `yes` writes faster than anyone can read), output is dropped instead of piling up in the
@@ -23,15 +30,21 @@ function isDropped(call: { unread: number; text: string }): boolean {
 export function limitedOutput(call: {
   unread: () => number;
   send: (text: string) => void;
-}): (text: string) => void {
+}): LimitedOutput {
   let skipping = false;
-  return (text) => {
-    if (isDropped({ unread: call.unread(), text })) {
-      skipping = true;
-      return;
-    }
+  const say = (): void => {
     if (skipping) call.send(SKIPPED_MARKER);
     skipping = false;
-    call.send(text);
+  };
+  return {
+    write: (text) => {
+      if (isDropped({ unread: call.unread(), text })) {
+        skipping = true;
+        return;
+      }
+      say();
+      call.send(text);
+    },
+    end: say,
   };
 }

@@ -67,14 +67,18 @@ function accessOver(
 
 /** Starts a relay on a fresh data folder with a local git repo and the mock agent, then connects. */
 export async function startRelayWithLocalRepo(
-  options: { env?: Record<string, string> } = {},
+  options: { env?: Record<string, string>; beforeShellStarts?: () => Promise<void> } = {},
 ): Promise<RunningRelay> {
   const dataDir = await mkdtemp(join(tmpdir(), "agentcontrol-relay-"));
   onTestEnd(() => rm(dataDir, { recursive: true, force: true }));
   const repoPath = await createLocalRepo();
   const mockAgent = await createMockAgent();
   const env = relayEnvironment(mockAgent, options.env ?? {});
-  const host: RelayHost = await startRelayHost({ dataDir, env });
+  const host: RelayHost = await startRelayHost({
+    dataDir,
+    env,
+    ...(options.beforeShellStarts && { beforeShellStarts: options.beforeShellStarts }),
+  });
   onTestEnd(() => host.stop());
   const { follow, current, ...actions } = actionsOf({ host, repoPath });
   const access = accessOver({ dataDir, repoPath, mockAgent }, current);

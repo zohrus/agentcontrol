@@ -2,6 +2,7 @@ import { type RelayClient, sshConfigHosts } from "../relays/index.ts";
 import type { Store, Workspace } from "../store/index.ts";
 import type { Hub, Link } from "../sync/index.ts";
 import { checkThroughRelay } from "./check.ts";
+import { reporterFor } from "./progress.ts";
 import { createRegistry, type Entry } from "./registry.ts";
 import { replaceOldRelay } from "./ssh-connect.ts";
 import { sshWorkspaces } from "./ssh-workspaces.ts";
@@ -21,6 +22,9 @@ export interface WorkspacesOptions {
   stopLocalRelay?: () => Promise<void>;
   ssh: SshSettings;
 }
+
+const localReport = (hub: Hub, requestId: string | undefined) =>
+  reporterFor({ hub, requestId, workspaceId: LOCAL.id });
 
 const USABLE = new Set(["connected", "needs-relay-update"]);
 
@@ -46,7 +50,7 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
   const registry = createRegistry({ store, hub: options.hub });
   store.upsertWorkspace(LOCAL);
   const local = startLocal(registry, options);
-  const remote = sshWorkspaces({ store, registry, settings: ssh });
+  const remote = sshWorkspaces({ store, hub: options.hub, registry, settings: ssh });
   store
     .listWorkspaces()
     .filter((known) => known.kind === "ssh" && known.removedAt === undefined)
@@ -58,7 +62,10 @@ export function createWorkspaces(options: WorkspacesOptions): Workspaces {
     list: registry.list,
     info: (id) => registry.list().find((known) => known.id === id),
     link: (id) => usableLink(registry.entries.get(id)),
-    check: (id) => (id === LOCAL.id ? checkThroughRelay(local.sync) : remote.operations.check(id)),
+    check: (id, checkOptions) =>
+      id === LOCAL.id
+        ? checkThroughRelay(local.sync, localReport(options.hub, checkOptions?.requestId))
+        : remote.operations.check(id, checkOptions),
     hosts: () => sshConfigHosts(ssh.configFile),
     stop: async () => {
       await Promise.all([...registry.entries.values()].map((entry) => entry.sync.stop()));

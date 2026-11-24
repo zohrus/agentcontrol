@@ -13,9 +13,19 @@
 - **Workspaces menu, not Config.** "Config" now opens harness configuration. Workspace setup
   (the checklist and per-repo worktree setup) is "Check and repair" in the Workspaces menu, next to
   Add workspace, Restart relay (only when the relay needs an update, after a warning) and Remove.
-- **Add workspace has no live progress.** `workspaces.add` and `workspaces.check` answer once, so
-  the dialog shows "connecting", then "checking", then the checklist. A step that fails is named
-  with its detail and Retry runs the checklist again (which also installs a missing relay).
+- **Add workspace shows each step as it happens** (24 Nov 2026). `workspaces.add({ requestId })`
+  and `workspaces.check(id, { requestId })` publish `workspace-progress` messages on the live
+  stream (`WorkspaceProgress` in `protocol/src/workspaces/progress.ts`: `requestId`, optional
+  `workspaceId`, `step`, `label`, `state` started/ok/failed, plain `message`; the SDK has
+  `onWorkspaceProgress`). Without a `requestId` nothing is published. Step ids are the checklist's:
+  `connect`, `platform`, `install`, `relay`, then `agents` (the relay's own checks as one step, so
+  its failure names the first failing check) and `repos`. `add` reports connect, platform, install
+  and relay itself (the host steps now run before the connection is started, so the connector finds
+  the relay installed); a host that cannot be reached stops there, the workspace is saved offline
+  with the reason, and the dialog shows the failed step with Retry without running the checklist
+  again. Otherwise the dialog runs `check` with the same request id; a step that already passed is
+  not shown as running again. Retry runs `check`, which repeats every step. The relay's own checks
+  arrive as one `agents` step, not one message per check. Local `workspace.check()` has no progress.
 - **Removed workspaces' sessions share one "Removed" group**, read-only, each row saying which
   workspace it came from. An offline or reconnecting workspace keeps its own group, showing its
   state and reason; its sessions are read-only and the composer says why.
@@ -34,4 +44,12 @@
   "Keep my manual edit" says "None of those items could be found in the agent's files any more, so
   nothing was kept." when the files hold none of the items, and changes nothing. Opening Config
   loads items and drift together.
-- A review covers one repository: that of the first repo-scoped item.
+- **A review covers every scope that has items** (24 Nov 2026). `relay/config.plan` and `config.plan`
+  take `repoPaths` besides `repoPath`: one plan speaks for the global files and every repository
+  named, so Apply is one write with one backup (all or nothing, a file that moved anywhere refuses
+  the whole apply as stale) and Undo is one rollback. Separate plans per scope could not be applied
+  one after the other (the first apply changes the manifest, so the second is stale). The UI names
+  every repository that has an item and groups the review by scope ("All repositories", "Only in
+  <path>"), then by agent; a file belongs to the repository whose folder holds it. A repository
+  whose items were all deleted is no longer named, so entries written there earlier stay until an
+  item brings it back (in `TASKS.md`).

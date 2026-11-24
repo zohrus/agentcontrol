@@ -96,3 +96,16 @@ export function expectItemToBeSwitchedOff(app: AppInBrowser, itemId: string): Pr
     return held.enabled ? "it is still switched on" : undefined;
   });
 }
+
+/** The review has a group for this scope, and it lists these files. */
+export function expectReviewGroupToListFiles(
+  app: AppInBrowser,
+  call: { scope: string; files: string[] },
+): Promise<void> {
+  const expectation = `expected the review's group "${call.scope}" to list ${call.files.join(", ")}`;
+  return pageEventually(expectation, async () => {
+    const shown = await app.page.reviewOfScope(call.scope);
+    const missing = call.files.filter((file) => !shown.includes(file));
+    return missing.length === 0 ? undefined : `the group reads ${quote(shown)}`;
+  });
+}

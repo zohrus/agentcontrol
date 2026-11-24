@@ -29,10 +29,6 @@ export function newOnes(held: readonly ScopedItem[], found: readonly ScopedItem[
 export const titlesOf = (items: readonly ScopedItem[]): Record<string, string> =>
   Object.fromEntries(items.map((scoped) => [scoped.item.id, itemTitle(scoped.item)]));
 
-/** The repository whose own files a review should include: that of the first repo-scoped item. */
-export const repoOf = (items: readonly ScopedItem[]): string | undefined =>
-  items.find((scoped) => scoped.scope.repoPath !== undefined)?.scope.repoPath;
-
 /** The items without this one. */
 export const without = (items: readonly ScopedItem[], gone: ScopedItem): ScopedItem[] =>
   items.filter((held) => placeOf(held) !== placeOf(gone));

@@ -13,3 +13,16 @@ export async function startSshAppWithASession(
   await expectWorkspaceGroupToShow(app, { workspace: app.host.alias, texts: [prompt] });
   return { app, workspace };
 }
+
+/** The Add workspace form is open and the page notes which checklist rows the dialog shows. */
+export async function opensTheAddFormWatchingTheSteps(app: SshAppInBrowser): Promise<void> {
+  await app.page.opensTheWorkspaceMenu();
+  await app.page.choosesAddWorkspace();
+  await app.page.watchesTheSetupSteps();
+}
+
+/** The user types the ssh host's name into the open form and adds it. */
+export async function addsTheHostInTheForm(app: SshAppInBrowser): Promise<void> {
+  await app.page.typesTheHost(app.host.alias);
+  await app.page.submitsTheHost();
+}

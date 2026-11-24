@@ -12,6 +12,8 @@ export interface RelayHome {
   env: Record<string, string>;
   /** The version the relay reports (a daemon in the test process only); this release's if left out. */
   relayVersion?: string;
+  /** Held in `relay/terminal.open` before the shell starts (a daemon in the test process only). */
+  beforeShellStarts?: () => Promise<void>;
 }
 
 /** The relay daemon of one test: reachable by wires, and able to be stopped and started again. */

@@ -9,6 +9,7 @@ export {
   useFile,
   useOpenFile,
   useOpenSession,
+  useSetupSteps,
   useSession,
   useSessionEntries,
   useSessionEvents,

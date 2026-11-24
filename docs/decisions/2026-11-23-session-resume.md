@@ -69,3 +69,17 @@ When the relay stopped (crash, reboot, update) the agents died with it. The sess
 - A real `session/load` through this code path with Claude Code (checked by hand earlier with the
   probe in `scripts/real-agent/resume-probe.ts`, not through the relay) and none with Codex (its
   adapter advertises `loadSession`; its replay shape has not been seen).
+
+## Follow-up: rough edges
+
+- **Killed between the two steps of a graceful stop.** The agents were stopped (`agent-exited`
+  with `signal: "SIGTERM"`) but the relay died before `agent-interrupted`. The start-up pass treats a
+  session whose last lifecycle event is such an exit, and that was not archived, as interrupted.
+  A SIGTERM from someone else would read the same; accepted, it is rare and the session can be
+  resumed.
+- **Synthetic events are dated at the log's last event**, not at the restart (`EventInput.ts`): the
+  relay may have been down for days, and the analytics must not count that as waiting.
+- **One plain line.** The UI hides an `agent-exited` whose next lifecycle event is the
+  interruption and says "The agent was interrupted when the relay stopped."
+- **Waiting on you.** `interrupted` counts as waiting (list badge "resume", Inbox, status bar, menu
+  bar), unless the workspace is read-only.

@@ -13,6 +13,12 @@ export const ConfigPlanParams = z.object({
   items: z.array(ScopedItem),
   agents: z.array(ConfigAgent),
   repoPath,
+  /**
+   * More repositories the plan speaks for, besides `repoPath`: the files of every one of them are
+   * planned (and entries the app wrote there earlier are removed when their item is gone) in this
+   * one plan, which is applied and rolled back as one.
+   */
+  repoPaths: z.array(z.string()).optional(),
 });
 
 /** Params of relay/config.apply: a plan made earlier by relay/config.plan. */

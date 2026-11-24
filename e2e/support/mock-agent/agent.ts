@@ -100,6 +100,15 @@ function switchMode(call: {
   return {};
 }
 
+/** The modes the agent offers once a session is up; a scripted crash follows the answer by a moment. */
+function offeredWhenStarted(call: {
+  script: MockAgentScript;
+  modes: ReturnType<typeof createModes>;
+}) {
+  if (call.script.exitsAfterStarting) setTimeout(() => process.exit(4), 100);
+  return call.modes.offered();
+}
+
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
   const session: Session = { cwd: process.cwd(), launchSettings: undefined };
@@ -110,12 +119,12 @@ export function createMockAgent(script: MockAgentScript) {
     .onRequest(methods.agent.session.new, ({ params }) => {
       session.cwd = params.cwd;
       session.launchSettings = params._meta;
-      return { sessionId: SESSION_ID, ...modes.offered() };
+      return { sessionId: SESSION_ID, ...offeredWhenStarted({ script, modes }) };
     })
     .onRequest(methods.agent.session.load, async ({ params, client }) => {
       await loadEarlierSession({ script, params, client });
       session.cwd = params.cwd;
-      return modes.offered();
+      return offeredWhenStarted({ script, modes });
     })
     .onRequest(methods.agent.session.setMode, ({ params }) =>
       switchMode({ script, modes, modeId: params.modeId }),

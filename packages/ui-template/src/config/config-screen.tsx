@@ -38,6 +38,7 @@ function Review({ props, screen }: PartProps) {
   return (
     <ReviewView
       plan={plan}
+      items={items}
       agents={screen.agents}
       titles={titlesOf(items)}
       onApply={() => void props.actions.apply()}

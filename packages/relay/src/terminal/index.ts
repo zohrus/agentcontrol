@@ -8,6 +8,7 @@ import {
 import { type Client, RelayError } from "../rpc/index.ts";
 import { type HostEnvironment, loginShell, shellEnvironment } from "./environment.ts";
 import { type ShellProcess, spawnShell } from "./shell-process.ts";
+import { terminalBacklog } from "./unread.ts";
 
 /** Where a terminal starts and what its shell inherits from the session. */
 interface ShellTarget {
@@ -59,12 +60,18 @@ function refuseTooMany(registry: Registry, client: Client): void {
 }
 
 /** What the shell prints, passed to the client as long as the client keeps up with it. */
-function outputTo(call: { client: Client; terminalId: TerminalId }): (text: string) => void {
+function outputTo(call: {
+  client: Client;
+  terminalId: TerminalId;
+}): ReturnType<typeof limitedOutput> {
   const { client, terminalId } = call;
+  const backlog = terminalBacklog(client);
   return limitedOutput({
-    unread: () => client.backlog(),
+    unread: () => backlog.unread(),
     send: (data) => {
-      client.notify(N.terminalData, { terminalId, data });
+      backlog.sends(() => {
+        client.notify(N.terminalData, { terminalId, data });
+      });
     },
   });
 }
@@ -78,15 +85,19 @@ function startShell(call: {
   onExit: () => void;
 }): ShellProcess {
   const { client, terminalId, target } = call;
+  const output = outputTo({ client, terminalId });
   try {
     return spawnShell({
       command: loginShell(call.host),
       cwd: target.cwd,
       env: shellEnvironment({ host: call.host, session: target.env }),
       ...call.size,
-      onData: outputTo({ client, terminalId }),
+      onData: (text) => {
+        output.write(text);
+      },
       onExit: (exitCode) => {
         call.onExit();
+        output.end();
         client.notify(N.terminalExit, { terminalId, exitCode });
       },
     });
@@ -107,6 +118,8 @@ function openTerminal(call: {
 }): TerminalId {
   const { registry, host, client, sessionId, target, size } = call;
   refuseTooMany(registry, client);
+  // The client may have left while the handler was still finding the session's folder.
+  if (client.isClosed()) throw new RelayError(ErrorCode.internalError, "The client has left.");
   const terminalId = crypto.randomUUID();
   const onExit = (): void => {
     registry.delete(terminalId);

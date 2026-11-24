@@ -43,6 +43,20 @@ it); without it the mismatch is only reported. `AGENTCONTROL_RELAY_VERSION` over
 process reports, for tests only (an older release is simulated by a binary that sets it).
 `/api/workspace` (this Mac or `?workspace=`) and `workspaces.list()` are the same `WorkspaceInfo`.
 
+## A relay that starts while the old one is stopping (24 Nov 2026)
+
+Replacing a relay races with its own shutdown: the old daemon stops listening first, ends its
+agents and clients, and removes `relay.sock` and `relay.pid` as its last act, while the app's
+reconnect (or a bridge) may already start a new daemon on the same data folder. The new one made
+its own socket and pid file, and the old one then deleted them. A new daemon now waits (up to 10 s)
+for the process named in a leftover `relay.pid` to be gone before it claims the socket
+(`relay/src/daemon/stopping.ts`). Tested with a real old daemon kept busy by a client that does not
+hang up (`e2e/sessions/relay-replaced-while-stopping.e2e.ts`). The flaky "restart a busy old relay"
+test itself failed for a separate reason in its helper: the daemon's socket file exists a moment
+before it accepts connections, and the helper treated the file as proof, then hung on a refused
+connection. `startOldRelayOnHost` now waits for an accepted connection. With the fix, 24 runs in
+parallel on 4 cores all passed (14 of 14 and 10 of 10), where 2 to 4 of 14 had hung before.
+
 ## Agents on a host
 
 A non-interactive ssh session has a minimal PATH. On connect the app reads the user's login-shell

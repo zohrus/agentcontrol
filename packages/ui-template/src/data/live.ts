@@ -4,6 +4,7 @@ import { applyModify } from "./modify-data.ts";
 import { forgetReload } from "./recover.ts";
 import { applyEvent, applySummaries } from "./sessions-data.ts";
 import type { SessionRef } from "./session-ref.ts";
+import { applyProgress } from "./setup-progress.ts";
 import { applyWorkspace } from "./workspaces-data.ts";
 
 /** Paths that changed in a session's worktree. */
@@ -41,6 +42,9 @@ export function startLive(ctx: Context, handlers: Handlers): () => void {
     },
     onWorkspace: (workspace) => {
       applyWorkspace(ctx, workspace);
+    },
+    onWorkspaceProgress: (progress) => {
+      applyProgress(ctx, progress);
     },
     onFilesChanged: ({ workspaceId, sessionId, paths }) => {
       handlers.filesChanged({ ref: { workspaceId, id: sessionId }, paths });

@@ -1,6 +1,12 @@
 import type { SessionId } from "@agentcontrol/protocol";
 import { sseMessages } from "./sse.ts";
-import type { LiveSessionEvent, ModifyState, SessionRow, WorkspaceInfo } from "./types.ts";
+import type {
+  LiveSessionEvent,
+  ModifyState,
+  SessionRow,
+  WorkspaceInfo,
+  WorkspaceProgress,
+} from "./types.ts";
 
 const RECONNECT_MS = 1000;
 
@@ -20,6 +26,12 @@ export interface Listeners {
    * needs a relay update, or was removed). Call `workspaces.list()` after a reconnect of the stream.
    */
   onWorkspace?: (workspace: WorkspaceInfo) => void;
+  /**
+   * One step of a setup started, passed or failed, for a `workspaces.add` or `workspaces.check` call
+   * that was given a `requestId` (the message carries the same one). Steps come in order; a failed
+   * step says why in `message`.
+   */
+  onWorkspaceProgress?: (progress: WorkspaceProgress) => void;
   /** The Modify agent's state changed (status, changed files, check output, update banner). */
   onModify?: (state: ModifyState) => void;
   /**
@@ -39,6 +51,7 @@ function handlersOf(listeners: Listeners): Handlers {
     event: (data) => listeners.onEvent?.(data as LiveSessionEvent),
     sessions: (data) => listeners.onSessions?.(data as SessionRow[]),
     workspace: (data) => listeners.onWorkspace?.(data as WorkspaceInfo),
+    "workspace-progress": (data) => listeners.onWorkspaceProgress?.(data as WorkspaceProgress),
     modify: (data) => listeners.onModify?.(data as ModifyState),
     fs: (data) => {
       listeners.onFilesChanged?.(

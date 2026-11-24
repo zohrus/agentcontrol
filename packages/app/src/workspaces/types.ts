@@ -29,11 +29,16 @@ export interface Workspaces {
    * Adds an ssh workspace and connects to it, installing the relay on the host when needed.
    * Resolves once the first attempt has settled: the workspace is `connected`, or `offline` with a reason.
    */
-  addSsh(options: { host: string; label?: string | undefined }): Promise<WorkspaceInfo>;
+  addSsh(options: {
+    host: string;
+    label?: string | undefined;
+    /** Names this request on the live stream's `workspace-progress` messages, one per setup step. */
+    requestId?: string | undefined;
+  }): Promise<WorkspaceInfo>;
   /** Disconnects and marks the workspace removed. Its past sessions stay readable; the host is not touched. */
   remove(id: string): Promise<WorkspaceInfo>;
   /** The "Check and repair" checklist: connect, inspect, install the relay, agents, repositories. */
-  check(id: string): Promise<CheckStep[]>;
+  check(id: string, options?: { requestId?: string | undefined }): Promise<CheckStep[]>;
   /** Stops the relay on the host (its sessions end) and reconnects, which starts the app's version. */
   restartRelay(id: string): Promise<WorkspaceInfo>;
   /** Host aliases from the user's ssh config, without patterns. */

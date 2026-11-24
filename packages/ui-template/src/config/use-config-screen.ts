@@ -2,9 +2,10 @@ import type { ConfigAgent, ScopedItem } from "@agentcontrol/protocol";
 import { countOf } from "../status/index.ts";
 import { useEffect, useState } from "react";
 import { agentOfPath, allAgents } from "./agents.ts";
-import { newOnes, repoOf, toggled, withItem, without } from "./config-items.ts";
+import { newOnes, toggled, withItem, without } from "./config-items.ts";
 import type { DriftEntry } from "./drift-banner.tsx";
 import type { Kind } from "./kind-spec.ts";
+import { reposOf } from "./review-scopes.ts";
 import type { ConfigActions } from "./types.ts";
 
 export type View = "items" | "review" | "import";
@@ -47,8 +48,8 @@ function useReviewFlow({ items, actions, goTo, say }: Call) {
   const review = async () => {
     const chosen = agents.length > 0 ? agents : allAgents;
     setAgents(chosen);
-    const repoPath = repoOf(items);
-    const target = { agents: [...chosen], ...(repoPath && { repoPath }) };
+    // One review covers the global files and every repository that has items.
+    const target = { agents: [...chosen], repoPaths: reposOf(items) };
     if (await actions.review(target)) goTo("review");
   };
   return {

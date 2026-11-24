@@ -55,17 +55,31 @@ function rejectLine(parsed: { reason: string; detail: string }, write: Write): v
   write({ id: null, error: toErrorBody(new RelayError(code, parsed.detail)) });
 }
 
-function clientFor(call: { write: Write; backlog: () => number }) {
-  const { write, backlog } = call;
+function clientFor(call: { write: Write; backlog: () => number; written: () => number }) {
+  const { write, backlog, written } = call;
   const cleanups: Array<() => void> = [];
+  const state = { closed: false };
   const client: Client = {
     backlog,
+    written,
+    isClosed: () => state.closed,
     notify: (method, params) => {
       write({ method, params });
     },
     onClose: (cleanup) => cleanups.push(cleanup),
   };
-  return { client, cleanups };
+  return { client, cleanups, state };
+}
+
+/** Writes messages as JSON lines and counts the bytes of the lines. */
+function countingWriter(send: (line: string) => void) {
+  const sent = { bytes: 0 };
+  const write: Write = (message) => {
+    const line = JSON.stringify({ jsonrpc: "2.0", ...message });
+    sent.bytes += Buffer.byteLength(line) + 1;
+    send(line);
+  };
+  return { write, written: () => sent.bytes };
 }
 
 /** One client's JSON-RPC session: parse, validate, dispatch to the handler table, answer. */
@@ -75,21 +89,24 @@ export function createRpcConnection(options: {
   /** Bytes sent that the client has not read yet; 0 when that is not known. */
   backlog?: () => number;
 }): RpcConnection {
-  const write: Write = (message) => {
-    options.send(JSON.stringify({ jsonrpc: "2.0", ...message }));
-  };
-  const { client, cleanups } = clientFor({ write, backlog: options.backlog ?? (() => 0) });
-  const context = { handlers: options.handlers, client, write };
+  const counted = countingWriter(options.send);
+  const { client, cleanups, state } = clientFor({
+    write: counted.write,
+    backlog: options.backlog ?? (() => 0),
+    written: counted.written,
+  });
+  const context = { handlers: options.handlers, client, write: counted.write };
   return {
     receive: (line) => {
       const parsed = parseMessageLine(line);
-      if (!parsed.ok) rejectLine(parsed, write);
+      if (!parsed.ok) rejectLine(parsed, counted.write);
       else if ("method" in parsed.message && "id" in parsed.message) {
         const { id, method, params } = parsed.message;
         void answer({ id, method, raw: params }, context);
       }
     },
     close: () => {
+      state.closed = true;
       cleanups.splice(0).forEach((cleanup) => {
         cleanup();
       });

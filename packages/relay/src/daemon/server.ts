@@ -5,21 +5,22 @@ import { createInterface } from "node:readline";
 import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
-import { type SessionId, VERSION } from "@agentcontrol/protocol";
-import { createEventLog } from "../event-log/index.ts";
+import { VERSION } from "@agentcontrol/protocol";
 import { Ide } from "../ide/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
-import { createSessions, type Sessions } from "../sessions/index.ts";
+import type { Sessions } from "../sessions/index.ts";
 import { createTerminals, type Terminals } from "../terminal/index.ts";
 import { configHandlers } from "./handlers-config.ts";
 import { fileHandlers } from "./handlers-files.ts";
+import { buildSessions } from "./build-sessions.ts";
 import { ideHandlers } from "./handlers-ide.ts";
 import { sessionHandlers } from "./handlers-sessions.ts";
 import { terminalHandlers } from "./handlers-terminal.ts";
 import { usageHandlers } from "./handlers-usage.ts";
 import { workspaceHandlers } from "./handlers-workspace.ts";
 import { socketPathIn, tryConnect } from "./socket.ts";
+import { waitForStoppingRelay } from "./stopping.ts";
 
 export const pidFileIn = (dataDir: string): string => join(dataDir, "relay.pid");
 
@@ -31,21 +32,28 @@ function serve(socket: Socket, handlers: Handlers): void {
     },
     backlog: () => socket.writableLength,
   });
-  createInterface({ input: socket }).on("line", (line) => {
-    connection.receive(line);
-  });
+  // A client that hangs up while an answer is being written makes the socket fail; the reader
+  // passes that on as its own error, which nobody may leave unhandled.
+  createInterface({ input: socket })
+    .on("line", (line) => {
+      connection.receive(line);
+    })
+    .on("error", () => undefined);
   socket.on("close", () => {
     connection.close();
   });
   socket.on("error", () => undefined);
 }
 
-async function claimSocket(socketPath: string): Promise<void> {
+async function claimSocket(call: { socketPath: string; pidFile: string }): Promise<void> {
+  const { socketPath, pidFile } = call;
   const running = await tryConnect(socketPath);
   if (running) {
     running.destroy();
     throw new Error(`A relay is already running at ${socketPath}.`);
   }
+  // Not listening any more does not mean gone: a relay that is stopping still has its files.
+  await waitForStoppingRelay(pidFile);
   await rm(socketPath, { force: true });
 }
 
@@ -57,23 +65,6 @@ async function listenPrivately(server: Server, socketPath: string): Promise<void
   });
   process.umask(previousMask);
   await chmod(socketPath, 0o600);
-}
-
-async function buildSessions(options: {
-  dataDir: string;
-  repos: RepoStore;
-  hostEnv: HostEnv;
-  terminals: Terminals;
-  ide: Ide;
-}): Promise<Sessions> {
-  const { dataDir, repos, hostEnv, terminals, ide } = options;
-  const log = createEventLog({ dir: join(dataDir, "sessions"), now: () => new Date() });
-  const worktreesDir = join(dataDir, "worktrees");
-  // Archiving ends what a person has open on the folder: shells and the session's code-server.
-  const endTerminals = async (sessionId: SessionId): Promise<void> => {
-    await Promise.all([terminals.closeSession(sessionId), ide.stop(sessionId)]);
-  };
-  return createSessions({ log, repos, worktreesDir, hostEnv, endTerminals });
 }
 
 export interface Daemon {
@@ -95,6 +86,11 @@ export interface DaemonOptions {
   normaliserVersion?: number;
   /** What `relay/hello` reports as the relay's version; this release's version if left out. */
   relayVersion?: string;
+  /**
+   * A test seam: `relay/terminal.open` waits for this after finding the session's folder and before
+   * starting the shell, so a test can make the client leave in between.
+   */
+  beforeShellStarts?: () => Promise<void>;
 }
 
 /** The socket server: every connection is served with the handlers and tracked, to end it on stop. */
@@ -130,6 +126,18 @@ async function closeClients(sockets: Set<Socket>): Promise<void> {
   clearTimeout(giveUp);
 }
 
+/** What the machine-level handlers (hello, checklist, repos) are told about this relay. */
+function workspaceParts(call: { options: DaemonOptions; hostEnv: HostEnv; repos: RepoStore }) {
+  const { options, hostEnv, repos } = call;
+  return {
+    repos,
+    env: hostEnv,
+    normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
+    // AGENTCONTROL_RELAY_VERSION is only set by tests, to look like another release.
+    relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
+  };
+}
+
 async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Promise<{
   handlers: Handlers;
   sessions: Sessions;
@@ -143,17 +151,15 @@ async function buildHandlers(options: DaemonOptions & { hostEnv: HostEnv }): Pro
   const sessions = await buildSessions({ dataDir, repos, hostEnv, terminals, ide });
   const handlers: Handlers = {
     ...sessionHandlers(sessions),
-    ...terminalHandlers({ sessions, terminals }),
+    ...terminalHandlers({
+      sessions,
+      terminals,
+      ...(options.beforeShellStarts && { beforeShellStarts: options.beforeShellStarts }),
+    }),
     ...ideHandlers({ sessions, ide }),
     ...fileHandlers(sessions),
     ...usageHandlers(sessions),
-    ...workspaceHandlers({
-      repos,
-      env: hostEnv,
-      normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
-      // AGENTCONTROL_RELAY_VERSION is only set by tests, to look like another release.
-      relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
-    }),
+    ...workspaceHandlers(workspaceParts({ options, hostEnv, repos })),
     ...configHandlers(configHome(hostEnv)),
   };
   return { handlers, sessions, terminals, ide };
@@ -170,12 +176,13 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const { dataDir } = options;
   await mkdir(dataDir, { recursive: true });
   const socketPath = socketPathIn(dataDir);
-  await claimSocket(socketPath);
+  await claimSocket({ socketPath, pidFile: pidFileIn(dataDir) });
   const hostEnv = hostEnvFor(options);
   const { handlers, sessions, terminals, ide } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
-  await listenPrivately(server, socketPath);
+  // The pid file comes first: whoever can connect can already read which process answers.
   await writeFile(pidFileIn(dataDir), String(process.pid));
+  await listenPrivately(server, socketPath);
   return {
     socketPath,
     stop: async () => {

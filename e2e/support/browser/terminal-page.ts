@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { firstTextOf } from "./read-text.ts";
 
 const TERMINAL_WAIT_MS = 15_000;
 
@@ -23,7 +24,7 @@ export function terminalPage(page: Page) {
     /** The plain-language bar under the terminal once its shell ended, "" while it runs. */
     terminalEndNote: async (): Promise<string> => {
       const note = page.getByRole("status").filter({ hasText: /shell|terminal/i });
-      return (await note.count()) === 0 ? "" : note.first().innerText();
+      return firstTextOf(note);
     },
     /** Makes the browser window this big, which the panel follows. */
     resizesTheWindow: (size: { width: number; height: number }) => page.setViewportSize(size),

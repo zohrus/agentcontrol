@@ -6,3 +6,4 @@ export {
   readOnlyNote,
 } from "./connection-text.ts";
 export { WorkspaceMenu } from "./workspace-menu.tsx";
+export { checklistOf } from "./setup-steps.ts";

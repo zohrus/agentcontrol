@@ -38,6 +38,14 @@ export type Choices = {
 /** The health checklist of one workspace. */
 export type WorkspaceCheck = { steps: readonly CheckStep[]; running: boolean };
 
+/** One step of a setup that is being watched, in the order the steps began. */
+export type SetupStep = {
+  id: string;
+  label: string;
+  state: "started" | "ok" | "failed";
+  message: string;
+};
+
 /** What the agents already have configured, per agent, as found by "Import existing setup". */
 type FoundSetup = { agent: ConfigAgent; items: readonly ScopedItem[] };
 
@@ -76,6 +84,8 @@ export type DataState = {
   choices: Readonly<Record<string, Choices>>;
   /** The latest checklist by workspace id. */
   checks: Readonly<Record<string, WorkspaceCheck>>;
+  /** The steps of each setup the app announced, by the request id the UI gave it. */
+  setup: Readonly<Record<string, readonly SetupStep[]>>;
   config: ConfigState;
   /** Where the Modify agent is; undefined until the app has answered. */
   modify: ModifyState | undefined;
@@ -106,6 +116,7 @@ export const initialState: DataState = {
   workspaces: [],
   choices: {},
   checks: {},
+  setup: {},
   config: initialConfig,
   modify: undefined,
   versions: [],

@@ -10,7 +10,9 @@ export interface StuckClient {
 }
 
 /** Connects a client that keeps its side of the connection open however the relay ends its own. */
-export async function connectsAClientThatNeverHangsUp(relay: RelayAccess): Promise<StuckClient> {
+export async function connectsAClientThatNeverHangsUp(
+  relay: Pick<RelayAccess, "dataDir">,
+): Promise<StuckClient> {
   const socket = connect({ path: join(relay.dataDir, "relay.sock"), allowHalfOpen: true });
   socket.on("error", () => undefined);
   const cutOff = new Promise<void>((resolve) => {

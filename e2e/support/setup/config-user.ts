@@ -23,11 +23,17 @@ async function refusalOf(request: Promise<unknown>): Promise<string | undefined>
   }
 }
 
-type Target = { includingTheRepo?: boolean; onlyForClaudeCode?: boolean };
+type Target = {
+  includingTheRepo?: boolean;
+  onlyForClaudeCode?: boolean;
+  /** Every repository whose own files the plan covers. */
+  includingTheRepos?: string[];
+};
 
 const targetOf = (options: Target, repoPath: string): ConfigTarget => ({
   ...(options.includingTheRepo ? { repoPath } : {}),
   ...(options.onlyForClaudeCode ? { agents: ["claude-code" as const] } : {}),
+  ...(options.includingTheRepos ? { repoPaths: options.includingTheRepos } : {}),
 });
 
 /** Setting up items and looking at what the agents have today. */

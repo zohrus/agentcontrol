@@ -32,9 +32,30 @@ function menu(page: Page) {
   };
 }
 
+/**
+ * A script that writes down every checklist row the Add workspace dialog shows, as "<step>: <state>"
+ * in the order each combination first appeared (a step goes from "Checking" to "Passed" or "Failed").
+ */
+const RECORD_SETUP_STEPS = `
+  window.setupStepsSeen = [];
+  const note = () => {
+    document.querySelectorAll('[role="dialog"] ol li').forEach((row) => {
+      const step = row.querySelector(".font-medium")?.textContent ?? "";
+      const state = row.querySelector('[role="img"]')?.getAttribute("aria-label") ?? "";
+      const entry = step + ": " + state;
+      if (!window.setupStepsSeen.includes(entry)) window.setupStepsSeen.push(entry);
+    });
+  };
+  new MutationObserver(note).observe(document.body, { subtree: true, childList: true, attributes: true });
+`;
+
 /** The "Add workspace" dialog: host, name, the checklist and Retry. */
 function addDialog(page: Page) {
   return {
+    /** From now on the page writes down which checklist rows the dialog shows, and in what order. */
+    watchesTheSetupSteps: () => page.evaluate(RECORD_SETUP_STEPS),
+    /** The rows the dialog showed so far, as "<step>: <state>", in the order they first appeared. */
+    setupStepsShown: (): Promise<string[]> => page.evaluate<string[]>("window.setupStepsSeen"),
     choosesAddWorkspace: () => menuOf(page).getByRole("button", { name: "Add workspace…" }).click(),
     typesTheHost: (host: string) => addDialogOf(page).getByLabel("Host").fill(host),
     submitsTheHost: () =>

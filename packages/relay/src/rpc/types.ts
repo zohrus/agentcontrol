@@ -15,7 +15,11 @@ export interface Client {
   ): void;
   /** Bytes already written for this client that it has not read yet; a slow reader makes it grow. */
   backlog(): number;
-  /** Registers something to clean up when this client disconnects. */
+  /** Bytes written for this client since it connected, whether it has read them or not. */
+  written(): number;
+  /** True once this client has disconnected. */
+  isClosed(): boolean;
+  /** Registers something to clean up when this client disconnects (never runs for one already gone). */
   onClose(cleanup: () => void): void;
 }
 
