@@ -76,15 +76,14 @@ function signalGroup(pid: number, signal: NodeJS.Signals): void {
 }
 
 async function stopProcess(child: Bun.Subprocess): Promise<void> {
-  // A process that already ended may have left its id to another program.
-  if (child.exitCode !== null || child.signalCode !== null) return;
   signalGroup(child.pid, "SIGTERM");
   const timer = setTimeout(() => {
     signalGroup(child.pid, "SIGKILL");
   }, TERM_GRACE_MS);
   await child.exited;
   clearTimeout(timer);
-  // Extension hosts and terminals it started may ignore the hangup: the group is still there.
+  // Extension hosts and terminals it started may outlive it, or ignore the hangup. The group id
+  // stays taken while any member lives, so this never reaches another program's group.
   signalGroup(child.pid, "SIGKILL");
 }
 

@@ -138,7 +138,7 @@ Later:
 - [x] "Open in browser VS Code" (done 23 Nov 2026, `docs/decisions/2026-11-23-browser-vscode.md`; phase 5, optional): code-server on the session's worktree for local and ssh workspaces, over a unix socket on the workspace and the relay link, served on a second loopback port (another origin) under a ticket path. code-server is the user's tool: detected on the workspace's PATH, an optional checklist line, never installed by us.
 - [ ] Verify with the real code-server: the workbench loading through the tunnel (HTML, assets, WebSockets, extension host, origin check, path prefix), on Linux and on a Mac. Only the flags, the unix socket and `--version` were checked with the real 4.146.0; its workbench could not be built in the test environment.
 - [ ] A relay killed with SIGKILL leaves its code-servers running. Write a pid file per server and sweep at relay start (check the command line before killing).
-- [ ] Cookies code-server sets with `Path=/` are shared with other servers on 127.0.0.1; decide whether the proxy should rewrite them to the ticket path.
+- [ ] `code-server --version` runs on every status check: cache it per relay. `Ide.openSocket` registers its tunnel only after the handshake (a client that disconnects meanwhile leaves the socket counted as open).
 - [ ] Uploads over 16 MiB are refused by the tunnel; stream request bodies if a real workbench needs bigger ones.
 - [ ] Measure the tunnel over a real network (50 to 200 ms) with the real workbench; the 1 MiB window caps one stream at 1 MiB per round trip.
 - [ ] Compiled-app smoke step that starts a code-server stand-in.

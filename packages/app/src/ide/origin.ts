@@ -1,4 +1,4 @@
-import type { SessionId } from "@agentcontrol/protocol";
+import { IDE_MAX_REQUEST_BYTES, type SessionId } from "@agentcontrol/protocol";
 import type { Server } from "bun";
 import type { Previews } from "../preview/index.ts";
 import { refusalFor } from "../security/index.ts";
@@ -111,6 +111,7 @@ export function startIdeOrigin(options: Options): IdeOrigin {
     hostname: "127.0.0.1",
     port: 0,
     idleTimeout: 0,
+    maxRequestBodySize: IDE_MAX_REQUEST_BYTES,
     websocket: ideWebsocket,
     fetch: (request) => serve(request, { options, server }),
   });

@@ -13,7 +13,13 @@ const HOP_BY_HOP = new Set([
   "transfer-encoding",
   "upgrade",
   "content-length",
+  // Cookies ignore ports: the browser sends those of every server on 127.0.0.1. They stay here.
+  "cookie",
+  "authorization",
 ]);
+
+/** Headers of code-server's answer that are dropped: it has no login, so a cookie is only a leak. */
+const NOT_PASSED_BACK = new Set(["set-cookie", "set-cookie2"]);
 
 /** Statuses whose answer has no body. */
 const NO_BODY = new Set([101, 204, 205, 304]);
@@ -33,8 +39,9 @@ export function forwardedHeaders(headers: Headers): [string, string][] {
  * code-server's own policy is kept when it sends one.
  */
 function withReferrerPolicy(headers: [string, string][]): [string, string][] {
-  const has = headers.some(([name]) => name.toLowerCase() === "referrer-policy");
-  return has ? headers : [...headers, ["referrer-policy", "no-referrer"]];
+  const kept = headers.filter(([name]) => !NOT_PASSED_BACK.has(name.toLowerCase()));
+  const has = kept.some(([name]) => name.toLowerCase() === "referrer-policy");
+  return has ? kept : [...kept, ["referrer-policy", "no-referrer"]];
 }
 
 const isGetOrHead = (request: Request): boolean =>
@@ -110,10 +117,16 @@ export async function proxyRequest(call: Call): Promise<Response> {
   const body = await readBody(call.request);
   if (body instanceof Response) return body;
   const tunnel = openTunnel(call.link);
+  // The browser gave up (a reload) while the relay was still answering: end the tunnel.
+  call.request.signal.addEventListener("abort", () => {
+    tunnel.stop();
+    tunnel.close();
+  });
   try {
     return await relayAnswer({ ...call, body, tunnel });
   } catch (error) {
     tunnel.stop();
+    tunnel.close();
     return unreachable(error);
   }
 }

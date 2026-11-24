@@ -28,7 +28,6 @@ class SocketBridge {
   private ws: ServerWebSocket<IdeSocketData> | undefined;
   /** What code-server said before the browser's socket was open. */
   private early: IdeSignal[] = [];
-  private queue: Promise<void> = Promise.resolve();
   private queued = 0;
   private stopListening: () => void = () => undefined;
 
@@ -59,9 +58,9 @@ class SocketBridge {
     }
     const data = Buffer.from(message).toString("base64");
     const params = { tunnelId: this.call.tunnelId, data, binary: typeof message !== "string" };
-    this.queue = this.queue
-      .then(() => this.call.link.call(N.ideSocketSend, params))
-      .then(() => undefined)
+    // Calls are issued in order and the link keeps their order, so none waits for another's answer.
+    this.call.link
+      .call(N.ideSocketSend, params)
       .catch(() => {
         this.end(CLOSE_INTERNAL, "the workspace did not take the message");
       })

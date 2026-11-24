@@ -61,6 +61,15 @@ function forward(call: {
   });
 }
 
+/** Sends a browser message on; past 32 MiB waiting for code-server it fails (and the socket ends). */
+function sendWithinLimit(socket: WebSocket, message: { data: string; binary: boolean }): void {
+  if (socket.bufferedAmount > MAX_UNREAD_BYTES) {
+    throw new Error("code-server is too slow to take the data");
+  }
+  const bytes = Buffer.from(message.data, "base64");
+  socket.send(message.binary ? bytes : bytes.toString("utf8"));
+}
+
 /** Opens the WebSocket to code-server's socket with the browser's own handshake headers (Host, Origin). */
 export async function openUpstreamSocket(call: {
   socketPath: string;
@@ -81,9 +90,8 @@ export async function openUpstreamSocket(call: {
   await opened(socket);
   return {
     protocol: socket.protocol,
-    send: ({ data, binary }) => {
-      const bytes = Buffer.from(data, "base64");
-      socket.send(binary ? bytes : bytes.toString("utf8"));
+    send: (message) => {
+      sendWithinLimit(socket, message);
     },
     close: () => {
       socket.close(1000);

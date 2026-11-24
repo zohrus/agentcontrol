@@ -29,8 +29,9 @@ async function socketFor(options: { stateDir: string; sessionId: SessionId }): P
   await mkdir(run, { recursive: true });
   await chmod(options.stateDir, 0o700);
   await chmod(run, 0o700);
-  const name = createHash("sha256").update(options.sessionId).digest("hex").slice(0, 16);
-  return join(run, `${name}.sock`);
+  const name = createHash("sha256").update(options.sessionId).digest("hex").slice(0, 12);
+  // One name per launch: a server that is still ending cannot remove the socket of its successor.
+  return join(run, `${name}-${crypto.randomUUID().slice(0, 6)}.sock`);
 }
 
 async function installedOrRefuse(env: HostEnv): Promise<string[]> {
@@ -87,6 +88,7 @@ export class Servers {
   }
 
   async stopAll(): Promise<void> {
+    await Promise.all([...this.starting.values()].map((start) => start.catch(() => undefined)));
     await Promise.all([...this.running.keys()].map((sessionId) => this.stop(sessionId)));
   }
 

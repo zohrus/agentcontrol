@@ -29,8 +29,10 @@ the local workspace and for ssh workspaces, and opens no port on the remote host
   and sits in `ide/` and `ide/run/` (both mode 700) inside the relay's own data folder, so only the
   relay's user can open it, and the only thing that does is the relay. Settings and extensions are
   per workspace, not per session, so installed extensions persist across sessions. The process is
-  started in its own process group (`detached`), so stopping it (SIGTERM, SIGKILL after 3 s) also
-  reaches the extension host and terminals it started. Its environment is the relay's minus
+  started in its own process group (`detached`), so stopping it (SIGTERM, SIGKILL after 3 s, and a
+  final SIGKILL of the group even when the main process already died) also reaches the extension
+  host and terminals it started. Each launch has its own socket name, so a server that is still
+  ending cannot remove its successor's socket. Its environment is the relay's minus
   `AGENTCONTROL_*`, plus the session's `PORT` and `AGENTCONTROL_PORT_BASE`, like the Console.
   Tested (`e2e/ide/secrets.e2e.ts`): flags, socket and folder modes. The tests run as root, so they
   prove the mode bits, not a refusal for another user.
@@ -66,7 +68,11 @@ the local workspace and for ssh workspaces, and opens no port on the remote host
     message. Browser messages are sent on in order, one call each. Binary and text frames, the
     close code and the subprotocol are carried through.
   - Compressed responses pass as they are (`decompress: false`); hop-by-hop headers are removed
-    both ways; `Host` and `Origin` are kept as the browser sent them, because code-server checks
+    both ways. **Cookies never cross:** cookies ignore ports, so the browser sends the IDE origin
+    every cookie of every server on 127.0.0.1 (an agent's dev server, say), and the tunnel would
+    carry them to a possibly remote host. `Cookie` and `Authorization` are dropped from requests
+    and `Set-Cookie` from answers (code-server has no login with `--auth none`). Found by review;
+    tested. `Host` and `Origin` are kept as the browser sent them, because code-server checks
     that they match.
 - **Origin: a second listener on another loopback port (option 1).** `startIdeOrigin` binds
   `127.0.0.1:0` and serves only `/<ticket>/...`, proxied. A different port is a different origin,
@@ -143,9 +149,11 @@ it was started. It is selected with `AGENTCONTROL_CODE_SERVER_CMD`, locally and 
 
 - A relay killed with SIGKILL (or a crash) leaves its code-servers running. Fix: a pid file per
   server and a sweep at relay start that checks the command line before killing.
-- Cookies code-server sets with `Path=/` are shared with other servers on 127.0.0.1 (cookies ignore
-  ports); the proxy does not rewrite them. VS Code's web server does not rely on cookies without
-  auth, but this is not verified.
+- Dropping cookies is unverified with the real workbench (it should not need any without auth).
+- The ticket's lifetime is renewed by HTTP requests and WebSocket upgrades only: a tab that holds
+  only a WebSocket for an hour cannot reconnect and has to be opened again from the app.
+- `code-server --version` runs on every status check (no cache) and writes a default config file in
+  the home folder when there is none.
 - Uploads over 16 MiB are refused (413); they are read whole before they are sent.
 - macOS, an arm64 host and a high-latency link were not tried. The compiled app's smoke does not
   start a code-server.

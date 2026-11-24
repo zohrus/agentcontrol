@@ -99,7 +99,7 @@ export function createLink(target: { hub: Hub; workspaceId: string }) {
   const link: Link = {
     onTerminal: signals.onTerminal,
     onIde: signals.onIde,
-    call: (method, params) => current().client.call(method, params),
+    call: async (method, params) => current().client.call(method, params),
     refreshSessions: () => current().refreshSessions(),
     watchFiles: files.watch,
   };
