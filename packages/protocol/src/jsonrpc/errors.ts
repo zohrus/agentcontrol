@@ -23,3 +23,23 @@ export const ErrorCode = {
   ideNotInstalled: -32011,
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+/**
+ * The `data` of an `invalidParams` answer to params that do not fit the method's schema, as
+ * opposed to one the relay refused for what they ask. A client that sent what its own schema allows
+ * and gets this back is talking to a relay that expects something else.
+ */
+export const SCHEMA_REFUSAL = { schemaRefusal: true } as const;
+
+/** What zod's `error.message` looks like: a JSON list of issues, each with a `code` and a `path`. */
+const ISSUES = /^\[\s*\{\s*"[a-z]+":[\s\S]*"path":/;
+
+/**
+ * Whether an `invalidParams` answer says the params did not fit the schema. A relay older than
+ * `SCHEMA_REFUSAL` sent zod's message as it was, so that is recognised too.
+ */
+export function isSchemaRefusal(answer: { message: string; data?: unknown }): boolean {
+  const { data } = answer;
+  const marked = typeof data === "object" && data !== null && "schemaRefusal" in data;
+  return marked || ISSUES.test(answer.message);
+}

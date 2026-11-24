@@ -19,14 +19,19 @@ export async function describeFiles(dir: string, names: string[]): Promise<Manif
   );
 }
 
-/** Writes dist/manifest.json, which the release attaches next to the binaries. */
+/**
+ * Writes dist/manifest.json, which the release attaches next to the binaries. `buildId` says which
+ * code they were built from, so an app run from source can tell that a binary in dist/ is stale.
+ */
 export async function writeManifest(options: {
   dir: string;
   version: string;
+  buildId: string;
   files: ManifestFile[];
 }): Promise<void> {
-  const { dir, version, files } = options;
-  await Bun.write(join(dir, "manifest.json"), `${JSON.stringify({ version, files }, null, 2)}\n`);
+  const { dir, version, buildId, files } = options;
+  const text = JSON.stringify({ version, buildId, files }, null, 2);
+  await Bun.write(join(dir, "manifest.json"), `${text}\n`);
 }
 
 /** A plain-text table of names, sizes in MB and the start of each hash. */

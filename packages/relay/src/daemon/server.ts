@@ -5,7 +5,6 @@ import { createInterface } from "node:readline";
 import { NORMALISER_VERSION } from "../acp-normalise/index.ts";
 import { ADAPTER_CACHE, type HostEnv } from "../agents/index.ts";
 import { configHome } from "../config/index.ts";
-import { VERSION } from "@agentcontrol/protocol";
 import { Ide } from "../ide/index.ts";
 import { createRepoStore, type RepoStore } from "../repos/index.ts";
 import { createRpcConnection, type Handlers } from "../rpc/index.ts";
@@ -19,6 +18,7 @@ import { sessionHandlers } from "./handlers-sessions.ts";
 import { terminalHandlers } from "./handlers-terminal.ts";
 import { usageHandlers } from "./handlers-usage.ts";
 import { workspaceHandlers } from "./handlers-workspace.ts";
+import { reportedIdentity } from "./identity.ts";
 import { socketPathIn, tryConnect } from "./socket.ts";
 import { waitForStoppingRelay } from "./stopping.ts";
 
@@ -86,6 +86,8 @@ export interface DaemonOptions {
   normaliserVersion?: number;
   /** What `relay/hello` reports as the relay's version; this release's version if left out. */
   relayVersion?: string;
+  /** What `relay/hello` reports as the code the relay runs; its own build's identity if left out. */
+  buildId?: string;
   /**
    * A test seam: `relay/terminal.open` waits for this after finding the session's folder and before
    * starting the shell, so a test can make the client leave in between.
@@ -133,8 +135,7 @@ function workspaceParts(call: { options: DaemonOptions; hostEnv: HostEnv; repos:
     repos,
     env: hostEnv,
     normaliserVersion: options.normaliserVersion ?? NORMALISER_VERSION,
-    // AGENTCONTROL_RELAY_VERSION is only set by tests, to look like another release.
-    relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
+    ...reportedIdentity({ options, hostEnv }),
   };
 }
 

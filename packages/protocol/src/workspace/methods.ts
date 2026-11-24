@@ -12,6 +12,12 @@ export const HelloParams = z.object({ clientVersion: z.string() });
  */
 export const HelloResult = z.object({
   relayVersion: z.string(),
+  /**
+   * Which code the relay runs (a hash, see `buildIdentity`), where the version cannot tell: every
+   * commit of a release has the same version. Absent from a relay older than this field, which
+   * is then taken to be other code than the app's.
+   */
+  buildId: z.string().optional(),
   /** Absent from a relay of an older release: the app then knows nothing to re-read. */
   normaliserVersion: z.number().int().positive().optional(),
   agents: z.array(AgentKind),

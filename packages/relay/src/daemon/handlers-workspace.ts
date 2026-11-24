@@ -16,12 +16,14 @@ export function workspaceHandlers(call: {
   env: HostEnv;
   normaliserVersion: number;
   relayVersion: string;
+  buildId: string;
 }): Pick<Handlers, WorkspaceMethods> {
-  const { repos, env, normaliserVersion, relayVersion } = call;
+  const { repos, env, normaliserVersion, relayVersion, buildId } = call;
   return {
     [N.hello]: () =>
       Promise.resolve({
         relayVersion,
+        buildId,
         normaliserVersion,
         agents: availableAgents(env),
       }),

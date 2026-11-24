@@ -7,9 +7,10 @@ import { z } from "zod";
  * - `reconnecting`: the connection dropped (network, laptop sleep); the app is trying again. The
  *   sessions keep running on the machine.
  * - `offline`: the last attempt failed; `reason` says why in plain words. The app keeps trying.
- * - `needs-relay-update`: the relay answers but is another version than the app and has sessions
- *   still working. It is used as it is; `workspaces.restartRelay` replaces it (its agents end). An
- *   idle relay of another version is replaced at connect, without a stop here.
+ * - `needs-relay-update`: the relay answers but is another version than the app, or the same version
+ *   built from other code (see `buildIdentity`), and has sessions still working. It is used as it
+ *   is; `workspaces.restartRelay` replaces it (its agents end). An idle relay of another version or
+ *   build is replaced at connect, without a stop here.
  * - `removed`: the user removed the workspace; its past sessions stay readable.
  */
 export const ConnectionState = z.enum([

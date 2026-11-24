@@ -5,6 +5,7 @@ import {
   type RelayMethodName,
   RelayMethods,
   type RelayParams,
+  SCHEMA_REFUSAL,
 } from "@agentcontrol/protocol";
 import { RelayError, toErrorBody } from "./errors.ts";
 import type { Client, Handler, Handlers } from "./types.ts";
@@ -27,7 +28,9 @@ async function run<M extends RelayMethodName>(call: {
   client: Client;
 }) {
   const checked = RelayMethods[call.name].params.safeParse(call.raw ?? {});
-  if (!checked.success) throw new RelayError(ErrorCode.invalidParams, checked.error.message);
+  if (!checked.success) {
+    throw new RelayError(ErrorCode.invalidParams, checked.error.message, SCHEMA_REFUSAL);
+  }
   const handler = call.handlers[call.name] as Handler<M>;
   return handler(checked.data as RelayParams<M>, call.client);
 }
