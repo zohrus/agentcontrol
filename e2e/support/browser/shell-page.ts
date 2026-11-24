@@ -6,6 +6,8 @@ const liveStream = "**/api/stream";
 /** What happens to the page itself: its address, reloading, the clock and the screen colors. */
 function pageItself(page: Page) {
   return {
+    /** The browser tab itself, for helpers that measure what the page shows (see reaction.ts). */
+    raw: page,
     /** Types an address into the address bar: only the part after `#`, such as `#/sessions/abc`. */
     goesToAddress: async (hash: string): Promise<void> => {
       await page.evaluate(`window.location.hash = ${JSON.stringify(hash)}`);

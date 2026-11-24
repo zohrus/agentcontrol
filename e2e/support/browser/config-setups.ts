@@ -2,6 +2,7 @@ import { configUserOf } from "../setup/config-user.ts";
 import { command, mcpServer, onlyInRepo } from "../setup/config-items.ts";
 import { createLocalRepo } from "../setup/local-repo.ts";
 import { expectConfigToShow } from "./config-browser-expectations.ts";
+import type { BrowserOptions } from "./start-app-in-browser.ts";
 import { startConfigAppInBrowser, type ConfigAppInBrowser } from "./start-config-app-in-browser.ts";
 
 /** An MCP server "docs" that was set up and applied before the user opens Config. */
@@ -34,8 +35,10 @@ export function startConfigAppWithAnExistingSetup(): Promise<ConfigAppInBrowser>
 }
 
 /** The user opened Config and added an MCP server "docs" there; nothing is reviewed yet. */
-export async function startConfigAppWithAServerAddedInTheScreen(): Promise<ConfigAppInBrowser> {
-  const app = await startConfigAppInBrowser();
+export async function startConfigAppWithAServerAddedInTheScreen(
+  options: BrowserOptions = {},
+): Promise<ConfigAppInBrowser> {
+  const app = await startConfigAppInBrowser({}, options);
   await app.page.opensConfig();
   await app.page.addsMcpServer({ name: "docs", command: "npx" });
   await expectConfigToShow(app, "docs");
@@ -43,8 +46,10 @@ export async function startConfigAppWithAServerAddedInTheScreen(): Promise<Confi
 }
 
 /** The user added an MCP server "docs" in the Config screen, reviewed the changes and applied them. */
-export async function startConfigAppAfterApplyingAServerInTheScreen(): Promise<ConfigAppInBrowser> {
-  const app = await startConfigAppWithAServerAddedInTheScreen();
+export async function startConfigAppAfterApplyingAServerInTheScreen(
+  options: BrowserOptions = {},
+): Promise<ConfigAppInBrowser> {
+  const app = await startConfigAppWithAServerAddedInTheScreen(options);
   await app.page.reviewsTheChanges();
   await app.page.appliesTheChanges();
   await expectConfigToShow(app, "Applied.");

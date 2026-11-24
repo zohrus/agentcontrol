@@ -33,7 +33,7 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 ## Workspaces and the relay
 - [x] Remote (SSH) workspaces, core (23 Nov 2026): `workspaces.list/add/remove/check/restartRelay/hosts` in the app API and SDK, the relay installed on the host over ssh, per-workspace links, live workspace state, tests against a real private `sshd` (`docs/decisions/2026-11-22-remote-workspaces.md`). A busy relay of an older version stays attached and shows "needs relay update" instead of being replaced.
 - [ ] SSH workspaces UI: workspace picker, add-SSH-workspace dialog, restart relay. In progress.
-- [ ] Creating a session waits for `ls-remote` and `fetch` (up to 15 s each on a hung remote) before the session exists. Log `session-created` first and resolve the base in the background (needs the resolved base recorded by a later event).
+- [x] Creating a session no longer waits for `ls-remote` and `fetch` (24 Nov 2026): `session-created` is logged first, the trunk, the fetch and the worktree are setup steps inside the session, and a `base-resolved` event records the base (`docs/decisions/2026-11-24-instant-feedback.md`).
 - [ ] Verify SSH workspaces on a real remote Linux host and on arm64 (only a local `sshd` was tried).
 - [ ] New-session dialog: the "Starts from the latest <trunk>" hint uses the default branch stored when the repository was added; refresh it from the remote (`ls-remote`) when the dialog opens, and say "no remote" for repositories without one.
 - [ ] Three ssh lines are not covered by any end-to-end test: `ssh-hosts.ts:37` and `ssh-check.ts:28-29`.
@@ -214,3 +214,16 @@ A real Claude Code session was run in the compiled Linux app through a browser, 
 ## Normalised updates
 - [ ] The app stores the normalised updates it receives, so sessions synced before a normaliser improvement keep the old form. Add a normaliser version and re-sync, or strip on save and normalise on read.
 - [ ] Config review: a repository whose items were all deleted is not named by the review any more, so the entries the app wrote into it stay. The review could add the repositories that the drift report or manifest still lists.
+
+## Instant feedback (24 Nov 2026)
+Landed: see `docs/decisions/2026-11-24-instant-feedback.md` (numbers, shared pieces, tests). Still open:
+- [ ] Search (⌘K): the search box in the top bar is a placeholder, nothing opens. Build it with the same rule (the panel opens at once, results fill in).
+- [ ] Not measured yet: Add workspace steps, Check and repair, Restart relay and Remove (confirm, then nothing until the answer: give them an "in progress" label like Archive), Analytics filters, opening a file's diff.
+- [ ] Long conversations: the stream is rebuilt from every event at each 20 ms batch and every item re-renders. 6600 events reduce in 22 ms with Bun; measure in the browser with a few thousand events and memoize items if it shows.
+- [ ] The SDK's stream reconnects after a fixed 1 s (`sdk/src/subscribe.ts`): start lower and back off.
+- [ ] The first opening of the Terminal tab loads xterm and the Editor tab loads Monaco on demand; their tabs react at once (10 to 65 ms) but their content is measured only up to the container. Measure the content.
+- [ ] A new session whose creation the app never confirms (the answer is lost) keeps its history unloaded until a summary for it arrives; a summary does adopt it, so only a silent app is affected.
+- [ ] The New session dialog closes when the session is created. If the app refuses, the choices are not brought back (the message says why); consider reopening it with them.
+- [ ] Archiving a session while its setup script runs removes the folder under the script (it is not stopped); the session reads archived but its log ends with a setup failure. Track the setup run and stop it first.
+- [ ] The Modify chat shows a request as "Sending…" until the app answers; if the live stream delivers the request first it can show twice for that time. Reuse the outgoing-message settling.
+- [ ] A session whose worktree could not be made reads an empty diff and file list also after a relay restart (the folder is checked); a test for the restart is missing.

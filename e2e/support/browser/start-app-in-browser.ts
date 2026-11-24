@@ -2,6 +2,7 @@ import { type RunningApp, startAppWithLocalWorkspace } from "../setup/start-app.
 import { type AppPage, appPageOf } from "./app-page.ts";
 import { openTab } from "./open-tab.ts";
 import type { Page } from "./playwright.ts";
+import type { Wire } from "../setup/wire.ts";
 import { recordBrowserCoverage } from "./ui-coverage/collect.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
@@ -23,6 +24,8 @@ export type BrowserOptions = {
   storageBlocked?: boolean;
   /** The repo holds this many files besides its readme. */
   repoFiles?: number;
+  /** Wraps each connection the app opens to the relay, to make the relay slow or misbehave. */
+  relayWire?: (wire: Wire) => Wire;
 };
 
 async function waitUntilConnected(page: Page): Promise<void> {
@@ -62,11 +65,12 @@ export async function openInBrowser<A extends RunningApp>(
 
 /** Starts the app with the mock agent and its UI, and opens the UI in a headless browser. */
 export async function startAppInBrowser(options: BrowserOptions = {}): Promise<AppInBrowser> {
-  const { relayEnv, repoFiles } = options;
+  const { relayEnv, repoFiles, relayWire } = options;
   const app = await startAppWithLocalWorkspace({
     withUi: true,
     ...(relayEnv && { relayEnv }),
     ...(repoFiles === undefined ? {} : { repoFiles }),
+    ...(relayWire && { relayWire }),
   });
   return openInBrowser(app, options);
 }

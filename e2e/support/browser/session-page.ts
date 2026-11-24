@@ -17,9 +17,16 @@ function composer(page: Page) {
     },
     /** Presses Enter alone in the message box: that is a new line, not a send. */
     pressesEnterInTheMessageBox: () => page.locator("textarea").press("Enter"),
+    /** Presses "Send again" under a message that was not sent. */
+    sendsAgain: () => page.getByRole("button", { name: "Send again" }).click(),
     cancelsTheTurn: () => page.getByRole("button", { name: "Cancel", exact: true }).click(),
     /** Whether the Send button can be pressed. */
     sendIsEnabled: () => page.getByRole("button", { name: "Send", exact: true }).isEnabled(),
+    /** Presses Archive; the dialog that asks to confirm opens. */
+    asksToArchive: () => page.getByRole("button", { name: "Archive", exact: true }).click(),
+    /** Confirms in the archive dialog. */
+    confirmsTheArchive: () =>
+      page.getByRole("dialog").getByRole("button", { name: "Archive", exact: true }).click(),
     /** Presses Archive and confirms in the dialog that opens. */
     archives: async (): Promise<void> => {
       await page.getByRole("button", { name: "Archive", exact: true }).click();
