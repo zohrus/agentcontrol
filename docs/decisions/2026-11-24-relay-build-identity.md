@@ -24,8 +24,11 @@ app started on the same data folder: the workspace read `connected` with `relayV
   exact pins of the relay's dependencies). It changes when any of them changes, committed or not, so
   a dirty checkout and a pulled one both differ from the relay that was started earlier. The app, the
   UI and the docs are left out on purpose: a change to them must not restart a relay that is working.
-- **Three ways to run, one function.** From source (`bun dev`): hashed at start, once per process
-  (about 20 ms for the roughly 170 files). Compiled: `scripts/build.ts` computes it once and passes
+- **Three ways to run, one function.** From source (`bun dev`): hashed at start
+  (about 20 ms for the roughly 170 files). The relay hashes once, when it starts, because that is the
+  code it loaded; the app hashes on every connect, so an app still running after an edit compares the
+  relay with the code as it is now, and a relay started after the edit is the app's own (no restart
+  loop). Compiled: `scripts/build.ts` computes it once and passes
   `--define AGENTCONTROL_BUILD_ID=...` to every `bun build --compile`, so the app and every relay
   binary of one build carry the same value; nothing is read at run time. Installed on an ssh host:
   the compiled relay carries its own. If neither works (a compile that skipped the define, in a
@@ -64,6 +67,10 @@ app started on the same data folder: the workspace read `connected` with `relayV
   Workspaces and use Restart relay, or quit AgentControl and open it again once no session is
   working.", and keeps what the relay said in `data.detail`. The UI shows that message as it is. Bad
   input that the app itself catches still reads "AgentControl could not use what was entered."
+
+A reconnect of an ssh workspace (sleep, network) does not repeat the stale `dist/` refusal: only the
+first connection of an app run insists on a current build, so a working host is not sent offline by
+an edit that was never built.
 
 ## Not done
 
