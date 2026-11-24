@@ -19,6 +19,14 @@ export function opensAFinishedSessionWithCodeServer(): Promise<{
   return opensAFinishedSessionWith(FAKE_CODE_SERVER_ENV);
 }
 
+/** The same, with a code-server that exits as soon as it starts. */
+export function opensAFinishedSessionWithACodeServerThatFails(): Promise<{
+  app: AppInBrowser;
+  session: Session;
+}> {
+  return opensAFinishedSessionWith({ ...FAKE_CODE_SERVER_ENV, FAKE_CODE_SERVER_FAILS: "1" });
+}
+
 /** The same, on a workspace where code-server is not installed. */
 export function opensAFinishedSessionWithoutCodeServer(): Promise<{
   app: AppInBrowser;

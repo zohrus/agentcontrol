@@ -14,6 +14,11 @@ if (args.includes("--version")) {
   process.exit(0);
 }
 
+if (process.env["FAKE_CODE_SERVER_FAILS"]) {
+  console.error("fake code-server: cannot start (FAKE_CODE_SERVER_FAILS is set)");
+  process.exit(3);
+}
+
 const flags = flagsOf(args);
 const socket = flags.value("--socket");
 if (socket === undefined) {
@@ -35,6 +40,7 @@ writeFileSync(
 
 /** Accepts the WebSocket, answering with the first subprotocol the browser offered. */
 function upgrade(request: Request, server: Server<undefined>): boolean {
+  if (new URL(request.url).pathname === "/refuse") return false;
   const protocol = request.headers.get("sec-websocket-protocol")?.split(",")[0]?.trim();
   return server.upgrade(request, {
     headers: protocol === undefined ? {} : { "sec-websocket-protocol": protocol },
@@ -52,7 +58,8 @@ const server = Bun.serve({
   },
   websocket: {
     message(ws, message) {
-      ws.send(message);
+      if (message === "close-now") ws.close(4001, "closed by code-server");
+      else ws.send(message);
     },
   },
 });

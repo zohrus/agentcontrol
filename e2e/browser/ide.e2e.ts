@@ -2,10 +2,12 @@ import { afterEach, test } from "bun:test";
 import {
   expectBrowserVsCodeButtonToBeDisabledBecause,
   expectBrowserVsCodeButtonToBeEnabled,
+  expectBrowserVsCodeButtonToSay,
   expectNewTabToShowTheWorkbench,
   expectScriptsOnTheIdeOriginToBeBlocked,
 } from "../support/browser/ide-browser-expectations.ts";
 import {
+  opensAFinishedSessionWithACodeServerThatFails,
   opensAFinishedSessionWithCodeServer,
   opensAFinishedSessionWithoutCodeServer,
 } from "../support/browser/ide-setups.ts";
@@ -98,6 +100,28 @@ test(
     // ** THEN the browser blocks every attempt
     // ********************************************************************
     await expectScriptsOnTheIdeOriginToBeBlocked(tab);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "when code-server cannot start, the button says what went wrong and no empty tab is left",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a finished session open in the browser, on a workspace whose code-server exits at once
+    // ********************************************************************
+    const { app } = await opensAFinishedSessionWithACodeServerThatFails();
+    await expectBrowserVsCodeButtonToBeEnabled(app);
+
+    // ********************************************************************
+    // ** WHEN the user clicks "Open in browser VS Code"
+    // ********************************************************************
+    await app.page.clicksOpenInBrowserVsCode();
+
+    // ********************************************************************
+    // ** THEN the button's note says what code-server printed
+    // ********************************************************************
+    await expectBrowserVsCodeButtonToSay(app, "cannot start");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

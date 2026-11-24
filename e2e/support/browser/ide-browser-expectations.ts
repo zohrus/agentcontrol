@@ -25,6 +25,17 @@ export function expectBrowserVsCodeButtonToBeDisabledBecause(
   );
 }
 
+/** The button says this (its note), whether it can be clicked or not. */
+export function expectBrowserVsCodeButtonToSay(app: AppInBrowser, text: string): Promise<void> {
+  return pageEventually(
+    `expected the Open in browser VS Code button to say "${text}"`,
+    async () => {
+      const note = await app.page.browserVsCodeButtonNote();
+      return note.includes(text) ? undefined : `its note reads ${quote(note)}`;
+    },
+  );
+}
+
 /** The new tab shows code-server's workbench, served from another port than the app's. */
 export async function expectNewTabToShowTheWorkbench(call: {
   app: AppInBrowser;

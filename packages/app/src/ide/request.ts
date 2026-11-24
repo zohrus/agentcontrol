@@ -1,4 +1,4 @@
-import { IDE_MAX_REQUEST_BYTES, RelayName as N, type SessionId } from "@agentcontrol/protocol";
+import { RelayName as N, type SessionId } from "@agentcontrol/protocol";
 import type { Link } from "../sync/index.ts";
 import { BodyStream } from "./body-stream.ts";
 
@@ -27,8 +27,6 @@ const NO_BODY = new Set([101, 204, 205, 304]);
 const text = (status: number, message: string): Response =>
   new Response(message, { status, headers: { "content-type": "text/plain; charset=utf-8" } });
 
-const TOO_BIG = "That upload is too big for the tunnel.";
-
 /** The request's headers as pairs, without the ones that belong to this hop. */
 export function forwardedHeaders(headers: Headers): [string, string][] {
   return [...headers.entries()].filter(([name]) => !HOP_BY_HOP.has(name.toLowerCase()));
@@ -47,15 +45,13 @@ function withReferrerPolicy(headers: [string, string][]): [string, string][] {
 const isGetOrHead = (request: Request): boolean =>
   request.method === "GET" || request.method === "HEAD";
 
-const declaredTooBig = (request: Request): boolean =>
-  Number(request.headers.get("content-length")) > IDE_MAX_REQUEST_BYTES;
-
-/** The request's body as base64, `undefined` when there is none, or the refusal when it is too big. */
-async function readBody(request: Request): Promise<string | undefined | Response> {
+/**
+ * The request's body as base64, `undefined` when there is none. The listener's own limit
+ * (`maxRequestBodySize`, 16 MiB) has already answered 413 to a bigger one, declared or not.
+ */
+async function readBody(request: Request): Promise<string | undefined> {
   if (isGetOrHead(request)) return undefined;
-  if (declaredTooBig(request)) return text(413, TOO_BIG);
   const bytes = Buffer.from(await request.arrayBuffer());
-  if (bytes.length > IDE_MAX_REQUEST_BYTES) return text(413, TOO_BIG);
   return bytes.length === 0 ? undefined : bytes.toString("base64");
 }
 
@@ -124,7 +120,6 @@ async function relayAnswer(call: Call & { body: string | undefined; tunnel: Tunn
  */
 export async function proxyRequest(call: Call): Promise<Response> {
   const body = await readBody(call.request);
-  if (body instanceof Response) return body;
   const tunnel = openTunnel(call.link);
   try {
     return await relayAnswer({ ...call, body, tunnel });

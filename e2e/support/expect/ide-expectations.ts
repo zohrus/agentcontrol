@@ -33,12 +33,13 @@ export async function expectIdeToAnswer(
   tab: IdeTab,
   call: { path: string; status: number },
 ): Promise<void> {
-  const answer = await tab.loads(call.path);
-  if (answer.status !== call.status) {
-    throw new Error(
-      `expected "${call.path}" on the IDE to answer ${String(call.status)}, but it answered ${String(answer.status)}`,
-    );
-  }
+  await eventually(
+    `expected "${call.path}" on the IDE to answer ${String(call.status)}`,
+    async () => {
+      const answer = await tab.loads(call.path);
+      return answer.status === call.status ? undefined : `it answered ${String(answer.status)}`;
+    },
+  );
 }
 
 /** The IDE serves this static file with this text in it. */
@@ -122,4 +123,20 @@ export async function expectOneCodeServerStarted(relayDataDir: string): Promise<
   const [only] = await expectCodeServersStarted(relayDataDir, 1);
   if (only === undefined) throw new Error("expected one code-server to have been started");
   return only;
+}
+
+/** The WebSocket was refused before it opened. */
+export async function expectSocketToBeRefused(socket: IdeSocket): Promise<void> {
+  await socket.openings.waitFor(
+    (opened) => "refused" in opened,
+    "expected the WebSocket to be refused",
+  );
+}
+
+/** The WebSocket ended with this close code (the one code-server gave, or 1011 when the link broke). */
+export async function expectSocketToEndWith(socket: IdeSocket, code: number): Promise<void> {
+  await socket.endings.waitFor(
+    (ended) => ended.code === code,
+    `expected the WebSocket to end with the close code ${String(code)}`,
+  );
 }

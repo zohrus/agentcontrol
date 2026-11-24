@@ -11,6 +11,8 @@ export function idePage(page: Page) {
       const [tab] = await Promise.all([page.waitForEvent("popup"), button.click()]);
       return tab;
     },
+    /** Clicks the button and does not wait for a tab (none opens when starting fails). */
+    clicksOpenInBrowserVsCode: () => button.click(),
     /** Whether the button can be clicked, once the app has said whether code-server can be opened. */
     browserVsCodeButtonIsEnabled: (): Promise<boolean> => button.isEnabled(),
     /** What the button says about itself when hovered: why it is disabled, or what it does. */
