@@ -1,6 +1,7 @@
 import { afterEach, test } from "bun:test";
 import {
   expectAnalyticsToShow,
+  expectAnalyticsToShowOnce,
   expectHeadlineToShow,
   expectInsightToSay,
   expectSessionToBeOpenInstead,
@@ -12,7 +13,10 @@ import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
-import { TWO_SESSIONS_TWO_MODELS } from "../support/setup/analytics-scenarios.ts";
+import {
+  SESSION_WITHOUT_COST,
+  TWO_SESSIONS_TWO_MODELS,
+} from "../support/setup/analytics-scenarios.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 import { SESSION_THAT_WAITED_TEN_MINUTES } from "../support/setup/insight-scenarios.ts";
 import { agentWillReplyCostingFourTenthsOfACent } from "../support/setup/sub-cent-usage.ts";
@@ -154,6 +158,30 @@ test(
     // ** THEN the status bar shows "<$0.01 today"
     // ********************************************************************
     await expectTodayCostToShow(app, "<$0.01 today");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "a subscription session shows its tokens and says the plan's limits are not reported",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a finished session that used 1,500 tokens and whose agent reported no cost
+    // ********************************************************************
+    const app = await startSeededAppInBrowser(SESSION_WITHOUT_COST);
+
+    // ********************************************************************
+    // ** WHEN the user presses Analytics
+    // ********************************************************************
+    await app.page.opensAnalytics();
+
+    // ********************************************************************
+    // ** THEN the headline shows 1.5k tokens and no cost
+    // ********************************************************************
+    await expectHeadlineToShow(app, { label: "Tokens", value: "1.5k" });
+    await expectHeadlineToShow(app, { label: "Cost", value: "No cost reported" });
+    // AND the screen says once that the plan's usage limits are not reported
+    await expectAnalyticsToShowOnce(app, "Your plan's usage limits are not reported by the agent");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

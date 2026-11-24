@@ -71,3 +71,11 @@ export function expectTodayCostToShow(app: AppInBrowser, text: string): Promise<
     return shown === text ? undefined : `it shows ${quote(shown)}`;
   });
 }
+
+/** The Analytics screen says this text exactly once. */
+export function expectAnalyticsToShowOnce(app: AppInBrowser, text: string): Promise<void> {
+  return pageEventually(`expected the Analytics screen to show ${quote(text)} once`, async () => {
+    const times = (await app.page.analyticsText()).split(text).length - 1;
+    return times === 1 ? undefined : `it shows it ${String(times)} times`;
+  });
+}
