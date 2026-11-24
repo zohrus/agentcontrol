@@ -9,7 +9,8 @@ import { RelayError } from "../rpc/index.ts";
 import type { SessionContext } from "./context.ts";
 import { answerByPolicy } from "./permissions.ts";
 import { restrictionsFor } from "./restrictions.ts";
-import { launchAgent } from "./start.ts";
+import { launchAgent } from "./connect.ts";
+import { timedFor } from "./timed.ts";
 import { startTurn } from "./turn.ts";
 
 interface DirectorySession {
@@ -35,6 +36,7 @@ async function runDirectorySession(ctx: SessionContext, session: DirectorySessio
     agent: params.agent,
     cwd,
     env: {},
+    timed: timedFor(ctx, { sessionId, phase: "setup" }),
     ...(sessionMeta ? { sessionMeta } : {}),
     ask: (request) => answerByPolicy(ctx, { sessionId, request, policy, cwd }),
   });

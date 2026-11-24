@@ -7,9 +7,11 @@ import {
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
-import type { AgentProcess, HostEnv } from "../agents/index.ts";
+import type { AgentProcess, HostEnv, PreparedAgent } from "../agents/index.ts";
+import { stopwatchOf } from "../steps/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
+import { sweepMovedWorktrees } from "../worktrees/index.ts";
 import type { RepoStore } from "../repos/index.ts";
 import { archiveSession } from "./archive.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
@@ -80,6 +82,8 @@ async function shutdown(ctx: SessionContext): Promise<void> {
   // Each stop returns once the agent's last messages were reported; waiting on `lastSeq` then
   // waits for every append queued for the session, so nothing the agent said is lost.
   await Promise.all([...ctx.live.values()].map((agent) => agent.stop()));
+  // An agent whose session was still being set up has nothing to resume: it only has to end.
+  await Promise.all([...ctx.preparing.values()].map((agent) => agent.discard()));
   await Promise.all(ids.map((id) => ctx.log.lastSeq(id)));
   // The agents were stopped by the relay stopping, not by the user: they read as interrupted.
   for (const id of ids) await interruptSession(ctx.log, id);
@@ -101,6 +105,7 @@ async function prompt(ctx: SessionContext, call: { sessionId: SessionId; text: s
 function inFlightSessions() {
   return {
     live: new Map<SessionId, AgentProcess>(),
+    preparing: new Map<SessionId, PreparedAgent>(),
     creating: new Map<SessionId, Promise<boolean>>(),
     claimed: new Set<SessionId>(),
     archiving: new Set<SessionId>(),
@@ -122,6 +127,7 @@ function contextOf(options: {
   const { log, repos, worktreesDir, hostEnv, summaries, endTerminals } = options;
   return {
     ...{ log, repos, worktreesDir, hostEnv, summaries, endTerminals },
+    stopwatch: stopwatchOf(hostEnv),
     permissions: createPendingPermissions(),
     ...inFlightSessions(),
     stopRecording: () => {
@@ -143,6 +149,13 @@ async function eventsOf(ctx: SessionContext, sessionId: SessionId): Promise<Sess
   return (await ctx.log.readAfter(sessionId, 0)).map(withNormalised);
 }
 
+/** Deletes the folders an earlier relay moved aside while archiving and did not finish deleting. */
+function sweepInBackground(worktreesDir: string): void {
+  void sweepMovedWorktrees(worktreesDir).catch((error: unknown) => {
+    console.error(`Could not delete the worktree folders an earlier relay left: ${String(error)}`);
+  });
+}
+
 /** Starts the session lifecycle on top of the event log; first repairs sessions a restart cut off. */
 export async function createSessions(options: {
   log: EventLog;
@@ -152,6 +165,7 @@ export async function createSessions(options: {
   /** Ends a session's terminals, before its folder is removed. */
   endTerminals: SessionContext["endTerminals"];
 }): Promise<Sessions> {
+  sweepInBackground(options.worktreesDir);
   const ids = await recoverSessions(options.log);
   const summaries = await createLiveSummaries({ log: options.log, sessionIds: ids });
   const ctx = contextOf({ ...options, sessionCount: ids.length, summaries });

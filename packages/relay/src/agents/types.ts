@@ -1,4 +1,5 @@
 import type { AgentKind } from "@agentcontrol/protocol";
+import type { Timed } from "../steps/index.ts";
 
 /** The environment the relay reads its agent settings from (the process env, unless injected). */
 export type HostEnv = Record<string, string | undefined>;
@@ -30,9 +31,24 @@ export interface AgentProcess {
 
 export type MessageDirection = "to-agent" | "from-agent";
 
+/** An agent process that is up and has answered `initialize`, waiting for the folder it will work in. */
+export interface PreparedAgent {
+  /** Opens the agent's session in `cwd` (ACP `session/new` or `session/load`); ready for a prompt after. */
+  open(call: {
+    cwd: string;
+    resume?: { agentSessionId: string };
+    sessionMeta?: Record<string, unknown>;
+  }): Promise<AgentProcess>;
+  /** Stops the process without having opened a session, for when the folder could not be made. */
+  discard(): Promise<void>;
+}
+
 export interface StartAgentOptions {
   kind: AgentKind;
+  /** Where the process starts, and where the session opens unless `open` is given another folder. */
   cwd: string;
+  /** Shows the steps of starting (installing the adapter, starting it, opening the session) with their times. */
+  timed?: Timed;
   /** Extra env vars for the agent process (ports etc.). */
   env: Record<string, string>;
   /** Continue this earlier ACP session (`session/load`) when the agent can; else start a new one. */

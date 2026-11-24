@@ -1,5 +1,6 @@
 import type { AgentKind, SessionId, SessionKind } from "@agentcontrol/protocol";
-import type { AgentProcess, HostEnv } from "../agents/index.ts";
+import type { AgentProcess, HostEnv, PreparedAgent } from "../agents/index.ts";
+import type { Stopwatch } from "../steps/index.ts";
 import type { EventInput, EventLog } from "../event-log/index.ts";
 import type { PendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
@@ -25,6 +26,13 @@ export interface SessionContext {
    * instead of finding it missing.
    */
   creating: Map<SessionId, Promise<boolean>>;
+  /**
+   * Agent processes that are up but have no session yet, because the folder they will work in is
+   * still being made. They are stopped when the relay stops or the session is archived first.
+   */
+  preparing: Map<SessionId, PreparedAgent>;
+  /** Times the steps of starting and archiving a session. */
+  stopwatch: Stopwatch;
   /** Sessions being archived: what is still setting one up must not start an agent for it. */
   archiving: Set<SessionId>;
   /** Ids given to sessions being created, so two creates with one client-chosen id cannot both go on. */

@@ -41,6 +41,6 @@ export function directoryWorkdir(info: WorkdirInfo): Workdir {
     },
     diff: () => Promise.reject(unavailable("A diff")),
     uncommitted: () => Promise.resolve([]),
-    remove: () => Promise.resolve(),
+    remove: () => Promise.resolve({ pending: false, finish: () => Promise.resolve() }),
   };
 }

@@ -32,10 +32,30 @@ export const SessionCreatedPayload = z.object({
   portBase: z.number().int().optional(),
 });
 
-/** Payload of "setup-output": one chunk of the worktree setup script's output. */
+/**
+ * One timed step of starting or archiving a session. A step is announced as "running" and later
+ * ends as "done" or "failed" with how long it took; both lines carry the same `id`.
+ */
+export const SetupStep = z.object({
+  id: z.string(),
+  /** "setup" for what starts a session (the default), "archive" for what archives it. */
+  phase: z.enum(["setup", "archive"]).optional(),
+  state: z.enum(["running", "done", "failed"]),
+  /** The step in words without the time, e.g. "Fetched origin/main"; `text` has the time too. */
+  label: z.string(),
+  /** How long the step took, measured by the relay's clock; absent while it runs. */
+  durationMs: z.number().int().nonnegative().optional(),
+});
+export type SetupStep = z.infer<typeof SetupStep>;
+
+/**
+ * Payload of "setup-output": one chunk of what the session's setup printed. `step` is present when
+ * the line announces or ends a timed step; older logs and the setup script's own output have none.
+ */
 export const SetupOutputPayload = z.object({
   stream: z.enum(["stdout", "stderr"]),
   text: z.string(),
+  step: SetupStep.optional(),
 });
 
 /** Payload of "setup-finished": how the setup script ended. */

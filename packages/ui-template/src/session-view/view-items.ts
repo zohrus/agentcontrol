@@ -14,6 +14,17 @@ type ToolItem = {
   stat: DiffStat | undefined;
 };
 
+/** One timed step of starting or archiving a session, as the stream shows it. */
+export type StepView = {
+  id: string;
+  label: string;
+  state: "running" | "done" | "failed";
+  /** When the step began (an ISO time), so a running one can show how long it has been going. */
+  startedAt: string;
+  /** How long it took; undefined while it runs. */
+  durationMs: number | undefined;
+};
+
 /** What the stream shows, one shape per kind of item. `key` is stable across updates. */
 type ItemMap = {
   user: { type: "user"; key: string; text: string; messageId: string | undefined };
@@ -47,7 +58,19 @@ type ItemMap = {
     /** The changes the agent wants to make, with their text when the agent sent it. */
     files: FileChange[];
   };
-  setup: { type: "setup"; key: string; text: string; exitCode: number | undefined };
+  /** What starting a session (phase "setup") or archiving it (phase "archive") did, step by step. */
+  setup: {
+    type: "setup";
+    key: string;
+    phase: "setup" | "archive";
+    /** What the setup script printed. */
+    text: string;
+    exitCode: number | undefined;
+    steps: StepView[];
+    startedAt: string;
+    /** When the setup finished or the session was archived; undefined while it goes on. */
+    endedAt: string | undefined;
+  };
   "turn-ended": { type: "turn-ended"; key: string; stopReason: string };
   "agent-exited": {
     type: "agent-exited";

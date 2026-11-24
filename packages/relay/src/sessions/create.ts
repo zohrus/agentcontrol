@@ -4,6 +4,7 @@ import { RelayError } from "../rpc/index.ts";
 import { checkBaseBranch, namedBase, planWorktree, portBaseFor } from "../worktrees/index.ts";
 import type { SessionContext } from "./context.ts";
 import { runInBackground } from "./start.ts";
+import { timedFor } from "./timed.ts";
 
 function titleOf(params: WorktreeSessionParams): string {
   const firstLine = params.title ?? params.prompt?.split("\n")[0] ?? "";
@@ -44,7 +45,8 @@ async function createClaimed(
     kind: "session-created",
     payload: { ...created, title: titleOf(params), worktreePath, branch, portBase },
   });
-  runInBackground(ctx, { sessionId, repo, params, worktree });
+  const timed = timedFor(ctx, { sessionId, phase: "setup" });
+  runInBackground(ctx, { sessionId, repo, params, worktree, timed });
   return sessionId;
 }
 

@@ -2,6 +2,7 @@ import type { AgentKind } from "@agentcontrol/protocol";
 import { ADAPTERS, adaptersRoot, downloading, needsDownload } from "./adapters.ts";
 import { installedAdapterEntry } from "./install.ts";
 import { launchAdapter } from "./launcher.ts";
+import type { Timed } from "../steps/index.ts";
 import type { HostEnv } from "./types.ts";
 
 const OVERRIDE_VARIABLES: Record<AgentKind, string> = {
@@ -35,24 +36,29 @@ export interface Launch {
  * the whole command. Otherwise the pinned adapter is installed in the relay's own folder (first
  * use only) and started through the launcher by the relay's own program.
  */
-export async function launchFor(kind: AgentKind, env: HostEnv): Promise<Launch | undefined> {
+export async function launchFor(call: {
+  kind: AgentKind;
+  env: HostEnv;
+  timed: Timed;
+}): Promise<Launch | undefined> {
+  const { kind, env, timed } = call;
   const variable = OVERRIDE_VARIABLES[kind];
   const override = env[variable];
   if (override) return { command: parseArgv(variable, override), env: {} };
   const adapter = ADAPTERS[kind];
   if (adapter === undefined) return undefined;
-  const entry = await installedAdapterEntry({ adapter, env });
+  // Only the first use downloads: that is the step worth showing, and timing.
+  const install = () => installedAdapterEntry({ adapter, env });
+  const download = {
+    id: "install",
+    doing: downloading(adapter),
+    done: `Downloaded the ${adapter.label} adapter`,
+  };
+  const entry = await (needsDownload({ adapter, env }) ? timed(download, install) : install());
   return launchAdapter({ entry, folder: adaptersRoot(env) });
 }
 
 /** Agent kinds that can be launched on this machine. */
 export function availableAgents(env: HostEnv): AgentKind[] {
   return KINDS.filter((kind) => env[OVERRIDE_VARIABLES[kind]] || ADAPTERS[kind] !== undefined);
-}
-
-/** What to tell the user while an agent's adapter is downloaded for the first time, if it is. */
-export function firstUseDownload(kind: AgentKind, env: HostEnv): string | undefined {
-  const adapter = env[OVERRIDE_VARIABLES[kind]] ? undefined : ADAPTERS[kind];
-  if (adapter === undefined || !needsDownload({ adapter, env })) return undefined;
-  return downloading(adapter);
 }

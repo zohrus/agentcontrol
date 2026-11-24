@@ -1,5 +1,6 @@
 import type { SessionId, WorktreeSessionParams } from "@agentcontrol/protocol";
 import type { RepoWithSetup } from "../repos/index.ts";
+import type { Timed } from "../steps/index.ts";
 import {
   addWorktree,
   namedBase,
@@ -15,6 +16,8 @@ export interface NewSession {
   params: WorktreeSessionParams;
   /** Where the worktree will be; it does not exist yet when the session is created. */
   worktree: PlannedWorktree;
+  /** Shows each step of setting the session up, with how long it took. */
+  timed: Timed;
 }
 
 /** An error as one plain sentence. */
@@ -30,10 +33,13 @@ async function say(ctx: SessionContext, call: { sessionId: SessionId; text: stri
 
 /** Finds where the worktree starts from, saying so; records it when the user named no branch. */
 async function startPointOf(ctx: SessionContext, session: NewSession): Promise<string> {
-  const { sessionId, repo, params } = session;
+  const { sessionId, repo, params, timed } = session;
   const named = namedBase(params.baseBranch) !== "";
-  if (!named) await say(ctx, { sessionId, text: "Finding the latest trunk of the remote…" });
-  const start = await resolveStartPoint({ repoPath: repo.path, baseBranch: params.baseBranch });
+  const start = await resolveStartPoint({
+    repoPath: repo.path,
+    baseBranch: params.baseBranch,
+    timed,
+  });
   for (const text of start.notes) await say(ctx, { sessionId, text });
   if (!named) {
     await ctx.log.append(sessionId, { kind: "base-resolved", payload: { baseBranch: start.ref } });
@@ -43,11 +49,16 @@ async function startPointOf(ctx: SessionContext, session: NewSession): Promise<s
 
 /** Makes the worktree; true when it exists. A failure is shown as a failed setup, never thrown. */
 async function makeWorktree(ctx: SessionContext, session: NewSession): Promise<boolean> {
-  const { sessionId, repo, worktree } = session;
+  const { sessionId, repo, worktree, timed } = session;
   try {
     const startRef = await startPointOf(ctx, session);
-    await say(ctx, { sessionId, text: "Creating the worktree…" });
-    await addWorktree({ repoPath: repo.path, planned: worktree, startRef, setup: repo.setup });
+    await addWorktree({
+      repoPath: repo.path,
+      planned: worktree,
+      startRef,
+      setup: repo.setup,
+      timed,
+    });
     return true;
   } catch (error) {
     const text = `${reasonOf(error)}\n`;

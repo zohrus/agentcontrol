@@ -1,4 +1,5 @@
 import { git, runGit } from "../git/index.ts";
+import type { Timed } from "../steps/index.ts";
 
 /** What a new session's worktree starts from, and what to tell the user about it. */
 export interface StartPoint {
@@ -61,11 +62,57 @@ async function localStart(cwd: string, why: string): Promise<StartPoint> {
   return { ref, notes: [`${why}, so the session starts from the local ${ref}.`] };
 }
 
-async function fetchedTrunk(cwd: string, remote: string): Promise<StartPoint> {
-  const trunk = await liveTrunk(cwd, remote);
-  const refspec = `+refs/heads/${trunk}:refs/remotes/${remote}/${trunk}`;
-  await git(["fetch", remote, refspec], network(cwd));
+/** Fetches just that branch of the remote into its remote-tracking branch. */
+async function fetchTrunk(cwd: string, call: { remote: string; trunk: string }): Promise<void> {
+  const { remote, trunk } = call;
+  await git(
+    ["fetch", remote, `+refs/heads/${trunk}:refs/remotes/${remote}/${trunk}`],
+    network(cwd),
+  );
+}
+
+/**
+ * The branch the remote most likely has as its trunk, from what the repository knew last time. It
+ * is only a guess, used to start the fetch while the remote is still being asked: the answer of
+ * the remote decides which branch is used.
+ */
+async function guessedTrunk(cwd: string, remote: string): Promise<string | undefined> {
+  const known = await lastKnownTrunk(cwd, remote);
+  return known?.startsWith(`${remote}/`) ? known.slice(remote.length + 1) : undefined;
+}
+
+/** Fetches the guess in the background; true when it worked. A wrong guess is no failure. */
+function fetchGuess(cwd: string, call: { remote: string; guess: string | undefined }) {
+  const { remote, guess } = call;
+  if (guess === undefined) return Promise.resolve(false);
+  return fetchTrunk(cwd, { remote, trunk: guess }).then(
+    () => true,
+    () => false,
+  );
+}
+
+/** Asks the remote for its trunk while the guess is already being fetched; fetches the answer if it differs. */
+async function fetchedTrunk(call: {
+  cwd: string;
+  remote: string;
+  timed: Timed;
+}): Promise<StartPoint> {
+  const { cwd, remote, timed } = call;
+  const guess = await guessedTrunk(cwd, remote);
+  const guessFetched = fetchGuess(cwd, { remote, guess });
+  const trunk = await timed(
+    {
+      id: "trunk",
+      doing: `Asking ${remote} for its default branch`,
+      done: (name: string) => `Asked ${remote}: its default branch is ${name}`,
+    },
+    () => liveTrunk(cwd, remote),
+  );
   const ref = `${remote}/${trunk}`;
+  await timed({ id: "fetch", doing: `Fetching ${ref}`, done: `Fetched ${ref}` }, async () => {
+    if (trunk === guess && (await guessFetched)) return;
+    await fetchTrunk(cwd, { remote, trunk });
+  });
   return { ref, notes: [`Started from the latest ${ref}.`] };
 }
 
@@ -89,10 +136,14 @@ async function unreachable(options: {
  * Without a remote, or without any known remote branch, it is the local branch; when the remote
  * cannot be reached it is the last known trunk. Each case comes with a sentence for the user.
  */
-export async function latestTrunk(repoPath: string): Promise<StartPoint> {
-  const remote = await remoteOf(repoPath);
-  if (remote === undefined) return localStart(repoPath, "This repository has no remote");
-  return fetchedTrunk(repoPath, remote).catch((error: unknown) =>
-    unreachable({ cwd: repoPath, remote, error }),
+export async function latestTrunk(options: {
+  repoPath: string;
+  timed: Timed;
+}): Promise<StartPoint> {
+  const { repoPath: cwd, timed } = options;
+  const remote = await remoteOf(cwd);
+  if (remote === undefined) return localStart(cwd, "This repository has no remote");
+  return fetchedTrunk({ cwd, remote, timed }).catch((error: unknown) =>
+    unreachable({ cwd, remote, error }),
   );
 }

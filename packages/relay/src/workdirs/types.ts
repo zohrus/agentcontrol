@@ -21,6 +21,10 @@ export interface Workdir {
   diff(): Promise<z.infer<typeof DiffResult>>;
   /** Files with changes that would be lost on removal. */
   uncommitted(): Promise<string[]>;
-  /** Removes what the relay created for the session. The folder of a directory session stays. */
-  remove(): Promise<void>;
+  /**
+   * Removes what the relay created for the session, except for deleting the folder's files, which
+   * is the returned `finish` (slow for a big folder, so the caller does not wait for it). The
+   * folder of a directory session stays.
+   */
+  remove(): Promise<{ pending: boolean; finish(): Promise<void> }>;
 }

@@ -1,4 +1,5 @@
 import { type ClientConnection, methods, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
+import { untimed } from "../steps/index.ts";
 import { modeToSwitchTo } from "./modes.ts";
 import type { StartAgentOptions } from "./types.ts";
 
@@ -92,18 +93,35 @@ async function notRestored(connection: ClientConnection, options: StartAgentOpti
   return { ...fresh, restored: false, notRestoredBecause: why };
 }
 
-/** initialize, then session/new (or session/load when resuming), then the mode that makes it ask. */
-export async function handshake(
-  connection: ClientConnection,
-  call: { options: StartAgentOptions; replay: Replay },
-): Promise<Opened> {
+/** ACP `initialize`: needs the process only, not the session's folder. True when it can load a session. */
+export async function initializeAgent(connection: ClientConnection): Promise<boolean> {
   const init = await connection.agent.request(methods.agent.initialize, {
     protocolVersion: PROTOCOL_VERSION,
     clientCapabilities: {},
   });
-  const canLoad = init.agentCapabilities?.loadSession === true;
-  const { modes, ...opened } = await openSession(connection, { ...call, canLoad });
-  const modeId = modeToSwitchTo(call.options.kind, modes);
-  if (modeId !== undefined) await switchMode(connection, { sessionId: opened.sessionId, modeId });
+  return init.agentCapabilities?.loadSession === true;
+}
+
+/** session/new (or session/load when resuming), then the mode that makes the agent ask. */
+export async function openAgentSession(
+  connection: ClientConnection,
+  call: { options: StartAgentOptions; canLoad: boolean; replay: Replay },
+): Promise<Opened> {
+  const { options } = call;
+  const timed = options.timed ?? untimed;
+  const open = {
+    id: "agent-session",
+    doing: "Opening the agent's session",
+    done: "Opened the agent's session",
+  };
+  const { modes, ...opened } = await timed(open, () => openSession(connection, call));
+  const modeId = modeToSwitchTo(options.kind, modes);
+  if (modeId === undefined) return opened;
+  const mode = {
+    id: "agent-mode",
+    doing: `Switching the agent to its "${modeId}" mode`,
+    done: `Switched the agent to its "${modeId}" mode`,
+  };
+  await timed(mode, () => switchMode(connection, { sessionId: opened.sessionId, modeId }));
   return opened;
 }

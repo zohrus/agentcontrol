@@ -4,7 +4,7 @@ import { RelayError } from "../rpc/index.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
 import { holdForUser } from "./permissions.ts";
 import { shellTarget } from "./shell-target.ts";
-import { connectAgent } from "./start.ts";
+import { connectAgent } from "./connect.ts";
 import { liveAgent } from "./turn.ts";
 
 const refuse = (code: ErrorCode, message: string): RelayError => new RelayError(code, message);

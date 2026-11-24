@@ -2,7 +2,7 @@ import type { SessionEvent } from "@agentcontrol/protocol";
 import { groupTools } from "./group-tools.ts";
 import { applyUpdate } from "./reduce-updates.ts";
 import { reducePermissionAnswered, reducePermissionRequested } from "./reduce-permission.ts";
-import { reduceSetupFinished, reduceSetupOutput } from "./reduce-setup.ts";
+import { reduceArchived, reduceSetupFinished, reduceSetupOutput } from "./reduce-setup.ts";
 import type { ViewItem } from "./view-items.ts";
 import { addChunk, itemKey, type ViewState } from "./view-state.ts";
 
@@ -49,8 +49,10 @@ const reducers: Reducers = {
       stopReason: payload.stopReason,
     });
   },
-  "session-archived": (state, { seq }) => {
-    state.items.push({ type: "notice", key: itemKey("archived", seq), text: "Session archived" });
+  "session-archived": (state, event) => {
+    reduceArchived(state, event);
+    const key = itemKey("archived", event.seq);
+    state.items.push({ type: "notice", key, text: "Session archived" });
   },
 };
 

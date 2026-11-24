@@ -17,8 +17,6 @@ export function worktreeWorkdir(info: WorkdirInfo): Workdir {
     read: (options) => readFileAt({ worktreePath, baseBranch, ...options }),
     diff: () => diffWorktree({ worktreePath, baseBranch }),
     uncommitted: async () => ((await exists(worktreePath)) ? uncommittedFiles(worktreePath) : []),
-    remove: async () => {
-      if (await exists(worktreePath)) await removeWorktree({ repoPath, worktreePath });
-    },
+    remove: () => removeWorktree({ repoPath, worktreePath }),
   };
 }

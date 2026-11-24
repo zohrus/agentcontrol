@@ -1,140 +1,80 @@
-import { type AgentKind, RawAcpMessage, type SessionId } from "@agentcontrol/protocol";
-import {
-  type AgentProcess,
-  type PermissionAnswer,
-  type PermissionRequest,
-  firstUseDownload,
-  startAgent,
-} from "../agents/index.ts";
 import { runSetupScript } from "../worktrees/index.ts";
+import { archivedMeanwhile, bootAgent, discardBooted, openBooted } from "./boot-agent.ts";
+import type { Booted } from "./boot-agent.ts";
 import type { SessionContext } from "./context.ts";
 import { makeWorktreeAndShare, type NewSession, reasonOf } from "./make-worktree.ts";
-import { holdForUser } from "./permissions.ts";
 import { startTurn } from "./turn.ts";
 
-/** Everything needed to start one agent process for a session, whatever kind of session it is. */
-export interface Launch {
-  sessionId: SessionId;
-  agent: AgentKind;
-  cwd: string;
-  env: Record<string, string>;
-  sessionMeta?: Record<string, unknown>;
-  /** Continue this earlier agent session (resuming an interrupted one) rather than start afresh. */
-  resume?: { agentSessionId: string };
-  ask: (request: PermissionRequest) => Promise<PermissionAnswer>;
+/** The setup script ended with an exit code other than 0. */
+class ScriptFailed extends Error {
+  readonly exitCode: number;
+  constructor(exitCode: number) {
+    super(`The setup script exited with ${String(exitCode)}.`);
+    this.exitCode = exitCode;
+  }
+}
+
+/** Runs the setup script as a timed step; its exit code. A script that cannot run counts as 1. */
+async function runScript(ctx: SessionContext, session: NewSession): Promise<number> {
+  const { sessionId, repo, worktree, timed } = session;
+  const script = {
+    id: "script",
+    doing: "Running the setup script",
+    done: "Ran the setup script",
+  };
+  const run = async (): Promise<number> => {
+    const exitCode = await runSetupScript({
+      script: repo.setup.setupScript,
+      cwd: worktree.worktreePath,
+      env: worktree.env,
+      onOutput: (stream, text) => {
+        ctx.record(sessionId, { kind: "setup-output", payload: { stream, text } });
+      },
+    });
+    if (exitCode !== 0) throw new ScriptFailed(exitCode);
+    return exitCode;
+  };
+  const hasScript = (repo.setup.setupScript ?? "").trim() !== "";
+  return (hasScript ? timed(script, run) : run()).catch(async (error: unknown) => {
+    if (error instanceof ScriptFailed) return error.exitCode;
+    const text = `${reasonOf(error)}\n`;
+    await ctx.log.append(sessionId, { kind: "setup-output", payload: { stream: "stderr", text } });
+    return 1;
+  });
 }
 
 /** Runs the repo's setup script in the new worktree; true when it succeeded. */
 async function runSetup(ctx: SessionContext, session: NewSession): Promise<boolean> {
-  const { sessionId, repo, worktree } = session;
-  const exitCode = await runSetupScript({
-    script: repo.setup.setupScript,
-    cwd: worktree.worktreePath,
-    env: worktree.env,
-    onOutput: (stream, text) => {
-      ctx.record(sessionId, { kind: "setup-output", payload: { stream, text } });
-    },
-  }).catch(async (error: unknown) => {
-    await ctx.log.append(sessionId, {
-      kind: "setup-output",
-      payload: { stream: "stderr", text: `${reasonOf(error)}\n` },
-    });
-    return 1;
-  });
-  await ctx.log.append(sessionId, { kind: "setup-finished", payload: { exitCode } });
+  const exitCode = await runScript(ctx, session);
+  await ctx.log.append(session.sessionId, { kind: "setup-finished", payload: { exitCode } });
   return exitCode === 0;
 }
 
-function tapAcp(ctx: SessionContext, sessionId: SessionId) {
-  return (direction: "to-agent" | "from-agent", raw: unknown): void => {
-    const message = RawAcpMessage.safeParse(raw);
-    if (message.success) {
-      ctx.record(sessionId, { kind: "acp", payload: { direction, message: message.data } });
-    }
-  };
-}
-
-function watchExit(ctx: SessionContext, sessionId: SessionId, agent: AgentProcess): void {
-  void agent.exited.then(({ exitCode, signal }) => {
-    ctx.live.delete(sessionId);
-    const payload = signal === undefined ? { exitCode } : { exitCode, signal };
-    ctx.record(sessionId, { kind: "agent-exited", payload });
-  });
-}
-
-/** Starts the agent and records `agent-started` once its handshake is done. */
-export async function connectAgent(ctx: SessionContext, launch: Launch): Promise<AgentProcess> {
-  const { sessionId } = launch;
-  const agent = await startAgent({
-    kind: launch.agent,
-    cwd: launch.cwd,
-    env: launch.env,
-    ...(launch.sessionMeta ? { sessionMeta: launch.sessionMeta } : {}),
-    ...(launch.resume ? { resume: launch.resume } : {}),
-    hostEnv: ctx.hostEnv,
-    onMessage: tapAcp(ctx, sessionId),
-    onPermissionRequest: launch.ask,
-  });
-  ctx.live.set(sessionId, agent);
-  const payload = { agentSessionId: agent.agentSessionId };
-  await ctx.log.append(sessionId, { kind: "agent-started", payload });
-  watchExit(ctx, sessionId, agent);
-  return agent;
-}
-
-/** Tells the user that the agent's adapter is being downloaded, when it is (first use only). */
-function announceDownload(ctx: SessionContext, launch: Launch): void {
-  const text = firstUseDownload(launch.agent, ctx.hostEnv);
-  if (text === undefined) return;
-  const payload = { stream: "stdout" as const, text };
-  ctx.record(launch.sessionId, { kind: "setup-output", payload });
-}
-
-/** `agent-started` is recorded once the ACP handshake is done, so it means the agent is up. */
-export async function launchAgent(
+/** Opens the agent's session in the made worktree, with the first prompt as its first turn when there is one. */
+async function startAgentOf(
   ctx: SessionContext,
-  launch: Launch,
-): Promise<AgentProcess | undefined> {
-  const { sessionId } = launch;
-  announceDownload(ctx, launch);
-  try {
-    return await connectAgent(ctx, launch);
-  } catch (error) {
-    const text = `${reasonOf(error)}\n`;
-    await ctx.log.append(sessionId, { kind: "setup-output", payload: { stream: "stderr", text } });
-    await ctx.log.append(sessionId, { kind: "agent-exited", payload: { exitCode: 1 } });
-    return undefined;
-  }
-}
-
-/** Archived while it was being set up: there is nothing left to run an agent in. */
-const archivedMeanwhile = (ctx: SessionContext, sessionId: SessionId): boolean =>
-  ctx.archiving.has(sessionId) || ctx.summaries.summary(sessionId)?.archivedAt !== undefined;
-
-/** Starts the agent in the made worktree, with the first prompt as its first turn when there is one. */
-async function startAgentOf(ctx: SessionContext, session: NewSession): Promise<void> {
-  const { sessionId, worktree } = session;
-  if (archivedMeanwhile(ctx, sessionId)) return;
-  const agent = await launchAgent(ctx, {
-    sessionId,
-    agent: session.params.agent,
-    cwd: worktree.worktreePath,
-    env: worktree.env,
-    ask: (request) => holdForUser(ctx, { sessionId, request }),
-  });
+  call: { session: NewSession; booting: Promise<Booted> },
+): Promise<void> {
+  const { sessionId } = call.session;
+  const agent = await openBooted(ctx, call);
   if (!agent) return;
   if (archivedMeanwhile(ctx, sessionId)) {
     await agent.stop();
     return;
   }
-  const { prompt } = session.params;
+  const { prompt } = call.session.params;
   if (prompt !== undefined) await startTurn(ctx, { sessionId, agent, text: prompt });
 }
 
+/**
+ * The agent's process starts and says `initialize` while git makes the worktree and the setup
+ * script runs; once the folder is ready the agent opens its session in it.
+ */
 async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
-  if (!(await makeWorktreeAndShare(ctx, session))) return;
-  if (!(await runSetup(ctx, session))) return;
-  await startAgentOf(ctx, session);
+  const booting = bootAgent(ctx, session);
+  const ready = (await makeWorktreeAndShare(ctx, session)) && (await runSetup(ctx, session));
+  if (!ready) return discardBooted(ctx, { sessionId: session.sessionId, booting });
+  await startAgentOf(ctx, { session, booting });
 }
 
 /** Runs everything after the session exists; every failure ends up as events in the log. */
