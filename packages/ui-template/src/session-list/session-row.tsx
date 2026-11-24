@@ -7,7 +7,8 @@ import type { SessionRowProps } from "./types.ts";
 function WaitingBadge({ entry }: Pick<SessionRowProps, "entry">) {
   const { waitingReason: reason, status } = entry.summary;
   if (status === "interrupted") {
-    return (
+    // A read-only session cannot be resumed, so it does not ask for it.
+    return entry.readOnly ? null : (
       <Badge tone="waiting" className="ml-auto">
         resume
       </Badge>

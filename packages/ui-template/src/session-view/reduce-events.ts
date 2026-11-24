@@ -61,13 +61,17 @@ const LIFECYCLE = ["agent-started", "agent-exited", "agent-interrupted"];
 
 /**
  * Without the exits that only record the relay stopping: the interruption says it in one line, so
- * an exit whose next lifecycle event is the interruption (the stop's signal, or the exit the relay
- * wrote for an agent that died with it) is not shown as a second line.
+ * an exit without a code whose next lifecycle event is the interruption (the stop's signal, or
+ * the exit the relay wrote for an agent that died with it) is not shown as a second line.
  */
 function withoutInterruptedExits(events: readonly SessionEvent[]): SessionEvent[] {
   let next: string | undefined;
   const kept = events.toReversed().filter((event) => {
-    const hidden = event.kind === "agent-exited" && next === "agent-interrupted";
+    // A crash with an exit code stays visible: only a stop by signal (no code) is the relay's.
+    const hidden =
+      event.kind === "agent-exited" &&
+      event.payload.exitCode === null &&
+      next === "agent-interrupted";
     if (LIFECYCLE.includes(event.kind)) next = event.kind;
     return !hidden;
   });
