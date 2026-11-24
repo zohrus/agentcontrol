@@ -16,7 +16,7 @@ async function refusalOf(attempt: Promise<unknown>): Promise<number | undefined>
 }
 
 /** The app opens a WebSocket into the session's code-server, under this tunnel id. */
-export function opensSocketThrough(
+function opensSocketThrough(
   relay: RunningRelay,
   call: { session: Session; tunnelId: string },
 ): Promise<unknown> {
