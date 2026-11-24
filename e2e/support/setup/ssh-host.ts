@@ -35,6 +35,8 @@ export interface SshHost {
   readonly relayDataDir: string;
   /** Where the relay of the app's version is installed on the host. */
   readonly installedRelay: string;
+  /** The `dist/` folder of the source checkout the app runs from, when the test has one. */
+  readonly dist: string | undefined;
   /** The file the app installs from: the relay that runs this checkout's code. */
   readonly builtRelay: string;
   /** What to give `startApp` so that it reaches this host and installs the relay from here. */
@@ -155,6 +157,7 @@ async function hostOf(parts: Parts): Promise<SshHost> {
     releaseFile,
     ...hostAgentOf({ mockAgent: side.mockAgent, releaseFile }),
     installedRelay: join(side.remoteRoot, "relay", VERSION, "agentcontrol-relay"),
+    dist,
     builtRelay: side.built,
     appSettings: {
       configFile,

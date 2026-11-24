@@ -44,3 +44,13 @@ export function relayBinaryOf(
   if (dist !== undefined) return relayBinariesIn(dist, { buildFromSource: true });
   return () => installedFrom(options, script);
 }
+
+/** Edits the source after the relay in `dist/` was built: its manifest now names an older build. */
+export async function leaveDistBuiltFromOlderCode(host: {
+  dist: string | undefined;
+}): Promise<void> {
+  await Bun.write(
+    join(host.dist ?? "", "manifest.json"),
+    JSON.stringify({ version: VERSION, buildId: "0123456789ab" }),
+  );
+}

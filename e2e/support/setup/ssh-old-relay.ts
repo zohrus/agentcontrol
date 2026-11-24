@@ -88,3 +88,10 @@ export async function startOldRelayOnHost(
     },
   };
 }
+
+/** The relay that is running on the host now, as the pid a later check compares with. */
+export async function relayRunningOn(host: SshHost): Promise<{ pid: number }> {
+  const pid = await host.relayPid();
+  if (pid === undefined) throw new Error("expected a relay to be running on the host");
+  return { pid };
+}

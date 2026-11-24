@@ -17,12 +17,27 @@ export async function installOn(options: {
   target: WorkspaceTarget;
   machine: HostInfo;
   relayBinaryFor: SshSettings["relayBinaryFor"];
+  ignoreStale?: boolean;
 }): Promise<{ installed: boolean }> {
   const { target, machine, relayBinaryFor } = options;
   const binary = relayBinaryFor(machine);
-  const unusable = await unusableBecause({ binary, machine, relayBinaryFor });
+  const unusable = await unusableBecause({
+    binary,
+    machine,
+    relayBinaryFor,
+    ignoreStale: options.ignoreStale === true,
+  });
   if (unusable !== undefined) throw new Error(unusable);
   return target.install(binary);
+}
+
+/** Why a relay binary that is there is built from older code, unless this connection lets that pass. */
+function staleBecause(options: {
+  machine: HostInfo;
+  relayBinaryFor: SshSettings["relayBinaryFor"];
+  ignoreStale: boolean;
+}): Promise<string | undefined> | undefined {
+  return options.ignoreStale ? undefined : options.relayBinaryFor.staleAdvice?.(options.machine);
 }
 
 /** Why the relay binary for the machine cannot be used (it is missing, or built from older code), if so. */
@@ -30,9 +45,10 @@ async function unusableBecause(options: {
   binary: string;
   machine: HostInfo;
   relayBinaryFor: SshSettings["relayBinaryFor"];
+  ignoreStale: boolean;
 }): Promise<string | undefined> {
   const { binary, machine, relayBinaryFor } = options;
-  if (await Bun.file(binary).exists()) return relayBinaryFor.staleAdvice?.(machine);
+  if (await Bun.file(binary).exists()) return staleBecause(options);
   const advice = relayBinaryFor.missingAdvice?.(machine);
   const looked = `This app has no relay for ${machine.os} ${machine.arch} (looked for ${binary}).`;
   return advice === undefined ? looked : `${looked} ${advice}`;
@@ -50,8 +66,12 @@ export function sshConnector(options: {
   const { target } = options;
   let machine: HostInfo | undefined;
   return async () => {
+    const firstTime = machine === undefined;
     machine ??= await target.inspect();
-    await installOn({ ...options, machine });
+    // A reconnect (sleep, network) keeps the relay that is installed even when dist/ has since been
+    // left behind by edits; only the first connection of this app run insists on a current build.
+    if (firstTime) await installOn({ ...options, machine });
+    else await installOn({ ...options, machine, ignoreStale: true });
     const capture = { explain: (stderr: string) => target.explainFailure(stderr) };
     const path = await target.loginPath();
     return relayClientOver(spawnBridge({ argv: target.bridgeCommand({ path }), capture }));

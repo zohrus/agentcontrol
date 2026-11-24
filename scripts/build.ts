@@ -3,8 +3,8 @@
 // `--only <text>` builds just the targets whose file name contains <text>.
 // `--linux-app` also builds the Linux x64 app, which is what the smoke test runs.
 import { mkdirSync, rmSync } from "node:fs";
-import { buildIdentity } from "../packages/protocol/src/build-id.ts";
 import { join } from "node:path";
+import { buildIdentity } from "../packages/protocol/src/build-id.ts";
 import { compileTarget } from "./build/compile.ts";
 import { describeFiles, formatTable, writeManifest } from "./build/manifest.ts";
 import { assembleRelease, releaseFiles } from "./build/release.ts";

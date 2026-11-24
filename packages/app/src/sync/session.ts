@@ -19,7 +19,7 @@ const EVENT_BATCH_MS = 20;
 /** The relay was not the app's own and has been stopped; the next connection reaches a new one. */
 export class RelayReplaced extends Error {
   constructor() {
-    super("The relay of another version was replaced.");
+    super("The relay was not the app's own and was replaced.");
   }
 }
 

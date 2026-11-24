@@ -2,6 +2,9 @@ import { VERSION } from "@agentcontrol/protocol";
 import { buildIdentity } from "@agentcontrol/protocol/build-id";
 import type { HostEnv } from "../agents/index.ts";
 
+/** The code this relay loaded: hashed once, when the process starts, not when it is asked. */
+const startedAs = buildIdentity();
+
 /**
  * What `relay/hello` says this relay is: this release's version and the build of its code. Only
  * tests change either, through the options or AGENTCONTROL_RELAY_VERSION and
@@ -14,6 +17,6 @@ export function reportedIdentity(call: {
   const { options, hostEnv } = call;
   return {
     relayVersion: options.relayVersion ?? hostEnv["AGENTCONTROL_RELAY_VERSION"] ?? VERSION,
-    buildId: options.buildId ?? hostEnv["AGENTCONTROL_RELAY_BUILD"] ?? buildIdentity(),
+    buildId: options.buildId ?? hostEnv["AGENTCONTROL_RELAY_BUILD"] ?? startedAs,
   };
 }

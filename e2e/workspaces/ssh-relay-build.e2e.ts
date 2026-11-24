@@ -11,8 +11,10 @@ import {
   expectInstalledRelayToBeTheAppsOwn,
 } from "../support/expect/ssh-host-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
+import { leaveDistBuiltFromOlderCode } from "../support/setup/ssh-built-relay-folder.ts";
 import {
   leaveAnOlderBuildInstalledOn,
+  relayRunningOn,
   startOldRelayOnHost,
 } from "../support/setup/ssh-old-relay.ts";
 import { startAppWithSshHost } from "../support/setup/start-app-with-ssh-host.ts";
@@ -128,4 +130,30 @@ test("an app run from source whose built relay is from the current source instal
   // ** THEN the workspace is connected
   // ********************************************************************
   expectWorkspaceToBe(workspace, "connected");
+});
+
+test("a host that was connected keeps working when the source is edited and the app reconnects", async () => {
+  // ********************************************************************
+  // ** GIVEN an app run from a source checkout, connected to a host with the relay built from it
+  // ********************************************************************
+  const { host, user, app } = await startAppWithSshHost({
+    relayBuiltFromSource: "this-checkout",
+  });
+  const workspace = await user.addsTheHost();
+  expectWorkspaceToBe(workspace, "connected");
+  const before = await relayRunningOn(host);
+  // AND the relay code is edited afterwards, so the relay in dist/ is older than the source
+  await leaveDistBuiltFromOlderCode(host);
+
+  // ********************************************************************
+  // ** WHEN the connection drops and the app connects to the host again
+  // ********************************************************************
+  await user.restartsTheRelayOn(workspace);
+
+  // ********************************************************************
+  // ** THEN the host runs a new relay and the workspace is connected
+  // ********************************************************************
+  await expectHostRelayToHaveBeenReplaced(host, before);
+  // AND the workspace is connected
+  await expectWorkspaceListedAs(app, { workspace, state: "connected" });
 });

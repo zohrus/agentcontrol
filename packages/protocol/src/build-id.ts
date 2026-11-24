@@ -28,21 +28,19 @@ function hashOfSource(): string {
   return hash.digest("hex").slice(0, ID_LENGTH);
 }
 
-let known: string | undefined;
-
 /**
  * Identifies the code the relay runs, which a version number cannot: the same version covers every
  * commit until the next release. A compiled binary carries the hash of the source it was built from;
- * running from source, it is hashed at start, once. The app and its relay are the same build when the
- * two are equal. `unknown` when neither is possible, which equals itself and so never forces a
- * replacement.
+ * running from source it is hashed on every call (about 20 ms), so an app that is still running
+ * after the sources were edited compares the relay against the code as it is now, and a relay
+ * started after the edit is the app's own. A relay hashes once, when it starts (see the daemon's
+ * `identity.ts`), because that is the code it loaded. `unknown` when neither is possible, which
+ * equals itself and so never forces a replacement.
  */
 export function buildIdentity(): string {
-  if (known !== undefined) return known;
   try {
-    known = typeof AGENTCONTROL_BUILD_ID === "string" ? AGENTCONTROL_BUILD_ID : hashOfSource();
+    return typeof AGENTCONTROL_BUILD_ID === "string" ? AGENTCONTROL_BUILD_ID : hashOfSource();
   } catch {
-    known = "unknown";
+    return "unknown";
   }
-  return known;
 }
