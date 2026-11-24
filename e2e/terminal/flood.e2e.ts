@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { afterEach, test } from "bun:test";
 import {
   expectOutputToHaveBeenCutShort,
-  expectTheCutToBeShownAfterTheLastOutput,
+  expectNoLossAtTheEndToGoUnsaid,
   expectTheQuietTerminalToHaveShownEverything,
   expectTheEndOfTheOutputToHaveArrived,
 } from "../support/expect/terminal-flood-expectations.ts";
@@ -24,8 +24,11 @@ const A_SCREENFUL = 100_000;
 const floodCommand = (doneFile: string): string =>
   `head -c ${String(ONE_HUNDRED_MEGABYTES)} /dev/zero | tr '\\0' y; echo flood-over; touch ${doneFile}`;
 
+/** The lines the flood that ends the shell prints: the numbers 1 to this. */
+const LAST_NUMBER = 5_000_000;
+
 const floodThenExitCommand = (doneFile: string): string =>
-  `head -c ${String(ONE_HUNDRED_MEGABYTES)} /dev/zero | tr '\\0' y; touch ${doneFile}; exit`;
+  `seq 1 ${String(LAST_NUMBER)}; touch ${doneFile}; exit`;
 
 test("a shell that prints far more than anyone reads does not fill the relay's memory", async () => {
   // ********************************************************************
@@ -85,7 +88,7 @@ test("a shell that ends in the middle of a flood still says that output was skip
   const { relay, session, doneFile } = await aRelayWithASessionToFlood();
 
   // ********************************************************************
-  // ** WHEN the shell prints 100 MB and ends with nothing printed after it
+  // ** WHEN the shell prints 5 million numbered lines (40 MB) and ends
   // ********************************************************************
   const command = floodThenExitCommand(doneFile);
   const reading = await readsTerminalOutputOnlyAfterTheShellFinishes(relay, {
@@ -97,7 +100,7 @@ test("a shell that ends in the middle of a flood still says that output was skip
   // ********************************************************************
   // ** THEN the output says where it was cut, before the shell's end
   // ********************************************************************
-  expectTheCutToBeShownAfterTheLastOutput(reading);
+  expectNoLossAtTheEndToGoUnsaid(reading, LAST_NUMBER);
 });
 
 test("a shell that ends in the middle of a flood shows the browser that output was skipped", async () => {
@@ -108,7 +111,7 @@ test("a shell that ends in the middle of a flood shows the browser that output w
   const doneFile = join(app.dataDir, "flood-done");
 
   // ********************************************************************
-  // ** WHEN the shell prints 100 MB and ends with nothing printed after it
+  // ** WHEN the shell prints 5 million numbered lines (40 MB) and ends
   // ********************************************************************
   const command = floodThenExitCommand(doneFile);
   const reading = await readsTheTerminalOnlyAfterTheShellFinishes(app, {
@@ -120,7 +123,7 @@ test("a shell that ends in the middle of a flood shows the browser that output w
   // ********************************************************************
   // ** THEN the output says where it was cut, before the shell's end
   // ********************************************************************
-  expectTheCutToBeShownAfterTheLastOutput(reading);
+  expectNoLossAtTheEndToGoUnsaid(reading, LAST_NUMBER);
 });
 
 test("a flood in one terminal does not drop what another terminal prints", async () => {

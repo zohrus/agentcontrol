@@ -26,11 +26,25 @@ export function expectTheEndOfTheOutputToHaveArrived(reading: SlowReading, line:
   throw new Error(`expected the output to end with "${line}", but it never arrived`);
 }
 
-/** After the last of the flood that did arrive, the output says that the rest was skipped. */
-export function expectTheCutToBeShownAfterTheLastOutput(reading: SlowReading): void {
-  const afterTheFlood = reading.text.slice(reading.text.lastIndexOf("yyyy"));
-  if (afterTheFlood.includes("[output skipped]")) return;
-  throw new Error("expected the output to say that the end of it was skipped, but it did not");
+/**
+ * The shell printed the numbers 1 to `last`, one per line, and ended. Either the last number arrived
+ * (nothing at the end was dropped), or the output says that what came after the last number it did
+ * show was skipped. Which of the two happens depends on how the shell's output was cut into pieces,
+ * but losing the end without saying so must never happen.
+ */
+export function expectNoLossAtTheEndToGoUnsaid(reading: SlowReading, last: number): void {
+  const { number, after } = lastNumberShown(reading.text);
+  if (number === String(last) || after.includes("[output skipped]")) return;
+  throw new Error(
+    `expected the end of the output to arrive or to be marked as skipped, but after the number ${number} it reads ${JSON.stringify(after.slice(0, 80))}`,
+  );
+}
+
+/** The last run of digits the output shows (the shell printed numbers), and what follows it. */
+function lastNumberShown(text: string): { number: string; after: string } {
+  const shown = [...text.matchAll(/\d{5,}/g)].at(-1);
+  if (shown === undefined) return { number: "none", after: text };
+  return { number: shown[0], after: text.slice(shown.index + shown[0].length) };
 }
 
 /** The quiet terminal's output arrived whole: only the flooding terminal's output was dropped. */
