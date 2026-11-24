@@ -26,6 +26,17 @@ type Reducers = { [K in EventKind]: (fold: Fold, event: EventOf<K>) => Fold };
 const reducers: Reducers = {
   acp: (fold) => fold,
   "setup-output": (fold) => fold,
+  // The session's base becomes known after it was created: the location read from `created` follows.
+  "base-resolved": (fold, event) =>
+    fold.created
+      ? {
+          ...fold,
+          created: {
+            ...fold.created,
+            payload: { ...fold.created.payload, baseBranch: event.payload.baseBranch },
+          },
+        }
+      : fold,
   "session-created": (fold, event) => ({ ...fold, created: event }),
   "setup-finished": (fold, event) => ({ ...fold, setupExitCode: event.payload.exitCode }),
   // A started agent is a living one, also after an earlier agent of the session was interrupted.

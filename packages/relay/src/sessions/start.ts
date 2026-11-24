@@ -1,9 +1,4 @@
-import {
-  type AgentKind,
-  RawAcpMessage,
-  type SessionId,
-  type WorktreeSessionParams,
-} from "@agentcontrol/protocol";
+import { type AgentKind, RawAcpMessage, type SessionId } from "@agentcontrol/protocol";
 import {
   type AgentProcess,
   type PermissionAnswer,
@@ -11,18 +6,11 @@ import {
   firstUseDownload,
   startAgent,
 } from "../agents/index.ts";
-import type { RepoWithSetup } from "../repos/index.ts";
-import { type CreatedWorktree, runSetupScript } from "../worktrees/index.ts";
+import { runSetupScript } from "../worktrees/index.ts";
 import type { SessionContext } from "./context.ts";
+import { makeWorktreeAndShare, type NewSession, reasonOf } from "./make-worktree.ts";
 import { holdForUser } from "./permissions.ts";
 import { startTurn } from "./turn.ts";
-
-export interface NewSession {
-  sessionId: SessionId;
-  repo: RepoWithSetup;
-  params: WorktreeSessionParams;
-  worktree: CreatedWorktree;
-}
 
 /** Everything needed to start one agent process for a session, whatever kind of session it is. */
 export interface Launch {
@@ -34,10 +22,6 @@ export interface Launch {
   /** Continue this earlier agent session (resuming an interrupted one) rather than start afresh. */
   resume?: { agentSessionId: string };
   ask: (request: PermissionRequest) => Promise<PermissionAnswer>;
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** Runs the repo's setup script in the new worktree; true when it succeeded. */
@@ -123,18 +107,14 @@ export async function launchAgent(
   }
 }
 
-/** Tells the user, in the setup output, where the worktree started from when the relay chose it. */
-async function announceStart(ctx: SessionContext, session: NewSession): Promise<void> {
-  for (const note of session.worktree.notes) {
-    const payload = { stream: "stdout" as const, text: `${note}\n` };
-    await ctx.log.append(session.sessionId, { kind: "setup-output", payload });
-  }
-}
+/** Archived while it was being set up: there is nothing left to run an agent in. */
+const archivedMeanwhile = (ctx: SessionContext, sessionId: SessionId): boolean =>
+  ctx.archiving.has(sessionId) || ctx.summaries.summary(sessionId)?.archivedAt !== undefined;
 
-async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
-  await announceStart(ctx, session);
-  if (!(await runSetup(ctx, session))) return;
+/** Starts the agent in the made worktree, with the first prompt as its first turn when there is one. */
+async function startAgentOf(ctx: SessionContext, session: NewSession): Promise<void> {
   const { sessionId, worktree } = session;
+  if (archivedMeanwhile(ctx, sessionId)) return;
   const agent = await launchAgent(ctx, {
     sessionId,
     agent: session.params.agent,
@@ -143,8 +123,18 @@ async function runSession(ctx: SessionContext, session: NewSession): Promise<voi
     ask: (request) => holdForUser(ctx, { sessionId, request }),
   });
   if (!agent) return;
+  if (archivedMeanwhile(ctx, sessionId)) {
+    await agent.stop();
+    return;
+  }
   const { prompt } = session.params;
   if (prompt !== undefined) await startTurn(ctx, { sessionId, agent, text: prompt });
+}
+
+async function runSession(ctx: SessionContext, session: NewSession): Promise<void> {
+  if (!(await makeWorktreeAndShare(ctx, session))) return;
+  if (!(await runSetup(ctx, session))) return;
+  await startAgentOf(ctx, session);
 }
 
 /** Runs everything after the session exists; every failure ends up as events in the log. */

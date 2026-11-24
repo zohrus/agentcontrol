@@ -7,7 +7,12 @@ import { attemptApi } from "./app-attempt.ts";
 
 const UNKNOWN_SESSION: Session = { id: SessionId.parse(crypto.randomUUID()), title: "no such" };
 
+/** Where the session's worktree is, once it is made (the relay makes it after creating the session). */
 export async function worktreeOf(app: AppAccess, session: Session): Promise<string> {
+  await app.streamed.waitFor(
+    (event) => event.sessionId === session.id && event.kind === "setup-finished",
+    `expected the worktree of "${session.title}" to be made`,
+  );
   const isCreation = (event: SessionEvent) =>
     event.sessionId === session.id && event.kind === "session-created";
   const created = await app.streamed.waitFor(isCreation, `expected "${session.title}" to exist`);

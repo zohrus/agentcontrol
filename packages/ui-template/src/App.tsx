@@ -19,6 +19,7 @@ import {
   AppDialogs,
   ArchiveFlowDialog,
   ChangesPane,
+  clearSelectionIf,
   type DialogName,
   SessionPane,
   SessionsPane,
@@ -107,7 +108,12 @@ function Workbench() {
   return (
     <>
       <AppShell layout={closeAnalytics ? withAnalytics(layout) : layout} slots={slots} />
-      <AppDialogs open={dialog} onOpenChange={setDialog} onStarted={select} />
+      <AppDialogs
+        open={dialog}
+        onOpenChange={setDialog}
+        onStarted={select}
+        onStartFailed={clearSelectionIf}
+      />
       <ArchiveFlowDialog flow={archive} />
     </>
   );

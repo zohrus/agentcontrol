@@ -5,7 +5,7 @@ type Props = { open: boolean; onOpenChange: (open: boolean) => void };
 
 /** The Modify panel wired to the app: live state, the Modify agent's chat and the version history. */
 export function ConnectedModifyDialog({ open, onOpenChange }: Props) {
-  const { state, versions, events, actions } = useModify();
+  const { state, versions, events, sending, pressed, actions } = useModify();
   return (
     <ModifyDialog
       open={open}
@@ -14,6 +14,8 @@ export function ConnectedModifyDialog({ open, onOpenChange }: Props) {
       change={state}
       versions={versions}
       update={state.update}
+      sending={sending}
+      pressed={pressed}
       onSendPrompt={(text) => void actions.request(text)}
       onKeep={() => void actions.keep()}
       onUndo={() => void actions.undo()}

@@ -50,3 +50,7 @@ The worktree branch is created with `--no-track`, so it never gets the trunk as 
 
 The branch field is optional and sits under "Advanced": "Starts from the latest <trunk> on the
 remote. Change it only to start from another branch." Typing a branch works as before.
+
+## Update (24 Nov 2026, later)
+
+The trunk is no longer resolved before the session exists. `session-created` is recorded first (its `baseBranch` is empty when no branch was named), the lookup, fetch and worktree run in the background as setup steps, and a `base-resolved` event records the base. See `2026-11-24-instant-feedback.md`.

@@ -3,6 +3,10 @@ import { Button } from "../components/index.ts";
 
 export type ComposerProps = {
   running: boolean;
+  /** Cancel was pressed and the app has not answered yet. */
+  cancelling?: boolean;
+  /** Archive was confirmed and the app has not answered yet. */
+  archiving?: boolean;
   placeholder: string;
   onSendPrompt: (text: string) => void;
   /** The session is still being set up: a message is held, not sent, until it is ready. */
@@ -97,27 +101,47 @@ type ButtonsProps = {
   held: Held;
   canSend: boolean;
   running: boolean;
+  cancelling: boolean;
+  archiving: boolean;
   onSend: () => void;
   onCancel: () => void;
   onArchive?: (() => void) | undefined;
 };
 
-function Buttons({ held, canSend, running, onSend, onCancel, onArchive }: ButtonsProps) {
+function SendButton({ held, canSend, onSend }: Pick<ButtonsProps, "held" | "canSend" | "onSend">) {
+  if (held.queued) return <Button onClick={held.release}>Take back</Button>;
+  return (
+    <Button variant="primary" onClick={onSend} disabled={!canSend}>
+      Send
+    </Button>
+  );
+}
+
+/** Cancel while a turn runs; once pressed it says it is cancelling until the app has answered. */
+function CancelButton(props: Pick<ButtonsProps, "running" | "cancelling" | "onCancel">) {
+  if (!props.running) return null;
+  return (
+    <Button onClick={props.onCancel} disabled={props.cancelling}>
+      {props.cancelling ? "Cancelling…" : "Cancel"}
+    </Button>
+  );
+}
+
+function ArchiveButton({ archiving, onArchive }: Pick<ButtonsProps, "archiving" | "onArchive">) {
+  if (!onArchive) return null;
+  return (
+    <Button className="ml-auto" variant="ghost" onClick={onArchive} disabled={archiving}>
+      {archiving ? "Archiving…" : "Archive"}
+    </Button>
+  );
+}
+
+function Buttons(props: ButtonsProps) {
   return (
     <div className="flex gap-2">
-      {held.queued ? (
-        <Button onClick={held.release}>Take back</Button>
-      ) : (
-        <Button variant="primary" onClick={onSend} disabled={!canSend}>
-          Send
-        </Button>
-      )}
-      {running && <Button onClick={onCancel}>Cancel</Button>}
-      {onArchive && (
-        <Button className="ml-auto" variant="ghost" onClick={onArchive}>
-          Archive
-        </Button>
-      )}
+      <SendButton {...props} />
+      <CancelButton {...props} />
+      <ArchiveButton {...props} />
     </div>
   );
 }
@@ -152,7 +176,14 @@ export function Composer(props: ComposerProps) {
         onSend={send}
       />
       <HeldNote held={held} />
-      <Buttons {...props} held={held} canSend={text.trim() !== ""} onSend={send} />
+      <Buttons
+        {...props}
+        cancelling={props.cancelling === true}
+        archiving={props.archiving === true}
+        held={held}
+        canSend={text.trim() !== ""}
+        onSend={send}
+      />
     </div>
   );
 }

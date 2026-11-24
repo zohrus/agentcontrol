@@ -1,29 +1,28 @@
 import {
   type EventsSubscribeParams,
   type SessionEvent,
-  SessionId,
+  type SessionId,
   type SessionsCreateParams,
   type SessionSummary,
-  type WorktreeSessionParams,
 } from "@agentcontrol/protocol";
 import type { z } from "zod";
 import { withNormalised } from "../acp-normalise/index.ts";
-import type { HostEnv } from "../agents/index.ts";
+import type { AgentProcess, HostEnv } from "../agents/index.ts";
 import type { EventLog } from "../event-log/index.ts";
 import { createPendingPermissions } from "../permissions/index.ts";
 import type { RepoStore } from "../repos/index.ts";
-import { createWorktree, portBaseFor } from "../worktrees/index.ts";
 import { archiveSession } from "./archive.ts";
 import { type SessionContext, type SessionInfo, sessionInfo } from "./context.ts";
+import { createWorktreeSession } from "./create.ts";
 import { createDirectorySession } from "./directory.ts";
 import { answerRequest, cancelRequests } from "./permissions.ts";
 import { interruptSession, recoverSessions } from "./recovery.ts";
 import { shellTarget } from "./shell-target.ts";
-import { runInBackground } from "./start.ts";
 import { createLiveSummaries, type LiveSummaries } from "./live-summaries.ts";
 import { followEvents, followSummaries } from "./subscribe.ts";
 import { agentToPrompt, resumeSession } from "./resume.ts";
 import { liveAgent, startTurn } from "./turn.ts";
+import { lacksWorktree } from "./worktree-state.ts";
 
 type CreateParams = z.infer<typeof SessionsCreateParams>;
 type ArchiveResult = Awaited<ReturnType<typeof archiveSession>>;
@@ -48,6 +47,10 @@ export interface Sessions {
   ): () => void;
   /** Where the session's worktree is; fails with sessionNotFound for an unknown session. */
   info(sessionId: SessionId): Promise<SessionInfo>;
+  /** Resolves once the session's worktree exists (true), or is known not to be made (false). */
+  worktreeMade(sessionId: SessionId): Promise<boolean>;
+  /** True while the session's worktree is being made, and for good when it could not be made. */
+  lacksWorktree(sessionId: SessionId): boolean;
   /** The folder and variables a terminal of the session starts with; fails for an archived session. */
   shellTarget(sessionId: SessionId): Promise<{ cwd: string; env: Record<string, string> }>;
   /** Every event of the session, with normalised updates; fails with sessionNotFound for an unknown session. */
@@ -61,34 +64,11 @@ export interface Sessions {
   shutdown(): Promise<void>;
 }
 
-function titleOf(params: WorktreeSessionParams): string {
-  const firstLine = params.title ?? params.prompt?.split("\n")[0] ?? "";
-  return firstLine.slice(0, 80);
-}
-
-async function create(ctx: SessionContext, params: CreateParams): Promise<SessionId> {
-  if ("kind" in params) return createDirectorySession(ctx, params);
-  const repo =
-    (await ctx.repos.findByPath(params.repoPath)) ?? (await ctx.repos.add(params.repoPath));
-  const sessionId = SessionId.parse(crypto.randomUUID());
-  const portBase = portBaseFor(ctx.nextPortIndex());
-  const worktree = await createWorktree({
-    repoPath: repo.path,
-    baseBranch: params.baseBranch,
-    sessionId,
-    worktreesDir: ctx.worktreesDir,
-    setup: repo.setup,
-    portBase,
-  });
-  const { worktreePath, branch } = worktree;
-  const created = { agent: params.agent, repoPath: repo.path, baseBranch: worktree.baseBranch };
-  const title = titleOf(params);
-  await ctx.log.append(sessionId, {
-    kind: "session-created",
-    payload: { ...created, title, worktreePath, branch, portBase },
-  });
-  runInBackground(ctx, { sessionId, repo, params, worktree });
-  return sessionId;
+/** Creates a session: in a worktree, or (the Modify agent's) in a plain folder. */
+function create(ctx: SessionContext, params: CreateParams): Promise<SessionId> {
+  return "kind" in params
+    ? createDirectorySession(ctx, params)
+    : createWorktreeSession(ctx, params);
 }
 
 async function resume(ctx: SessionContext, sessionId: SessionId) {
@@ -117,6 +97,17 @@ async function prompt(ctx: SessionContext, call: { sessionId: SessionId; text: s
   await startTurn(ctx, { ...call, agent });
 }
 
+/** What the relay holds about sessions that are running, being made or being resumed: all empty at first. */
+function inFlightSessions() {
+  return {
+    live: new Map<SessionId, AgentProcess>(),
+    creating: new Map<SessionId, Promise<boolean>>(),
+    claimed: new Set<SessionId>(),
+    archiving: new Set<SessionId>(),
+    resuming: new Map<SessionId, Promise<AgentProcess>>(),
+  };
+}
+
 function contextOf(options: {
   log: EventLog;
   repos: RepoStore;
@@ -132,8 +123,7 @@ function contextOf(options: {
   return {
     ...{ log, repos, worktreesDir, hostEnv, summaries, endTerminals },
     permissions: createPendingPermissions(),
-    live: new Map(),
-    resuming: new Map(),
+    ...inFlightSessions(),
     stopRecording: () => {
       recording = false;
     },
@@ -145,6 +135,12 @@ function contextOf(options: {
     },
     nextPortIndex: () => portIndex++,
   };
+}
+
+/** Every event of the session, with normalised updates; fails for an unknown session. */
+async function eventsOf(ctx: SessionContext, sessionId: SessionId): Promise<SessionEvent[]> {
+  await sessionInfo(ctx, sessionId);
+  return (await ctx.log.readAfter(sessionId, 0)).map(withNormalised);
 }
 
 /** Starts the session lifecycle on top of the event log; first repairs sessions a restart cut off. */
@@ -169,11 +165,10 @@ export async function createSessions(options: {
     list: () => Promise.resolve(summaries.list()),
     followSummaries: (sessionId, send) => followSummaries({ summaries, sessionId, send }),
     info: (sessionId) => sessionInfo(ctx, sessionId),
+    worktreeMade: async (sessionId) => (await ctx.creating.get(sessionId)) ?? true,
+    lacksWorktree: (sessionId) => lacksWorktree(ctx, sessionId),
     shellTarget: (sessionId) => shellTarget(ctx, sessionId),
-    events: async (sessionId) => {
-      await sessionInfo(ctx, sessionId);
-      return (await options.log.readAfter(sessionId, 0)).map(withNormalised);
-    },
+    events: (sessionId) => eventsOf(ctx, sessionId),
     follow: (params, send) => followEvents({ log: options.log, params, send }),
     shutdown: () => shutdown(ctx),
   };

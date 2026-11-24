@@ -7,16 +7,10 @@ import type {
   StartSession,
 } from "@agentcontrol/sdk";
 import { saveFile } from "./changes-data.ts";
-import {
-  answerPermission,
-  archiveSession,
-  cancelTurn,
-  resumeSession,
-  sendPrompt,
-  startSession,
-} from "./commands.ts";
+import { answerPermission, archiveSession, cancelTurn, resumeSession } from "./commands.ts";
 import { configActions } from "./config-actions.ts";
 import { attempt, type Context, inBackground } from "./context.ts";
+import { dismissMessage, retryMessage, sendMessage } from "./outgoing.ts";
 import { type FileChange, startLive } from "./live.ts";
 import { initialState } from "./model.ts";
 import { loadModify, modifyActions } from "./modify-data.ts";
@@ -24,6 +18,7 @@ import { createSelection } from "./selection.ts";
 import { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 import { loadSessions } from "./sessions-data.ts";
 import { addRepository, saveSetup } from "./setup-data.ts";
+import { startSession } from "./start-session.ts";
 import { createStore } from "./store.ts";
 import { loadWorkspaces, workspaceActions } from "./workspaces-data.ts";
 
@@ -34,15 +29,22 @@ export type ControllerOptions = {
 };
 
 /** One function per thing the user can do to a session. */
-function sessionActions(ctx: Context) {
+function sessionActions(ctx: Context, selection: ReturnType<typeof createSelection>) {
   return {
-    startSession: (request: StartSession) => startSession(ctx, request),
-    sendPrompt: (id: SessionId, text: string) => sendPrompt(ctx, { id, text }),
-    cancel: (id: SessionId) => cancelTurn(ctx, id),
-    resume: (id: SessionId) => resumeSession(ctx, id),
+    /** The session is in the list at once, so it can be opened; `confirmed` says whether the app took it. */
+    startSession: (request: StartSession) =>
+      startSession(ctx, { request, loadIt: selection.created }),
+    /** The message is in the conversation at once; the app is asked in the background. */
+    sendPrompt: (ref: SessionRef, text: string) => sendMessage(ctx, { ref, text }),
+    retryPrompt: (ref: SessionRef, localId: string) => retryMessage(ctx, { ref, localId }),
+    dismissPrompt: (ref: SessionRef, localId: string) => {
+      dismissMessage(ctx, { ref, localId });
+    },
+    cancel: (ref: SessionRef) => cancelTurn(ctx, ref),
+    resume: (ref: SessionRef) => resumeSession(ctx, ref),
     answerPermission: (id: SessionId, requestId: string, optionId: string) =>
       answerPermission(ctx, { id, requestId, optionId }),
-    archive: (id: SessionId, force: boolean) => archiveSession(ctx, { id, force }),
+    archive: (ref: SessionRef, force: boolean) => archiveSession(ctx, { ref, force }),
     saveFile: (ref: SessionRef, path: string, content: string) =>
       attempt(ctx, () => saveFile(ctx, { ref, path, content })),
     /** What the sessions cost and how they went (the SDK's analytics). */
@@ -107,7 +109,7 @@ export function createController({ client, report }: ControllerOptions) {
   const changes = fileChangeListeners();
   const resync = resyncOf(ctx, selection);
   return {
-    ...sessionActions(ctx),
+    ...sessionActions(ctx, selection),
     ...repositoryActions(ctx),
     workspaces: workspaceActions(ctx),
     config: configActions(ctx),

@@ -28,6 +28,18 @@ export function createStore<S>(initial: S): Store<S> {
   };
 }
 
+/** Resolves once `done` holds for the state: at once when it does already, else after a change. */
+export function untilStore<S>(store: Store<S>, done: (state: S) => boolean): Promise<void> {
+  if (done(store.get())) return Promise.resolve();
+  return new Promise((resolve) => {
+    const stop = store.subscribe(() => {
+      if (!done(store.get())) return;
+      stop();
+      resolve();
+    });
+  });
+}
+
 /** Re-renders the component when the selected part of the store changes. Selectors must not build new objects. */
 export function useStoreValue<S, V>(store: Store<S>, select: (state: S) => V): V {
   return useSyncExternalStore(store.subscribe, () => select(store.get()));

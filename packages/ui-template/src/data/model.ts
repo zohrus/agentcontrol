@@ -64,6 +64,31 @@ export type ConfigState = {
   found: readonly FoundSetup[] | undefined;
 };
 
+/** A message the user sent that the session's history does not hold yet. */
+export type OutgoingMessage = {
+  localId: string;
+  text: string;
+  /** The session's last event when it was sent: only a later `prompt-sent` is this message's copy. */
+  afterSeq: number;
+  /** "sending": the app has not taken it yet. "sent": it has; the history will show it next. */
+  state: "sending" | "sent" | "failed";
+  /** Why it was not sent, in plain words (only when `state` is "failed"). */
+  error: string | undefined;
+};
+
+/**
+ * What the user did that the app has not confirmed yet, shown at once and settled when the app
+ * answers (or rolled back, with a message, when it refuses).
+ */
+export type Pending = {
+  /** Messages in flight, by session key, oldest first. */
+  messages: Readonly<Record<string, readonly OutgoingMessage[]>>;
+  /** Actions in flight, by `busyKey`; the value says what the action chose (e.g. a permission option). */
+  busy: Readonly<Record<string, string>>;
+  /** Sessions the UI created that the app has not confirmed yet, by session key. */
+  creating: Readonly<Record<string, true>>;
+};
+
 /** Everything the UI shows that comes from the app. Per-session data is keyed by `keyOf(ref)`. */
 export type DataState = {
   connection: ConnectionState;
@@ -91,6 +116,7 @@ export type DataState = {
   modify: ModifyState | undefined;
   /** Saved versions of the UI, newest first. */
   versions: readonly UiVersionEntry[];
+  pending: Pending;
 };
 
 const initialConfig: ConfigState = {
@@ -120,6 +146,7 @@ export const initialState: DataState = {
   config: initialConfig,
   modify: undefined,
   versions: [],
+  pending: { messages: {}, busy: {}, creating: {} },
 };
 
 export const fileKey = (ref: SessionRef, path: string): string => `${keyOf(ref)}\u0001${path}`;

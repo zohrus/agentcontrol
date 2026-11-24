@@ -8,7 +8,8 @@ import {
 import { formatCost, type SessionUsage } from "../status/index.ts";
 import { canTakeCommands, connectionName } from "../workspaces/index.ts";
 import type { DataState } from "./model.ts";
-import { LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
+import { busyKey } from "./pending.ts";
+import { keyOf, LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
 
 /** How the user knows a workspace: the Mac itself is "This Mac", anything else keeps its name. */
 export function workspaceLabel(id: string): string {
@@ -36,19 +37,40 @@ function detailOf(row: SessionRow, workspace: WorkspaceTag): string | undefined 
   return `${agentLabel(row.agent)} · ${row.status} · read-only · from ${workspace.label}`;
 }
 
-/** One list entry per session, with its workspace and its single pending permission. */
+/** The pending permission with the answer that is on its way, when one is. */
+function withAnswering(permission: PendingPermission | undefined, answering: string | undefined) {
+  return permission && { ...permission, answering };
+}
+
+/** What the row says while the user's action on it is in flight: archiving, or the answer being sent. */
+function inFlightOf(row: SessionRow, busy: DataState["pending"]["busy"]) {
+  const archiving = busy[busyKey("archive", keyOf(refOf(row)))] !== undefined;
+  const answers = row.pendingPermissions.map((p) => busy[busyKey("answer", p.requestId)]);
+  return { archiving, answering: answers.find((choice) => choice !== undefined) };
+}
+
+/** One session's list entry: its workspace, its single pending permission, what is in flight. */
+function entryOf(call: {
+  row: SessionRow;
+  workspaces: readonly WorkspaceInfo[];
+  busy: DataState["pending"]["busy"];
+}): SessionListEntry {
+  const { row, busy } = call;
+  const workspace = tagOf(row, call.workspaces);
+  const readOnly = !canTakeCommands(workspace);
+  const entry: SessionListEntry = { summary: row, ref: refOf(row), workspace, readOnly };
+  const { archiving, answering } = inFlightOf(row, busy);
+  const detail = archiving ? "Archiving…" : detailOf(row, workspace);
+  const pending = readOnly ? undefined : withAnswering(pendingPermissionOf(row), answering);
+  return { ...entry, ...(detail && { detail }), ...(pending && { pendingPermission: pending }) };
+}
+
+/** One list entry per session. */
 export function toEntries(
-  sessions: readonly SessionRow[],
-  workspaces: readonly WorkspaceInfo[],
+  call: { sessions: readonly SessionRow[]; workspaces: readonly WorkspaceInfo[] },
+  busy: DataState["pending"]["busy"],
 ): SessionListEntry[] {
-  return sessions.map((row) => {
-    const workspace = tagOf(row, workspaces);
-    const readOnly = !canTakeCommands(workspace);
-    const entry: SessionListEntry = { summary: row, ref: refOf(row), workspace, readOnly };
-    const detail = detailOf(row, workspace);
-    const pendingPermission = readOnly ? undefined : pendingPermissionOf(row);
-    return { ...entry, ...(detail && { detail }), ...(pendingPermission && { pendingPermission }) };
-  });
+  return call.sessions.map((row) => entryOf({ row, workspaces: call.workspaces, busy }));
 }
 
 /** Tokens and cost over every turn of a session, or nothing before its first turn ends. */

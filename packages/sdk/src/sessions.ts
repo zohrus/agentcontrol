@@ -9,6 +9,11 @@ import type { Api } from "./client-type.ts";
 import type { SessionRow, UsageRow } from "./types.ts";
 
 export interface StartSession {
+  /**
+   * The id to give the session. Left out, the app makes one. A client that shows the session
+   * before the app has answered picks it itself, so what it shows is the session the app creates.
+   */
+  sessionId?: SessionId | undefined;
   /** Which agent to run: "claude-code", "codex" (or "mock" in tests). */
   agent: WorktreeSessionParams["agent"];
   /** Absolute path of the git repo to work in. */

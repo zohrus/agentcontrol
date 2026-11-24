@@ -28,7 +28,7 @@ function Review({ props, screen }: PartProps) {
       <AppliedView
         applied={applied}
         changedSince={undoBlockedBy}
-        onUndo={(force) => void screen.undo(force)}
+        onUndo={screen.undo}
         onKeepApply={props.actions.keepApply}
         onDone={screen.done}
       />
@@ -41,7 +41,7 @@ function Review({ props, screen }: PartProps) {
       items={items}
       agents={screen.agents}
       titles={titlesOf(items)}
-      onApply={() => void props.actions.apply()}
+      onApply={props.actions.apply}
       onBack={screen.done}
     />
   );

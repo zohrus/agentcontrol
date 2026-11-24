@@ -40,7 +40,9 @@ function useChosenWorkspace(workspaces: readonly WorkspaceInfo[]) {
   return [workspaceId, setWorkspaceId] as const;
 }
 
-function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: SessionRef) => void }) {
+type Started = { onStarted: (ref: SessionRef) => void; onStartFailed: (ref: SessionRef) => void };
+
+function NewSession({ onStarted, onStartFailed, ...shared }: Shared & Started) {
   const controller = useController();
   const every = useWorkspaces();
   const [workspaceId, setWorkspaceId] = useChosenWorkspace(every);
@@ -58,8 +60,11 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: Sessio
       repos={choices.repos}
       agents={choices.agents}
       onStart={(request) => {
-        void controller.startSession(request).then((ref) => {
-          if (ref !== undefined) onStarted(ref);
+        // The session is listed and can be opened now; the app is asked in the background.
+        const started = controller.startSession(request);
+        onStarted(started.ref);
+        void started.confirmed.then((taken) => {
+          if (!taken) onStartFailed(started.ref);
         });
       }}
       onAddRepository={(path) => controller.addRepository(path, workspaceId)}
@@ -67,14 +72,13 @@ function NewSession({ onStarted, ...shared }: Shared & { onStarted: (ref: Sessio
   );
 }
 
-type Props = {
+type Props = Started & {
   open: DialogName | undefined;
   onOpenChange: (name: DialogName | undefined) => void;
-  onStarted: (ref: SessionRef) => void;
 };
 
 /** Every dialog the top bar can open, each shown when `open` names it. */
-export function AppDialogs({ open, onOpenChange, onStarted }: Props) {
+export function AppDialogs({ open, onOpenChange, ...started }: Props) {
   const shared = (name: DialogName): Shared => ({
     open: open === name,
     onOpenChange: (isOpen) => {
@@ -83,7 +87,7 @@ export function AppDialogs({ open, onOpenChange, onStarted }: Props) {
   });
   return (
     <>
-      <NewSession {...shared("new-session")} onStarted={onStarted} />
+      <NewSession {...shared("new-session")} {...started} />
       <WorkspacesDialogs menu={shared("workspaces")} add={shared("add-workspace")} />
       <ConfigDialog {...shared("config")} />
       <ConnectedModifyDialog {...shared("modify")} />

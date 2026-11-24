@@ -1,6 +1,6 @@
 import type { ConfigAgent, ConfigPlan, ScopedItem } from "@agentcontrol/protocol";
 import { countOf } from "../status/index.ts";
-import { Button } from "../components/index.ts";
+import { Button, useWorking } from "../components/index.ts";
 import { agentName, agentOfPath, allAgents } from "./agents.ts";
 import { FileChangeCard } from "./file-change-card.tsx";
 import { PlanNotes } from "./plan-notes.tsx";
@@ -14,7 +14,7 @@ export type ReviewViewProps = {
   agents: readonly ConfigAgent[];
   /** What each item is called, by id. */
   titles: Readonly<Record<string, string>>;
-  onApply: () => void;
+  onApply: () => Promise<unknown>;
   onBack: () => void;
 };
 
@@ -58,11 +58,21 @@ function Footer({
   onApply,
   onBack,
 }: Pick<ReviewViewProps, "onApply" | "onBack"> & { none: boolean }) {
+  const applying = useWorking();
+  const apply = none ? "Apply (record the current files)" : "Apply";
   return (
     <div className="flex justify-end gap-2 border-t border-line px-4 py-3">
-      <Button onClick={onBack}>Back to editing</Button>
-      <Button variant="primary" onClick={onApply}>
-        {none ? "Apply (record the current files)" : "Apply"}
+      <Button onClick={onBack} disabled={applying.working}>
+        Back to editing
+      </Button>
+      <Button
+        variant="primary"
+        disabled={applying.working}
+        onClick={() => {
+          applying.run(onApply);
+        }}
+      >
+        {applying.working ? "Applying…" : apply}
       </Button>
     </div>
   );

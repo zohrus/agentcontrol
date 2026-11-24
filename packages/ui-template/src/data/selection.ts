@@ -1,7 +1,8 @@
 import { loadFile, refreshChanges } from "./changes-data.ts";
 import { type Context, inBackground } from "./context.ts";
+import { isCreating } from "./pending.ts";
 import { loadEvents } from "./sessions-data.ts";
-import { isRow, sameSession, type SessionRef } from "./session-ref.ts";
+import { isRow, keyOf, sameSession, type SessionRef } from "./session-ref.ts";
 
 type Open = { ref: SessionRef | undefined; path: string | undefined };
 
@@ -11,7 +12,7 @@ const isArchived = (ctx: Context, ref: SessionRef): boolean =>
 /** Archived sessions have no worktree to read. */
 async function reloadChanges(ctx: Context, open: Open): Promise<void> {
   const { ref, path } = open;
-  if (ref === undefined || isArchived(ctx, ref)) return;
+  if (ref === undefined || isArchived(ctx, ref) || isCreating(ctx, keyOf(ref))) return;
   await refreshChanges(ctx, ref);
   if (path !== undefined) await loadFile(ctx, { ref, path });
 }
@@ -37,6 +38,11 @@ export function createSelection(ctx: Context) {
       Object.assign(open, call);
       if (call.path !== undefined)
         inBackground(ctx, loadFile(ctx, { ref: call.ref, path: call.path }));
+    },
+    /** The app has taken a session this UI created: load its history, and its changes if it is open. */
+    created: (ref: SessionRef): void => {
+      inBackground(ctx, loadEvents(ctx, ref));
+      if (sameSession(ref, open.ref)) inBackground(ctx, reloadChanges(ctx, open));
     },
     reloadAll: (): void => {
       inBackground(ctx, reloadAll(ctx, open));

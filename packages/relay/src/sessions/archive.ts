@@ -13,11 +13,18 @@ async function stopAgent(ctx: SessionContext, sessionId: SessionId): Promise<voi
 
 async function tearDown(ctx: SessionContext, call: { sessionId: SessionId; info: SessionInfo }) {
   const { sessionId, info } = call;
-  await stopAgent(ctx, sessionId);
-  // A shell or a watcher it started would otherwise keep using the folder while it is removed.
-  await ctx.endTerminals(sessionId);
-  await workdirOf(info).remove();
+  ctx.archiving.add(sessionId);
+  try {
+    await stopAgent(ctx, sessionId);
+    // A shell or a watcher it started would otherwise keep using the folder while it is removed.
+    await ctx.endTerminals(sessionId);
+    await workdirOf(info).remove();
+  } catch (error) {
+    ctx.archiving.delete(sessionId);
+    throw error;
+  }
   await ctx.log.append(sessionId, { kind: "session-archived", payload: {} });
+  ctx.archiving.delete(sessionId);
 }
 
 /** Stops the agent, removes the worktree (the branch stays) and records `session-archived`. */
@@ -27,6 +34,8 @@ export async function archiveSession(
 ): Promise<ArchiveResult> {
   const { sessionId } = call;
   const info = await sessionInfo(ctx, sessionId);
+  // A session still being made is archived once its worktree exists, so nothing is removed halfway.
+  await ctx.creating.get(sessionId);
   if (ctx.summaries.summary(sessionId)?.archivedAt !== undefined) return { archived: true };
   const files = await workdirOf(info).uncommitted();
   if (files.length > 0 && !call.force) return { archived: false, uncommittedFiles: files };

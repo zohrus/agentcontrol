@@ -4,7 +4,8 @@ import { RotateCcw } from "lucide-react";
  * Shown above the composer when the relay stopped while the session's agent was running: the agent
  * is gone. Resume starts a new one in the same folder; replying does the same.
  */
-export function InterruptedBanner({ onResume }: { onResume: () => void }) {
+export function InterruptedBanner(props: { onResume: () => void; resuming: boolean }) {
+  const { onResume, resuming } = props;
   return (
     <div
       role="status"
@@ -15,9 +16,10 @@ export function InterruptedBanner({ onResume }: { onResume: () => void }) {
       <button
         type="button"
         onClick={onResume}
-        className="rounded-md border border-line bg-surface px-2.5 py-1 font-medium text-fg hover:bg-code"
+        disabled={resuming}
+        className="rounded-md border border-line bg-surface px-2.5 py-1 font-medium text-fg hover:bg-code disabled:opacity-50"
       >
-        Resume
+        {resuming ? "Resuming…" : "Resume"}
       </button>
     </div>
   );

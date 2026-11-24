@@ -30,8 +30,22 @@ function useFrozen(id: SessionRef): boolean {
   return useTurnRunning(id) || unusable;
 }
 
-function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
+/** Saving the open file; saves can overlap (the user keeps typing), so "Saving…" lasts until the last is answered. */
+function useSaving(call: { id: SessionRef; path: string | undefined }) {
   const controller = useController();
+  const [count, setCount] = useState(0);
+  const { id, path } = call;
+  const save = (content: string) => {
+    if (path === undefined) return;
+    setCount((n) => n + 1);
+    void controller.saveFile(id, path, content).finally(() => {
+      setCount((n) => n - 1);
+    });
+  };
+  return { saving: count > 0, save };
+}
+
+function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
   const events = useSessionEvents(id);
   const [picked, setPicked] = useState<string>();
   const path = picked ?? diff.files[0]?.path;
@@ -39,9 +53,7 @@ function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
   const file = useFile(id, path) ?? NO_FILE;
   const tree = useTree(id);
   const frozen = useFrozen(id);
-  const save = (content: string) => {
-    if (path !== undefined) void controller.saveFile(id, path, content);
-  };
+  const { saving, save } = useSaving({ id, path });
   return (
     <ChangesPanel
       sessionId={id.id}
@@ -54,6 +66,7 @@ function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
       notice={file.notice}
       worktreePath={worktreePathOf(events) ?? ""}
       readOnly={frozen}
+      saving={saving}
       onSave={save}
     />
   );

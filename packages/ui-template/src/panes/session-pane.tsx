@@ -1,7 +1,10 @@
 import {
   type SessionRef,
+  useAnswering,
   useController,
   useData,
+  useInFlight,
+  useOutgoing,
   useSession,
   useSessionEvents,
   useUsage,
@@ -23,13 +26,40 @@ function Missing({ loaded }: { loaded: boolean }) {
   return <p className="p-4 text-muted">{loaded ? "That session no longer exists." : "Loading…"}</p>;
 }
 
-function OpenSession({ selected, onArchive }: OpenProps) {
+/** What the user sent or started on the session that the app has not answered yet. */
+function usePending(selected: SessionRef) {
+  return {
+    outgoing: useOutgoing(selected),
+    inFlight: useInFlight(selected),
+    answering: useAnswering(),
+  };
+}
+
+/** What the buttons of the open session do. */
+function useSessionActions(selected: SessionRef) {
   const controller = useController();
+  return {
+    onSendPrompt: (text: string) => void controller.sendPrompt(selected, text),
+    onRetryMessage: (localId: string) => void controller.retryPrompt(selected, localId),
+    onDismissMessage: (localId: string) => {
+      controller.dismissPrompt(selected, localId);
+    },
+    onCancel: () => void controller.cancel(selected),
+    onResume: () => void controller.resume(selected),
+    onAnswerPermission: (requestId: string, optionId: string) => {
+      void controller.answerPermission(selected.id, requestId, optionId);
+    },
+  };
+}
+
+function OpenSession({ selected, onArchive }: OpenProps) {
   const loaded = useData((s) => s.loaded);
   const summary = useSession(selected);
   const events = useSessionEvents(selected);
   const usage = useUsage(selected);
   const workspace = useWorkspace(selected.workspaceId);
+  const actions = useSessionActions(selected);
+  const pending = usePending(selected);
   if (!summary) return <Missing loaded={loaded} />;
   return (
     <SessionView
@@ -38,14 +68,10 @@ function OpenSession({ selected, onArchive }: OpenProps) {
       turnRunning={summary.turnRunning}
       usage={usage}
       readOnlyNote={workspace && readOnlyNote(workspace)}
-      onSendPrompt={(text) => void controller.sendPrompt(selected.id, text)}
-      onCancel={() => void controller.cancel(selected.id)}
-      onResume={() => void controller.resume(selected.id)}
+      {...pending}
+      {...actions}
       onArchive={() => {
         onArchive(selected);
-      }}
-      onAnswerPermission={(requestId, optionId) => {
-        void controller.answerPermission(selected.id, requestId, optionId);
       }}
     />
   );

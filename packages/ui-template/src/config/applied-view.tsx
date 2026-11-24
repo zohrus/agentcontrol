@@ -1,11 +1,11 @@
 import type { ApplyResult } from "@agentcontrol/protocol";
-import { Button, ConfirmDialog } from "../components/index.ts";
+import { Button, ConfirmDialog, useWorking } from "../components/index.ts";
 
 export type AppliedViewProps = {
   applied: ApplyResult;
   /** Files that changed after the apply; set when an undo was held back for the user to confirm. */
   changedSince: readonly string[];
-  onUndo: (force: boolean) => void;
+  onUndo: (force: boolean) => Promise<unknown>;
   /** Declines the undo that was held back; the apply stays as it is. */
   onKeepApply: () => void;
   onDone: () => void;
@@ -35,7 +35,7 @@ function ChangedSince(props: Pick<AppliedViewProps, "changedSince" | "onUndo" | 
       title="Files changed since"
       confirmLabel="Undo anyway"
       onConfirm={() => {
-        props.onUndo(true);
+        void props.onUndo(true);
       }}
       onCancel={props.onKeepApply}
     >
@@ -54,16 +54,18 @@ function ChangedSince(props: Pick<AppliedViewProps, "changedSince" | "onUndo" | 
 
 /** What the apply wrote, with "Undo this apply"; undoing over later changes asks first. */
 export function AppliedView(props: AppliedViewProps) {
+  const undoing = useWorking();
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       <Written paths={props.applied.written} />
       <div className="flex justify-end gap-2">
         <Button
+          disabled={undoing.working}
           onClick={() => {
-            props.onUndo(false);
+            undoing.run(() => props.onUndo(false));
           }}
         >
-          Undo this apply
+          {undoing.working ? "Undoing…" : "Undo this apply"}
         </Button>
         <Button variant="primary" onClick={props.onDone}>
           Done

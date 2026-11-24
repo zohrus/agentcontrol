@@ -35,6 +35,10 @@ export type ModifyPanelProps = {
   versions: readonly UiVersionEntry[];
   update?: UiUpdate | undefined;
   onSendPrompt: (text: string) => void;
+  /** The request just sent, which the app has not taken yet: shown in the chat as being sent. */
+  sending?: string | undefined;
+  /** The action (keep, undo, discard, restore, update) that was pressed and is not answered yet. */
+  pressed?: "keep" | "undo" | "discard" | "restore" | "update" | undefined;
   onKeep: () => void;
   onUndo: () => void;
   /** Throws away a failed or running attempt. */

@@ -15,6 +15,8 @@ export type ChangesPanelProps = Omit<ChangesTabProps, "onPreview"> & {
   worktreePath: string;
   readOnly: boolean;
   onSave: EditorTabProps["onSave"];
+  /** A save was asked for and the app has not answered yet. */
+  saving?: boolean | undefined;
   /** Every file of the worktree, offered in the Editor tab. */
   tree: readonly FsEntry[];
   /** Plain-language note about the open file, e.g. that a save was refused. */
@@ -48,6 +50,7 @@ function EditorContent(props: EditorContentProps) {
           path={selectedPath}
           content={props.workingContent}
           readOnly={props.readOnly}
+          saving={props.saving}
           onSave={props.onSave}
         />
       )}

@@ -2,27 +2,19 @@ import { join } from "node:path";
 import type { RepoSetup } from "@agentcontrol/protocol";
 import { git } from "../git/index.ts";
 import { copyFiles } from "./copy-files.ts";
-import { latestTrunk, type StartPoint } from "./start-point.ts";
+import { latestTrunk, refExists, type StartPoint } from "./start-point.ts";
 
-/** A named branch is used as it is; without one the latest remote trunk is. */
-function resolveStartPoint(options: {
-  repoPath: string;
-  baseBranch?: string | undefined;
-}): Promise<StartPoint> {
-  const named = options.baseBranch?.trim() ?? "";
-  if (named !== "") return Promise.resolve({ ref: named, notes: [] });
-  return latestTrunk(options.repoPath);
-}
-
-export interface CreatedWorktree {
+/** Where a session's worktree will be, known before anything is made: it only depends on the id. */
+export interface PlannedWorktree {
   worktreePath: string;
   branch: string;
-  /** What the worktree started from, e.g. "origin/main"; the session's diff compares with it. */
-  baseBranch: string;
-  /** Sentences for the session's setup output about where it started from. */
-  notes: string[];
+  /** First port of the session's block of 10. */
+  portBase: number;
   env: Record<string, string>;
 }
+
+/** The base branch the user named, trimmed; empty when they named none. */
+export const namedBase = (baseBranch: string | undefined): string => baseBranch?.trim() ?? "";
 
 const PORT_START = 41000;
 const PORT_BLOCK = 10;
@@ -38,28 +30,47 @@ export function portEnv(portBase: number): Record<string, string> {
   return { PORT: port, AGENTCONTROL_PORT_BASE: port };
 }
 
-/**
- * Adds a worktree on a new branch, copies the setup files and assigns the ports. It starts from
- * `baseBranch`, or, when that is left out, from the latest trunk of the remote.
- */
-export async function createWorktree(options: {
-  repoPath: string;
-  baseBranch?: string | undefined;
+/** The folder, branch and ports of a session's worktree, worked out without touching git. */
+export function planWorktree(options: {
   sessionId: string;
   worktreesDir: string;
-  setup: RepoSetup;
   portBase: number;
-}): Promise<CreatedWorktree> {
-  const branch = `agentcontrol/${options.sessionId}`;
-  const worktreePath = join(options.worktreesDir, options.sessionId);
-  const start = await resolveStartPoint(options);
-  const args = ["worktree", "add", "--no-track", "-b", branch, worktreePath, start.ref];
-  await git(args, { cwd: options.repoPath });
-  await copyFiles({
-    repoPath: options.repoPath,
-    worktreePath,
-    patterns: options.setup.copyFiles,
+}): PlannedWorktree {
+  const { sessionId } = options;
+  return {
+    worktreePath: join(options.worktreesDir, sessionId),
+    branch: `agentcontrol/${sessionId}`,
+    portBase: options.portBase,
+    env: portEnv(options.portBase),
+  };
+}
+
+/** Refuses a base branch git does not know, in git's own words (checked locally, so it is quick). */
+export async function checkBaseBranch(repoPath: string, branch: string): Promise<void> {
+  if (!(await refExists(repoPath, branch))) throw new Error(`invalid reference: ${branch}`);
+}
+
+/** What the worktree starts from: the named branch as it is, else the latest remote trunk. */
+export function resolveStartPoint(options: {
+  repoPath: string;
+  baseBranch?: string | undefined;
+}): Promise<StartPoint> {
+  const named = namedBase(options.baseBranch);
+  if (named !== "") return Promise.resolve({ ref: named, notes: [] });
+  return latestTrunk(options.repoPath);
+}
+
+/** Adds the worktree on a new branch at `startRef`, then copies the setup files into it. */
+export async function addWorktree(options: {
+  repoPath: string;
+  planned: PlannedWorktree;
+  startRef: string;
+  setup: RepoSetup;
+}): Promise<void> {
+  const { repoPath, planned, startRef } = options;
+  const { branch, worktreePath } = planned;
+  await git(["worktree", "add", "--no-track", "-b", branch, worktreePath, startRef], {
+    cwd: repoPath,
   });
-  const { ref: baseBranch, notes } = start;
-  return { worktreePath, branch, baseBranch, notes, env: portEnv(options.portBase) };
+  await copyFiles({ repoPath, worktreePath, patterns: options.setup.copyFiles });
 }

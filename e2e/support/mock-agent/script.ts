@@ -61,6 +61,8 @@ const scriptSchema = z.object({
   loadSession: z.object({ history: z.array(z.string()), fails: z.boolean().optional() }).optional(),
   /** The agent process exits shortly after it answered `session/new` or `session/load`. */
   exitsAfterStarting: z.boolean().optional(),
+  /** `session/new` is answered only once a file exists at this path: a test lets the agent start by writing it. */
+  startsWhenFileExists: z.string().optional(),
   /** `session/set_mode` fails, as when the user's Claude Code policy forbids changing the mode. */
   refusesModeChange: z.boolean().optional(),
 });

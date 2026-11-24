@@ -45,28 +45,52 @@ export type ReviewBarProps = {
   onKeep: () => void;
   onUndo: () => void;
   onDiscard: () => void;
+  /** The action pressed whose answer has not come: its button says so, and none can be pressed. */
+  pressed?: "keep" | "undo" | "discard" | "restore" | "update" | undefined;
 };
 
 const discardable = new Set<Status>(["working", "checking", "fixing", "failed"]);
 
-function KeepAndUndo({ status, canGoBack, onKeep, onUndo }: ReviewBarProps) {
-  const idle = status === "idle";
+type Pressed = ReviewBarProps["pressed"];
+
+function UndoButton(props: Pick<ReviewBarProps, "status" | "canGoBack" | "onUndo" | "pressed">) {
+  const idle = props.status === "idle";
+  const label = idle ? "Undo last change" : "Undo";
+  return (
+    <Button
+      onClick={props.onUndo}
+      disabled={(idle && !props.canGoBack) || props.pressed !== undefined}
+    >
+      {props.pressed === "undo" ? "Undoing…" : label}
+    </Button>
+  );
+}
+
+function KeepButton({ onKeep, pressed }: { onKeep: () => void; pressed: Pressed }) {
+  return (
+    <Button variant="primary" onClick={onKeep} disabled={pressed !== undefined}>
+      {pressed === "keep" ? "Keeping…" : "Keep"}
+    </Button>
+  );
+}
+
+function KeepAndUndo(props: ReviewBarProps) {
   return (
     <>
-      <Button onClick={onUndo} disabled={idle && !canGoBack}>
-        {idle ? "Undo last change" : "Undo"}
-      </Button>
-      {!idle && (
-        <Button variant="primary" onClick={onKeep}>
-          Keep
-        </Button>
-      )}
+      <UndoButton {...props} />
+      {props.status !== "idle" && <KeepButton onKeep={props.onKeep} pressed={props.pressed} />}
     </>
   );
 }
 
 function Buttons(props: ReviewBarProps) {
-  if (discardable.has(props.status)) return <Button onClick={props.onDiscard}>Discard</Button>;
+  if (discardable.has(props.status)) {
+    return (
+      <Button onClick={props.onDiscard} disabled={props.pressed !== undefined}>
+        {props.pressed === "discard" ? "Discarding…" : "Discard"}
+      </Button>
+    );
+  }
   return props.hideKeepUndo ? null : <KeepAndUndo {...props} />;
 }
 

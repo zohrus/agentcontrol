@@ -18,6 +18,8 @@ export interface MockAgentOptions {
   failsToLoadEarlierSession(): void;
   /** The agent process exits by itself a moment after it started, before any prompt. */
   diesRightAfterStarting(): void;
+  /** The agent is slow to start: it answers `session/new` only once a file exists at this path. */
+  startsWhenFileExists(path: string): void;
 }
 
 /** The options of one script, set by writing into it. */
@@ -37,6 +39,9 @@ export function optionsOf(script: MockAgentScript): MockAgentOptions {
     },
     diesRightAfterStarting: () => {
       script.exitsAfterStarting = true;
+    },
+    startsWhenFileExists: (path) => {
+      script.startsWhenFileExists = path;
     },
   };
 }

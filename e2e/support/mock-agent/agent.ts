@@ -1,7 +1,7 @@
 import { agent, methods, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
 import { createModes } from "./modes.ts";
 import type { MockAgentScript, Step, StopReason } from "./script.ts";
-import { runStep } from "./steps.ts";
+import { runStep, untilFileExists } from "./steps.ts";
 import type { TurnContext } from "./turn.ts";
 
 async function runSteps(steps: readonly Step[], turn: TurnContext): Promise<StopReason> {
@@ -109,6 +109,20 @@ function offeredWhenStarted(call: {
   return call.modes.offered();
 }
 
+/** Answers `session/new`, after the wait a slow start asks for. */
+async function startNewSession(call: {
+  script: MockAgentScript;
+  modes: ReturnType<typeof createModes>;
+  session: Session;
+  params: { cwd: string; _meta?: unknown };
+}) {
+  const { script, modes, session, params } = call;
+  if (script.startsWhenFileExists !== undefined) await untilFileExists(script.startsWhenFileExists);
+  session.cwd = params.cwd;
+  session.launchSettings = params._meta;
+  return { sessionId: SESSION_ID, ...offeredWhenStarted({ script, modes }) };
+}
+
 export function createMockAgent(script: MockAgentScript) {
   let turnsStarted = 0;
   const session: Session = { cwd: process.cwd(), launchSettings: undefined };
@@ -116,11 +130,9 @@ export function createMockAgent(script: MockAgentScript) {
   const { cancelled, cancel } = whenCancelled();
   return agent({ name: "mock-agent" })
     .onRequest(methods.agent.initialize, () => initialized(script))
-    .onRequest(methods.agent.session.new, ({ params }) => {
-      session.cwd = params.cwd;
-      session.launchSettings = params._meta;
-      return { sessionId: SESSION_ID, ...offeredWhenStarted({ script, modes }) };
-    })
+    .onRequest(methods.agent.session.new, ({ params }) =>
+      startNewSession({ script, modes, session, params }),
+    )
     .onRequest(methods.agent.session.load, async ({ params, client }) => {
       await loadEarlierSession({ script, params, client });
       session.cwd = params.cwd;

@@ -16,6 +16,10 @@ export async function shellTarget(
   if (ctx.summaries.summary(sessionId)?.archivedAt !== undefined) {
     throw new RelayError(ErrorCode.sessionArchived, "This session was archived: it has no folder.");
   }
+  // A session just created has no folder until its worktree is made: wait for it, as for a slow start.
+  if ((await ctx.creating.get(sessionId)) === false) {
+    throw new RelayError(ErrorCode.setupFailed, "The session's working copy could not be made.");
+  }
   const env = info.portBase === undefined ? {} : portEnv(info.portBase);
   return { cwd: info.worktreePath, env };
 }

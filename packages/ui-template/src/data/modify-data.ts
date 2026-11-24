@@ -1,5 +1,6 @@
 import type { Client, ModifyState, SessionId } from "@agentcontrol/sdk";
 import { attempt, type Context, inBackground } from "./context.ts";
+import { busyKey, whileBusy } from "./pending.ts";
 import { loadEvents } from "./sessions-data.ts";
 import { keyOf, LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 
@@ -50,14 +51,28 @@ async function act(ctx: Context, call: Call): Promise<void> {
   inBackground(ctx, loadHistory(ctx));
 }
 
+/** What the user asked of the Modify agent that is still being answered (see `useModify`). */
+export type ModifyAction = "request" | "keep" | "undo" | "discard" | "restore" | "update";
+
+/** Runs the action, which reads as in progress until it is answered; asking twice does nothing. */
+function pressed(ctx: Context, call: { name: ModifyAction; choice?: string; call: Call }) {
+  const key = busyKey("modify", call.name);
+  return whileBusy(ctx, {
+    key,
+    choice: call.choice ?? "",
+    work: () => act(ctx, call.call),
+  });
+}
+
 /** One function per thing the user can do to the UI itself. */
 export function modifyActions(ctx: Context) {
   return {
-    request: (text: string) => act(ctx, (m) => m.request(text)),
-    keep: () => act(ctx, (m) => m.keep()),
-    undo: () => act(ctx, (m) => m.undo()),
-    discard: () => act(ctx, (m) => m.discard()),
-    restore: (commit: string) => act(ctx, (m) => m.restore(commit)),
-    applyUpdate: () => act(ctx, (m) => m.applyUpdate()),
+    request: (text: string) =>
+      pressed(ctx, { name: "request", choice: text, call: (m) => m.request(text) }),
+    keep: () => pressed(ctx, { name: "keep", call: (m) => m.keep() }),
+    undo: () => pressed(ctx, { name: "undo", call: (m) => m.undo() }),
+    discard: () => pressed(ctx, { name: "discard", call: (m) => m.discard() }),
+    restore: (commit: string) => pressed(ctx, { name: "restore", call: (m) => m.restore(commit) }),
+    applyUpdate: () => pressed(ctx, { name: "update", call: (m) => m.applyUpdate() }),
   };
 }

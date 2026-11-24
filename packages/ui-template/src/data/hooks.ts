@@ -15,12 +15,14 @@ import {
   toEntries,
   totalUsage,
 } from "./derive.ts";
+import { busyKey } from "./pending.ts";
 import {
   type Choices,
   type ConfigState,
   type DataState,
   fileKey,
   type FileVersions,
+  type OutgoingMessage,
   type SetupStep,
   type WorkspaceCheck,
 } from "./model.ts";
@@ -33,6 +35,7 @@ const noEntries: readonly FsEntry[] = [];
 const noChoices: Choices = { repos: [], agents: [] };
 const noCheck: WorkspaceCheck = { steps: [], running: false };
 const noSteps: readonly SetupStep[] = [];
+const noMessages: readonly OutgoingMessage[] = [];
 
 /** Reads one part of the data; re-renders only when that part changes. */
 export function useData<V>(select: (state: DataState) => V): V {
@@ -78,6 +81,24 @@ export const useFile = (ref: SessionRef | undefined, path: string | undefined) =
   );
 export const useTurnRunning = (ref: SessionRef | undefined): boolean =>
   useData((s) => s.sessions.find((row) => isRow(row, ref))?.turnRunning ?? false);
+/** Messages the user sent to the session that its history does not hold yet. */
+export const useOutgoing = (ref: SessionRef | undefined): readonly OutgoingMessage[] =>
+  useData((s) => s.pending.messages[keyedBy(ref) ?? ""] ?? noMessages);
+/** The permission requests whose answer is on its way: request id to the option chosen. */
+export function useAnswering(): Readonly<Record<string, string>> {
+  const busy = useData((s) => s.pending.busy);
+  return useMemo(() => {
+    const prefix = busyKey("answer", "");
+    const answers = Object.entries(busy).filter(([key]) => key.startsWith(prefix));
+    return Object.fromEntries(answers.map(([key, option]) => [key.slice(prefix.length), option]));
+  }, [busy]);
+}
+/** Whether this session's cancel, archive or resume has been asked for and not answered yet. */
+export const useInFlight = (ref: SessionRef | undefined) => ({
+  cancelling: useData((s) => s.pending.busy[busyKey("cancel", keyedBy(ref) ?? "")] !== undefined),
+  archiving: useData((s) => s.pending.busy[busyKey("archive", keyedBy(ref) ?? "")] !== undefined),
+  resuming: useData((s) => s.pending.busy[busyKey("resume", keyedBy(ref) ?? "")] !== undefined),
+});
 export const useUsage = (ref: SessionRef | undefined) =>
   totalUsage(useData((s) => s.usage[keyedBy(ref) ?? ""]));
 
@@ -102,7 +123,8 @@ export const useConfigState = (): ConfigState => useData((s) => s.config);
 export function useSessionEntries(): SessionListEntry[] {
   const sessions = useData((s) => s.sessions);
   const workspaces = useData((s) => s.workspaces);
-  return useMemo(() => toEntries(sessions, workspaces), [sessions, workspaces]);
+  const busy = useData((s) => s.pending.busy);
+  return useMemo(() => toEntries({ sessions, workspaces }, busy), [sessions, workspaces, busy]);
 }
 
 /** Today's date as text, refreshed every minute, so "today" is right after midnight too. */
