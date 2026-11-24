@@ -182,8 +182,9 @@ export async function startDaemon(options: DaemonOptions): Promise<Daemon> {
   const hostEnv = hostEnvFor(options);
   const { handlers, sessions, terminals } = await buildHandlers({ ...options, hostEnv });
   const { server, sockets } = createClientServer(handlers);
-  await listenPrivately(server, socketPath);
+  // The pid file comes first: whoever can connect can already read which process answers.
   await writeFile(pidFileIn(dataDir), String(process.pid));
+  await listenPrivately(server, socketPath);
   return {
     socketPath,
     stop: async () => {
