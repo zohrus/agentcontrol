@@ -12,6 +12,15 @@ export async function expectRelayInstalledOnHost(host: SshHost): Promise<void> {
   });
 }
 
+/** The relay file on the host is the one the app installs from, whatever an earlier build left. */
+export async function expectInstalledRelayToBeTheAppsOwn(host: SshHost): Promise<void> {
+  await eventually("expected the host to have the app's own relay installed", async () => {
+    const installed = await Bun.file(host.installedRelay).text();
+    const wanted = await Bun.file(host.builtRelay).text();
+    return installed === wanted ? undefined : "it is still the one an earlier build left";
+  });
+}
+
 /** The relay on the host is not the old one any more: it was stopped and a new one started. */
 export async function expectHostRelayToHaveBeenReplaced(
   host: SshHost,

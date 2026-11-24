@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { buildIdentity } from "@agentcontrol/protocol/build-id";
 
 const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
 
@@ -21,6 +22,9 @@ export function compileRelayForThisMachine(): string | undefined {
     "build",
     "--compile",
     `--target=${target}`,
+    // As the release build does: the binary says which code it was built from.
+    "--define",
+    `AGENTCONTROL_BUILD_ID=${JSON.stringify(buildIdentity())}`,
     relayMain,
     "--outfile",
     outfile,

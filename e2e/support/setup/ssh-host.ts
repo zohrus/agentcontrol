@@ -2,7 +2,7 @@ import { VERSION } from "@agentcontrol/protocol";
 import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { relayBinariesIn, type SshSettings } from "@agentcontrol/app";
+import type { SshSettings } from "@agentcontrol/app";
 import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
@@ -10,6 +10,7 @@ import { type SshNetwork, startSshNetwork } from "./ssh-network.ts";
 import { type SshHostOptions, writeLoginShellWithAgent } from "./ssh-host-options.ts";
 import { writeRelayBinary } from "./ssh-relay-binary.ts";
 import { startSshd } from "./ssh-sshd.ts";
+import { relayBinaryOf, writeBuiltRelayFolder } from "./ssh-built-relay-folder.ts";
 
 /**
  * Another machine, reached over real ssh: a private sshd on this computer, with its own keys, a
@@ -34,6 +35,8 @@ export interface SshHost {
   readonly relayDataDir: string;
   /** Where the relay of the app's version is installed on the host. */
   readonly installedRelay: string;
+  /** The file the app installs from: the relay that runs this checkout's code. */
+  readonly builtRelay: string;
   /** What to give `startApp` so that it reaches this host and installs the relay from here. */
   readonly appSettings: Pick<SshSettings, "configFile" | "relayBinaryFor"> & {
     backoffMaxMs: number;
@@ -119,20 +122,6 @@ function hostAgentOf(options: { mockAgent: MockAgent; releaseFile: string }) {
   };
 }
 
-/** The file the app installs on the host: a missing one, a given (compiled) binary, or the script. */
-function installedFrom(options: SshHostOptions, script: string): string {
-  if (options.relayBinaryMissing) return "/nonexistent/agentcontrol-relay";
-  return options.relayBinary ?? script;
-}
-
-/** What the app uses to find the relay binary: a folder of a source checkout that holds none, or a file. */
-function relayBinaryOf(options: SshHostOptions, script: string): SshSettings["relayBinaryFor"] {
-  if (options.relayBinaryNotBuilt) {
-    return relayBinariesIn("/nonexistent/dist", { buildFromSource: true });
-  }
-  return () => installedFrom(options, script);
-}
-
 /** The pid in the relay's pid file, if it has one. */
 async function readRelayPid(relayDataDir: string): Promise<number | undefined> {
   const text = await readFile(join(relayDataDir, "relay.pid"), "utf8").catch(() => "");
@@ -144,11 +133,13 @@ interface Parts {
   machine: { network: SshNetwork; configFile: string };
   side: Awaited<ReturnType<typeof prepareRemoteSide>>;
   options: SshHostOptions;
+  /** The `dist/` folder of a source checkout, when the test has one. */
+  dist: string | undefined;
 }
 
 /** The host as tests use it, from the parts that were started. */
 async function hostOf(parts: Parts): Promise<SshHost> {
-  const { folder, machine, side, options } = parts;
+  const { folder, machine, side, options, dist } = parts;
   const relayDataDir = join(side.remoteRoot, "relay-data");
   const releaseFile = join(folder, "release");
   const { configFile, network } = machine;
@@ -164,9 +155,10 @@ async function hostOf(parts: Parts): Promise<SshHost> {
     releaseFile,
     ...hostAgentOf({ mockAgent: side.mockAgent, releaseFile }),
     installedRelay: join(side.remoteRoot, "relay", VERSION, "agentcontrol-relay"),
+    builtRelay: side.built,
     appSettings: {
       configFile,
-      relayBinaryFor: relayBinaryOf(options, side.built),
+      relayBinaryFor: relayBinaryOf(options, { script: side.built, dist }),
       backoffMaxMs: 300,
     },
     relayPid: () => readRelayPid(relayDataDir),
@@ -183,5 +175,7 @@ export async function startSshHost(options: SshHostOptions = {}): Promise<SshHos
     built: side.built,
     relayDataDir: join(side.remoteRoot, "relay-data"),
   });
-  return hostOf({ folder, machine, side, options });
+  const { relayBuiltFromSource: builtFrom } = options;
+  const dist = builtFrom && (await writeBuiltRelayFolder({ folder, relay: side.built, builtFrom }));
+  return hostOf({ folder, machine, side, options, dist: dist || undefined });
 }

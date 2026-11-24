@@ -1,3 +1,4 @@
+import { SCHEMA_REFUSAL } from "@agentcontrol/protocol";
 import type { Outcome } from "../setup/attempt.ts";
 import type { RelayAccess } from "../setup/relay.ts";
 
@@ -13,6 +14,16 @@ export function expectRefusal(
   if (!rightCode || !outcome.message.includes(wanted.saying)) {
     throw new Error(
       `expected a refusal with code ${String(wanted.code)} saying "${wanted.saying}", but got ${String(outcome.code)}: ${outcome.message}`,
+    );
+  }
+}
+
+/** The refusal says the parameters did not fit the schema, so that a client can tell it from a refusal of what they asked. */
+export function expectRefusalToBeAboutTheSchema(outcome: Outcome<unknown>): void {
+  if (outcome.ok) throw new Error("expected the relay to refuse the parameters, but it accepted");
+  if (JSON.stringify(outcome.data) !== JSON.stringify(SCHEMA_REFUSAL)) {
+    throw new Error(
+      `expected the refusal to be marked as one about the schema, but its data is ${JSON.stringify(outcome.data)}`,
     );
   }
 }

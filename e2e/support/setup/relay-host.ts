@@ -12,6 +12,8 @@ export interface RelayHome {
   env: Record<string, string>;
   /** The version the relay reports (a daemon in the test process only); this release's if left out. */
   relayVersion?: string;
+  /** The code the relay says it runs (a daemon in the test process only); this checkout's if left out. */
+  buildId?: string;
   /** Held in `relay/terminal.open` before the shell starts (a daemon in the test process only). */
   beforeShellStarts?: () => Promise<void>;
 }
@@ -27,6 +29,11 @@ export interface RelayHost {
    * daemon running in the test process can start with another event translation version.
    */
   start(options?: { normaliserVersion?: number }): Promise<void>;
+  /**
+   * What the app does to replace a relay it does not want: stops the daemon, and the next
+   * connection finds one that is this checkout's own, whatever this one was made to say it is.
+   */
+  replace(): Promise<void>;
 }
 
 export async function stopDaemonProcess(dataDir: string): Promise<void> {
@@ -43,6 +50,7 @@ function relayProcess(home: RelayHome): RelayHost {
     wire: () => bridgeWire({ relayMain, ...home }),
     stop: () => stopDaemonProcess(home.dataDir),
     start: () => Promise.resolve(),
+    replace: () => stopDaemonProcess(home.dataDir),
   };
 }
 
@@ -54,6 +62,10 @@ async function relayInProcess(home: RelayHome): Promise<RelayHost> {
     stop: () => daemon.stop(),
     start: async (options = {}) => {
       daemon = await startRelayDaemon({ ...home, ...options });
+    },
+    replace: async () => {
+      await daemon.stop();
+      daemon = await startRelayDaemon({ dataDir: home.dataDir, env: home.env });
     },
   };
 }

@@ -43,6 +43,8 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] Decide whether Mac machines are supported as remote workspaces.
 - [ ] Workspace reboot: agent processes die and not every adapter supports `session/load`. Decide what the user sees and whether sessions can be resumed.
 - [x] Relay version skew (23 Nov 2026): one `VERSION` constant (from `packages/protocol/package.json`), compared on `relay/hello`; an idle old relay is replaced, a busy one stays and the workspace reads "needs relay update" until the user restarts it.
+- [x] Relay build identity (24 Nov 2026): a relay with the app's version but other code (started before a `git pull`) is now told apart by a hash of the relay's sources, and replaced or reported like an old version, on This Mac and on ssh hosts; the ssh connector checks the installed binary on every connection; a stale `dist/` says how to rebuild; a schema refusal from the relay reads as "the relay and the app disagree" (`docs/decisions/2026-11-24-relay-build-identity.md`).
+- [ ] Relay build identity, open: run it on a Mac (the compiled app replacing a relay of an older build, and the Mac build with the new `--define`); consider refusing requests up front while a busy relay of other code is in use, instead of explaining the refusal afterwards.
 - [ ] Containers or cloud sandboxes as workspaces: after SSH, or never? It decides whether the `WorkspaceTarget` seam stays at two kinds (local, ssh).
 - [ ] The relay daemon keeps the environment of whichever app first started it, so agent environment variables are frozen until it restarts. Build the agent environment explicitly (phase 5, with the gateway).
 - [ ] Non-JSON-RPC output from an agent is dropped without a trace in `sessions/start.ts`. Log it.

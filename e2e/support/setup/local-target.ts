@@ -44,11 +44,9 @@ export async function relayIsRunning(dataDir: string): Promise<boolean> {
 /** Asks the target to install the relay, whether it is in place, and to forward port 4321. */
 export async function asksForInstallAndForward(target: WorkspaceTarget) {
   const installed = await target.install("/unused");
-  const present = await target.isInstalled();
   const forwarded = await target.forwardPort(4321);
   return {
     installed,
-    present,
     localPort: forwarded.localPort,
     explained: target.explainFailure("anything"),
   };

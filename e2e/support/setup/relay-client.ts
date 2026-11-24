@@ -17,11 +17,12 @@ import { Timeline } from "./timeline.ts";
 
 const EVENT_WAIT_MS = 10_000;
 
-/** A failure answered by the relay, with its JSON-RPC code. */
+/** A failure answered by the relay, with its JSON-RPC code and the data it sent with it. */
 export class RelayCallError extends Error {
   constructor(
     readonly code: number,
     message: string,
+    readonly data?: unknown,
   ) {
     super(message);
   }
@@ -59,7 +60,9 @@ function settle(message: JsonRpcSuccess | JsonRpcFailure, pending: Map<unknown, 
   const waiting = pending.get(message.id);
   pending.delete(message.id);
   if ("error" in message) {
-    waiting?.reject(new RelayCallError(message.error.code, message.error.message));
+    waiting?.reject(
+      new RelayCallError(message.error.code, message.error.message, message.error.data),
+    );
   } else {
     waiting?.resolve(message.result);
   }

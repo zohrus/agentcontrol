@@ -7,7 +7,7 @@ locally and on a host; only the way the app reaches it differs.
 
 - **`WorkspaceTarget`** (`app/src/relays/target.ts`), two kinds, no plugin mechanism: `local` and
   `ssh`. `bridgeCommand()` is the argv that runs `<relay> --stdio --data-dir <dir>` on the machine;
-  `inspect()`, `isInstalled()`, `install(binary)`, `forwardPort(port)`, `stopRelay()` and
+  `inspect()`, `install(binary)`, `forwardPort(port)`, `stopRelay()` and
   `explainFailure(stderr)` are the rest. `connectRelay` is `relayClientOver(spawnBridge({ argv }))`
   for both kinds, so framing, reconnect and resume are shared.
 - **ssh is the system `ssh`**, so `~/.ssh/config`, keys, agents and jump hosts work. Every call

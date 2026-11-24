@@ -21,6 +21,8 @@ export interface RelayBinarySpec {
   codeServer?: boolean;
   /** Makes the relay report this version instead of the app's, to look like an older release. */
   version?: string;
+  /** Makes the relay report that it runs this code instead of this checkout's: an older build. */
+  buildId?: string;
 }
 
 /**
@@ -43,6 +45,9 @@ export async function writeRelayBinary(spec: RelayBinarySpec): Promise<void> {
     ...(spec.version === undefined
       ? []
       : [`export AGENTCONTROL_RELAY_VERSION=${quoted(spec.version)}`]),
+    ...(spec.buildId === undefined
+      ? []
+      : [`export AGENTCONTROL_RELAY_BUILD=${quoted(spec.buildId)}`]),
     `exec ${quoted(process.execPath)} ${quoted(relayMain)} "$@"`,
     "",
   ];

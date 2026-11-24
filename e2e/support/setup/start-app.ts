@@ -1,8 +1,8 @@
 import { join } from "node:path";
 import type { SessionSummary } from "@agentcontrol/protocol";
-import { createClient, type SessionEvent, type WorkspaceInfo } from "@agentcontrol/sdk";
+import { createClient } from "@agentcontrol/sdk";
 import type { ModifyConfig, SshSettings } from "@agentcontrol/app";
-import type { AppAccess, FileChange } from "./app.ts";
+import type { AppAccess } from "./app.ts";
 import { type AppProcess, launchApp } from "./app-process.ts";
 import { type AppUser, appUserOf } from "./app-user.ts";
 import { onTestEnd } from "./cleanup.ts";
@@ -11,11 +11,9 @@ import { aBrowser, type Browser } from "./browser.ts";
 import { type Outsiders, outsidersOf } from "./outsiders.ts";
 import { sessionsOfRelay } from "./relay-peek.ts";
 import type { RelayHost } from "./relay-host.ts";
-import { Timeline } from "./timeline.ts";
+import { countEndedConnections, followLiveStream, type Heard, newHeard } from "./live-heard.ts";
 import type { Wire } from "./wire.ts";
 import { prepareWorkspace, type WorkspaceOptions } from "./workspace-parts.ts";
-
-const STREAM_WAIT_MS = 5000;
 
 /** The app running with one local workspace, driven the way a user's browser drives it. */
 export interface RunningApp extends AppAccess, Outsiders {
@@ -23,6 +21,8 @@ export interface RunningApp extends AppAccess, Outsiders {
   aBrowser(): Browser;
   readonly dataDir: string;
   readonly user: AppUser;
+  /** The relay daemon the app is connected to. */
+  readonly relay: RelayHost;
   /** Quits the app and starts it again on the same data folder; the relay keeps running. */
   restartsTheApp(restart?: { modify?: ModifyConfig }): Promise<void>;
   /** The sessions the relay itself lists, whatever the app knows of them. */
@@ -34,44 +34,6 @@ export interface RunningApp extends AppAccess, Outsiders {
    * one that translates the agents' messages differently (a higher version).
    */
   theRelayStartsAgain(options?: { normaliserVersion?: number }): Promise<void>;
-}
-
-/** What the live stream has delivered so far. */
-interface Heard {
-  streamed: Timeline<SessionEvent>;
-  fileChanges: Timeline<FileChange>;
-  /** One entry per relay connection the app has seen end, numbered from 1. */
-  relayConnectionsEnded: Timeline<number>;
-  workspaceChanges: Timeline<WorkspaceInfo>;
-}
-
-/** Opens the live stream and resolves once the app has confirmed it, so no event is missed. */
-function followLiveStream(sdk: AppAccess["sdk"], heard: Heard): Promise<() => void> {
-  return new Promise((resolve) => {
-    const stop = sdk.subscribe({
-      onEvent: (event) => {
-        heard.streamed.record(event);
-      },
-      onFilesChanged: (change) => {
-        heard.fileChanges.record(change);
-      },
-      onWorkspace: (workspace) => {
-        heard.workspaceChanges.record(workspace);
-      },
-      onOpen: () => {
-        resolve(stop);
-      },
-    });
-  });
-}
-
-function newHeard(): Heard {
-  return {
-    streamed: new Timeline<SessionEvent>(STREAM_WAIT_MS),
-    fileChanges: new Timeline<FileChange>(STREAM_WAIT_MS),
-    relayConnectionsEnded: new Timeline<number>(STREAM_WAIT_MS),
-    workspaceChanges: new Timeline<WorkspaceInfo>(STREAM_WAIT_MS),
-  };
 }
 
 export interface StartOptions extends WorkspaceOptions {
@@ -88,6 +50,8 @@ export interface StartOptions extends WorkspaceOptions {
   relayWire?: (wire: Wire) => Wire;
   /** Stop the relay before the app starts, so the app finds none. */
   relayStopped?: boolean;
+  /** The app can stop the relay of this machine, as it always can in a real run, and does so to replace one. */
+  appCanReplaceTheRelay?: boolean;
 }
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
@@ -117,6 +81,16 @@ function accessOf(options: {
   };
 }
 
+/** What the test says about how the app is wired to the relay and to ssh hosts. */
+function wiringOf(options: StartOptions) {
+  return {
+    relayWire: options.relayWire,
+    canReplace: options.appCanReplaceTheRelay,
+    previewLifetimeMs: options.previewLifetimeMs,
+    ssh: options.ssh,
+  };
+}
+
 /** Starts an app on a fresh data folder with a local git repo and the mock agent. */
 export async function startAppWithLocalWorkspace(options: StartOptions = {}): Promise<RunningApp> {
   const { dataDir, repoPath, mockAgent, env, host } = await prepareWorkspace(options);
@@ -124,10 +98,8 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
   const heard = newHeard();
   const ui = uiOf(options);
   const fixed = { dataDir, env, host, heard, ui, relayDown: options.relayStopped };
-  const wiring = { relayWire: options.relayWire };
-  const lifetime = { previewLifetimeMs: options.previewLifetimeMs };
   const open = (extra: { port?: number; modify?: ModifyConfig | undefined }) =>
-    openApp({ ...fixed, ...wiring, ...lifetime, ssh: options.ssh, ...extra });
+    openApp({ ...fixed, ...wiringOf(options), ...extra });
   let current = await open({ modify: options.modify });
   onTestEnd(() => current.close());
   const access = accessOf({
@@ -143,6 +115,7 @@ export async function startAppWithLocalWorkspace(options: StartOptions = {}): Pr
       await current.close();
       current = await open({ port, modify: restart.modify ?? options.modify });
     },
+    relay: host,
     readsTheRelaySessions: () => sessionsOfRelay(host),
     theRelayStops: () => host.stop(),
     theRelayStartsAgain: (relay?: { normaliserVersion?: number }) => host.start(relay),
@@ -156,12 +129,6 @@ interface Opened {
   close(): Promise<void>;
 }
 
-function countEndedConnections(heard: Heard): () => void {
-  return () => {
-    heard.relayConnectionsEnded.record(heard.relayConnectionsEnded.entries.length + 1);
-  };
-}
-
 interface OpenOptions {
   dataDir: string;
   env: Record<string, string>;
@@ -170,6 +137,7 @@ interface OpenOptions {
   ui: { root?: string; dist?: string };
   ssh?: Partial<SshSettings> | undefined;
   relayDown: boolean | undefined;
+  canReplace: boolean | undefined;
   port?: number;
   modify?: ModifyConfig | undefined;
   previewLifetimeMs?: number | undefined;

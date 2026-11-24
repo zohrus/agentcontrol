@@ -29,18 +29,14 @@ export function expectDescriptionOfThisMachine(machine: HostInfo): void {
   }
 }
 
-/** Nothing was installed, the relay counts as in place, and the port is the one asked for. */
+/** Nothing was installed, and the port is the one asked for. */
 export function expectNothingToInstallOrForward(outcome: {
   installed: { installed: boolean };
-  present: boolean;
   localPort: number;
   explained: string | undefined;
 }): void {
   const fine =
-    !outcome.installed.installed &&
-    outcome.present &&
-    outcome.localPort === 4321 &&
-    outcome.explained === undefined;
+    !outcome.installed.installed && outcome.localPort === 4321 && outcome.explained === undefined;
   if (!fine)
     throw new Error(`expected nothing to install or forward, but got ${JSON.stringify(outcome)}`);
 }

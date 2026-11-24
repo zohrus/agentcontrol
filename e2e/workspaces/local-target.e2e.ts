@@ -80,7 +80,7 @@ test("on this machine there is nothing to install and no port to forward over ss
   const outcome = await asksForInstallAndForward(target);
 
   // ********************************************************************
-  // ** THEN nothing is installed, the relay counts as in place and the port is the same one
+  // ** THEN nothing is installed and the port is the same one
   // ********************************************************************
   expectNothingToInstallOrForward(outcome);
 });

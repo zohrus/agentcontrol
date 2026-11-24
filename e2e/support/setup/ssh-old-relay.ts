@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { RelayName, type SessionId } from "@agentcontrol/protocol";
+import { RelayName, type SessionId, VERSION } from "@agentcontrol/protocol";
 import { onTestEnd } from "./cleanup.ts";
 import { eventually } from "./eventually.ts";
 import { connectToRelay, type RelayClient } from "./relay-client.ts";
+import { startsWorkingSession } from "./relay-working-session.ts";
 import type { SshHost } from "./ssh-host.ts";
 import { writeRelayBinary } from "./ssh-relay-binary.ts";
 import { tryConnect } from "./try-connect.ts";
@@ -18,6 +19,13 @@ export interface OldRelay {
   startsWorkingSession(): Promise<SessionId>;
   /** The session's agent stops, so the old relay has nothing left running. */
   endsTheWork(sessionId: SessionId): Promise<void>;
+}
+
+/** What the old relay says it is, besides what its binary was installed as. */
+export interface OldRelayIdentity {
+  version: string;
+  /** The code it runs, when that differs under the same version; none reported by default. */
+  buildId?: string;
 }
 
 /**
@@ -38,12 +46,14 @@ async function connectToDaemon(host: SshHost): Promise<RelayClient> {
   return client;
 }
 
-/** Runs the host's relay daemon from a binary that reports `version`, and connects to its socket. */
-async function runDaemonOfVersion(host: SshHost, version: string) {
+/** Runs the host's relay daemon from a binary that reports `identity`, and connects to its socket. */
+async function runDaemonOf(host: SshHost, identity: OldRelayIdentity) {
+  const { version, buildId } = identity;
   const binary = join(host.remoteRoot, "relay", version, "agentcontrol-relay");
   await mkdir(host.relayDataDir, { recursive: true });
   const mockAgentScript = host.mockAgent.scriptPath;
-  await writeRelayBinary({ path: binary, home: host.home, mockAgentScript, version });
+  const spec = { path: binary, home: host.home, mockAgentScript, version };
+  await writeRelayBinary({ ...spec, ...(buildId !== undefined && { buildId }) });
   const args = [binary, "daemon", "--data-dir", host.relayDataDir];
   const daemon = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
   onTestEnd(async () => {
@@ -53,26 +63,26 @@ async function runDaemonOfVersion(host: SshHost, version: string) {
   return { pid: daemon.pid, client: await connectToDaemon(host) };
 }
 
-async function startWorkingSession(host: SshHost, client: RelayClient): Promise<SessionId> {
-  host.mockAgent.willWaitUntilCancelled();
-  await host.mockAgent.writeScript();
-  const { repoPath } = host;
-  const params = { agent: "mock" as const, repoPath, baseBranch: "main", prompt: "Keep working" };
-  const { sessionId } = await client.call(RelayName.sessionsCreate, params);
-  await eventually("expected the old relay's agent to be working", async () => {
-    const { sessions } = await client.call(RelayName.sessionsList, {});
-    return sessions.find((each) => each.id === sessionId)?.turnRunning ? undefined : "it is not";
-  });
-  return sessionId;
+/** The relay file installed on the host is one that an earlier build left, with no relay running. */
+export async function leaveAnOlderBuildInstalledOn(host: SshHost): Promise<void> {
+  const { home, mockAgent, installedRelay: path } = host;
+  const spec = { path, home, mockAgentScript: mockAgent.scriptPath, version: VERSION };
+  await mkdir(join(host.remoteRoot, "relay", VERSION), { recursive: true });
+  await writeRelayBinary({ ...spec, buildId: "built-before-the-update" });
 }
 
-/** Starts a relay that reports `version` in the host's relay folder, from its own binary folder. */
-export async function startOldRelayOnHost(host: SshHost, version: string): Promise<OldRelay> {
-  const { pid, client } = await runDaemonOfVersion(host, version);
+/** Starts a relay that reports `identity` in the host's relay folder, from its own binary file. */
+export async function startOldRelayOnHost(
+  host: SshHost,
+  identity: OldRelayIdentity | string,
+): Promise<OldRelay> {
+  const wanted = typeof identity === "string" ? { version: identity } : identity;
+  const { pid, client } = await runDaemonOf(host, wanted);
   return {
-    version,
+    version: wanted.version,
     pid,
-    startsWorkingSession: () => startWorkingSession(host, client),
+    startsWorkingSession: () =>
+      startsWorkingSession({ client, mockAgent: host.mockAgent, repoPath: host.repoPath }),
     endsTheWork: async (sessionId) => {
       await client.call(RelayName.cancel, { sessionId });
     },

@@ -3,6 +3,7 @@ import { ErrorCode } from "@agentcontrol/protocol";
 import {
   expectLineToBeAnsweredWithError,
   expectRefusal,
+  expectRefusalToBeAboutTheSchema,
   expectSecondRelayToBeRefused,
 } from "../support/expect/refusal-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
@@ -42,6 +43,23 @@ test("a call with missing parameters is refused as invalid", async () => {
   // ** THEN the relay refuses the parameters
   // ********************************************************************
   expectRefusal(outcome, { code: ErrorCode.invalidParams, saying: "repoPath" });
+});
+
+test("a call with parameters that do not fit the schema is marked as a schema refusal", async () => {
+  // ********************************************************************
+  // ** GIVEN a running relay
+  // ********************************************************************
+  const relay = await startRelayWithLocalRepo();
+
+  // ********************************************************************
+  // ** WHEN the app starts a session without saying where
+  // ********************************************************************
+  const outcome = await relay.user.triesToStartASessionWithoutSayingWhere();
+
+  // ********************************************************************
+  // ** THEN the refusal says it is about the schema, not about what was asked
+  // ********************************************************************
+  expectRefusalToBeAboutTheSchema(outcome);
 });
 
 test("a line that is not JSON is answered with a parse error", async () => {

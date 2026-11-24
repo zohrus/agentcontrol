@@ -84,14 +84,17 @@ interface LaunchOptions extends ProcessLaunch {
   relayWire?: ((wire: Wire) => Wire) | undefined;
   /** Called each time a connection the app opened to the relay ends (in-process only). */
   onRelayConnectionEnded: () => void;
+  /** The app can stop this machine's relay, to replace one that is not its own (in-process only). */
+  canReplace?: boolean | undefined;
 }
 
 /** The settings that are only given to the app when a test asks for them. */
 function extraSettings(options: LaunchOptions) {
-  const { ssh, previewLifetimeMs } = options;
+  const { ssh, previewLifetimeMs, canReplace, host } = options;
   return {
     ...(ssh && { ssh }),
     ...(previewLifetimeMs !== undefined && { previewLifetimeMs }),
+    ...(canReplace === true && { stopLocalRelay: () => host.replace() }),
   };
 }
 

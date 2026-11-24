@@ -1,4 +1,5 @@
 import type { AppAccess, Session } from "./app.ts";
+import { attemptApi } from "./app-attempt.ts";
 
 /** What the user types in the New session dialog; each part may be left out. */
 interface NewSessionChoices {
@@ -25,5 +26,11 @@ export function appBaseUserOf(app: AppAccess) {
     startsSessionFromBranch: (options: { prompt: string; baseBranch: string }) => start(options),
     /** Creates a session and writes no prompt: the agent is made ready and waits for the user. */
     createsSessionWithoutAPrompt: () => start({}),
+    /** Tries to create a session with no prompt, and gets the app's answer whatever it is. */
+    triesToCreateASessionWithoutAPrompt: () => attemptApi(start({})),
+    /** Restarts the relay of this Mac, as the "Restart relay" button of its workspace does. */
+    restartsTheRelayOfThisMac: () => app.sdk.workspaces.restartRelay("local"),
+    /** The local workspace as the app describes it now. */
+    looksAtThisMac: () => app.sdk.workspace.get(),
   };
 }
