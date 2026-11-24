@@ -1,5 +1,6 @@
 import { configUserOf } from "../setup/config-user.ts";
-import { command, mcpServer } from "../setup/config-items.ts";
+import { command, mcpServer, onlyInRepo } from "../setup/config-items.ts";
+import { createLocalRepo } from "../setup/local-repo.ts";
 import { expectConfigToShow } from "./config-browser-expectations.ts";
 import { startConfigAppInBrowser, type ConfigAppInBrowser } from "./start-config-app-in-browser.ts";
 
@@ -80,4 +81,17 @@ export async function startConfigAppKnowingTheRepository(): Promise<ConfigAppInB
   await app.user.addsTheRepo();
   await app.page.reloads();
   return app;
+}
+
+/** Items for everywhere, for the app's repository and for a second repository; nothing applied. */
+export async function startConfigAppWithItemsInTwoRepositoriesAndEverywhere() {
+  const app = await startConfigAppInBrowser();
+  const user = configUserOf({ sdk: app.sdk, repoPath: app.repoPath });
+  const secondRepo = await createLocalRepo();
+  await user.setsUp([
+    mcpServer({ name: "docs", command: "npx" }),
+    onlyInRepo(mcpServer({ name: "ui", command: "npx" }), app.repoPath),
+    onlyInRepo(mcpServer({ name: "api", command: "npx" }), secondRepo),
+  ]);
+  return Object.assign(app, { secondRepo });
 }

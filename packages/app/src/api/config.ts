@@ -31,6 +31,7 @@ const ItemsBody = z.object({
 const TargetBody = z.object({
   agents: z.array(ConfigAgent).optional(),
   repoPath: z.string().optional(),
+  repoPaths: z.array(z.string()).optional(),
 });
 
 const withAllAgents = (body: z.infer<typeof TargetBody>) => ({
@@ -55,6 +56,7 @@ export function configRoutes(deps: ApiDeps) {
       c.json(
         await relay().call(N.configPlan, {
           ...withAllAgents(c.req.valid("json")),
+          repoPaths: c.req.valid("json").repoPaths,
           items: store.listConfigItems(),
         }),
       ),

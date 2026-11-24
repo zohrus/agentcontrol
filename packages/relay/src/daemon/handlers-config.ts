@@ -31,8 +31,8 @@ export function configHandlers(homeDir: string): Pick<Handlers, ConfigMethods> {
     [N.configInspect]: async ({ agents, repoPath }) => ({
       items: await inspectConfig({ agents, homeDir, repoPath }),
     }),
-    [N.configPlan]: ({ items, agents, repoPath }) =>
-      planConfig({ items, agents, homeDir, repoPath }),
+    [N.configPlan]: ({ items, agents, repoPath, repoPaths }) =>
+      planConfig({ items, agents, homeDir, repoPath, repoPaths }),
     [N.configApply]: ({ planId }) => reportStale(applyConfig({ planId })),
     [N.configRollback]: ({ backupId, force }) =>
       reportStale(rollbackConfig({ backupId, homeDir, force: force ?? false })),

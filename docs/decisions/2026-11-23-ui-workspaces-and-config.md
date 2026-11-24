@@ -44,4 +44,12 @@
   "Keep my manual edit" says "None of those items could be found in the agent's files any more, so
   nothing was kept." when the files hold none of the items, and changes nothing. Opening Config
   loads items and drift together.
-- A review covers one repository: that of the first repo-scoped item.
+- **A review covers every scope that has items** (24 Nov 2026). `relay/config.plan` and `config.plan`
+  take `repoPaths` besides `repoPath`: one plan speaks for the global files and every repository
+  named, so Apply is one write with one backup (all or nothing, a file that moved anywhere refuses
+  the whole apply as stale) and Undo is one rollback. Separate plans per scope could not be applied
+  one after the other (the first apply changes the manifest, so the second is stale). The UI names
+  every repository that has an item and groups the review by scope ("All repositories", "Only in
+  <path>"), then by agent; a file belongs to the repository whose folder holds it. A repository
+  whose items were all deleted is no longer named, so entries written there earlier stay until an
+  item brings it back (in `TASKS.md`).

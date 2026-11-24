@@ -96,9 +96,10 @@ const isGlobalFile = (file: string, home: string): boolean =>
   file === `${home}/.claude.json` ||
   GLOBAL_FOLDERS.some((folder) => under(file, `${home}/${folder}`));
 
-/** A file this plan can speak for: the agents' global files, or the repo the plan was made for. */
+/** A file this plan can speak for: the agents' global files, or a repo the plan was made for. */
 const inScope = (file: string, ctx: RenderCtx): boolean =>
-  isGlobalFile(file, ctx.homeDir) || under(file, ctx.repoPath);
+  isGlobalFile(file, ctx.homeDir) ||
+  [ctx.repoPath, ...(ctx.repoPaths ?? [])].some((repo) => under(file, repo));
 
 /** What we own in repos this plan does not cover stays owned, untouched. */
 function carryOver(input: {

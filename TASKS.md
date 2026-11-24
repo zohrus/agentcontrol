@@ -189,4 +189,4 @@ Later:
 
 ## Normalised updates
 - [ ] The app stores the normalised updates it receives, so sessions synced before a normaliser improvement keep the old form. Add a normaliser version and re-sync, or strip on save and normalise on read.
-
+- [ ] Config review: a repository whose items were all deleted is not named by the review any more, so the entries the app wrote into it stay. The review could add the repositories that the drift report or manifest still lists.

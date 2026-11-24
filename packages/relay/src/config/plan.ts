@@ -11,6 +11,8 @@ export interface PlanInput {
   agents: ConfigAgent[];
   homeDir: string;
   repoPath?: string | undefined;
+  /** More repositories this plan speaks for. */
+  repoPaths?: string[] | undefined;
 }
 
 /** What apply needs to write the plan and to notice that files moved since it was made. */

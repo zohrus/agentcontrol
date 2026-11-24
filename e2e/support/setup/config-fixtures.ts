@@ -1,4 +1,5 @@
-import { startAppWithEmptyHome, type ConfigApp } from "./config-app.ts";
+import { folderAt, startAppWithEmptyHome, type ConfigApp } from "./config-app.ts";
+import { createLocalRepo } from "./local-repo.ts";
 import {
   afterEditHook,
   beforeToolHook,
@@ -128,4 +129,16 @@ export async function startAppWithAServerForOneRepository(): Promise<ConfigApp> 
   const app = await startAppWithEmptyHome();
   await app.user.setsUp([onlyInRepo(mcpServer({ name: "docs", command: "npx" }), app.repo.path)]);
   return app;
+}
+
+/** Items for everywhere, for the app's repository and for a second repository. */
+export async function startAppWithItemsInTwoRepositoriesAndEverywhere() {
+  const app = await startAppWithEmptyHome();
+  const second = folderAt(await createLocalRepo());
+  await app.user.setsUp([
+    mcpServer({ name: "docs", command: "npx" }),
+    onlyInRepo(mcpServer({ name: "ui", command: "npx" }), app.repo.path),
+    onlyInRepo(mcpServer({ name: "api", command: "npx" }), second.path),
+  ]);
+  return { app, second, repos: [app.repo.path, second.path] };
 }

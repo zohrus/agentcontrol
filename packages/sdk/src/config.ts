@@ -14,6 +14,11 @@ export interface ConfigTarget {
   agents?: ConfigAgent[];
   /** Absolute path of a repo; its own config files are read or written too. */
   repoPath?: string;
+  /**
+   * More repositories whose own files are written too (`plan` only): one plan covers the global
+   * files and every repository named, and applying or rolling it back is one step.
+   */
+  repoPaths?: string[];
 }
 
 /** The canonical items the app holds, and the existing setup the agents already have. */

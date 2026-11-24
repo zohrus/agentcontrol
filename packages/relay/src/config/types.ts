@@ -31,6 +31,8 @@ export interface Manifest {
 export interface ConfigCtx {
   homeDir: string;
   repoPath?: string | undefined;
+  /** More repositories the plan covers, besides `repoPath`. */
+  repoPaths?: string[] | undefined;
   readFile(path: string): Promise<string | undefined>;
   /** Relative paths of every file below dir, recursively; empty when dir does not exist. */
   listFiles(dir: string): Promise<string[]>;
