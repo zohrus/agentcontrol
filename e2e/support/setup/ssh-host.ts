@@ -2,7 +2,7 @@ import { VERSION } from "@agentcontrol/protocol";
 import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SshSettings } from "@agentcontrol/app";
+import { relayBinariesIn, type SshSettings } from "@agentcontrol/app";
 import { onTestEnd } from "./cleanup.ts";
 import { createLocalRepo } from "./local-repo.ts";
 import { createMockAgent, type MockAgent } from "./mock-agent-script.ts";
@@ -125,6 +125,14 @@ function installedFrom(options: SshHostOptions, script: string): string {
   return options.relayBinary ?? script;
 }
 
+/** What the app uses to find the relay binary: a folder of a source checkout that holds none, or a file. */
+function relayBinaryOf(options: SshHostOptions, script: string): SshSettings["relayBinaryFor"] {
+  if (options.relayBinaryNotBuilt) {
+    return relayBinariesIn("/nonexistent/dist", { buildFromSource: true });
+  }
+  return () => installedFrom(options, script);
+}
+
 /** The pid in the relay's pid file, if it has one. */
 async function readRelayPid(relayDataDir: string): Promise<number | undefined> {
   const text = await readFile(join(relayDataDir, "relay.pid"), "utf8").catch(() => "");
@@ -158,7 +166,7 @@ async function hostOf(parts: Parts): Promise<SshHost> {
     installedRelay: join(side.remoteRoot, "relay", VERSION, "agentcontrol-relay"),
     appSettings: {
       configFile,
-      relayBinaryFor: () => installedFrom(options, side.built),
+      relayBinaryFor: relayBinaryOf(options, side.built),
       backoffMaxMs: 300,
     },
     relayPid: () => readRelayPid(relayDataDir),

@@ -31,3 +31,4 @@ export { relayClientOver, spawnRelayBridge } from "./relays/index.ts";
 export type { ForwardedPort, HostInfo, WorkspaceTarget } from "./relays/index.ts";
 export { localTarget, spawnBridge, sshTarget } from "./relays/index.ts";
 export type { SshSettings } from "./workspaces/index.ts";
+export { relayBinariesIn } from "./workspaces/index.ts";

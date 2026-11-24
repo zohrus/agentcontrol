@@ -21,9 +21,9 @@ export async function installOn(options: {
   const { target, machine, relayBinaryFor } = options;
   const binary = relayBinaryFor(machine);
   if (!(await Bun.file(binary).exists())) {
-    throw new Error(
-      `This app has no relay for ${machine.os} ${machine.arch} (looked for ${binary}).`,
-    );
+    const advice = relayBinaryFor.missingAdvice?.(machine);
+    const looked = `This app has no relay for ${machine.os} ${machine.arch} (looked for ${binary}).`;
+    throw new Error(advice === undefined ? looked : `${looked} ${advice}`);
   }
   return target.install(binary);
 }

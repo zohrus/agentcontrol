@@ -8,7 +8,7 @@ import { replaceOldRelay } from "./ssh-connect.ts";
 import { sshWorkspaces } from "./ssh-workspaces.ts";
 import type { SshSettings, Workspaces } from "./types.ts";
 
-export { relayBinariesIn } from "./relay-binaries.ts";
+export { relayBinariesIn, shippedRelayBinaries } from "./relay-binaries.ts";
 export type { SshSettings, Workspaces } from "./types.ts";
 
 const LOCAL: Workspace = { id: "local", label: "This Mac", kind: "local" };

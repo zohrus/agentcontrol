@@ -4,7 +4,6 @@ import { createModify, type Modify, type ModifyConfig, readModifyConfig } from "
 import type { ApiDeps } from "./api/index.ts";
 import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
-import { findResources } from "./resources/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
 import { startIde } from "./start-ide.ts";
@@ -13,8 +12,8 @@ import { createHub, type Hub } from "./sync/index.ts";
 import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
 import {
   createWorkspaces,
-  relayBinariesIn,
   type SshSettings,
+  shippedRelayBinaries,
   type Workspaces,
 } from "./workspaces/index.ts";
 
@@ -92,14 +91,8 @@ function explainStartFailure(error: unknown, port: number): unknown {
   );
 }
 
-/** The relay binaries to install on ssh hosts: the release's `relays/` folder, else a checkout's `dist/`. */
-function relaysFolder(): string {
-  const found = findResources({ env: process.env, execPath: process.execPath });
-  return found.relaysDir ?? sourceCheckoutBinaries;
-}
-
 function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): Workspaces {
-  const ssh = { relayBinaryFor: relayBinariesIn(relaysFolder()), ...options.ssh };
+  const ssh = { relayBinaryFor: shippedRelayBinaries(sourceCheckoutBinaries), ...options.ssh };
   const { stopLocalRelay } = options;
   return createWorkspaces({
     ...parts,

@@ -7,6 +7,8 @@ const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 export interface SshHostOptions {
   /** The app has no relay binary to install for this host. */
   relayBinaryMissing?: boolean;
+  /** Like `relayBinaryMissing`, in an app that runs from a source checkout, where binaries are built. */
+  relayBinaryNotBuilt?: boolean;
   /** Claude Code is only found when the PATH of the user's login shell is used, as on a real host. */
   agentOnLoginPathOnly?: boolean;
   /** code-server is installed on the host (the scripted stand-in). */

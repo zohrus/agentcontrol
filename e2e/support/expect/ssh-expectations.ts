@@ -25,6 +25,15 @@ export function expectWorkspaceToExplain(workspace: WorkspaceInfo, saying: strin
   }
 }
 
+/** The workspace's reason for not being connected does not mention this. */
+export function expectWorkspaceToNotSuggest(workspace: WorkspaceInfo, text: string): void {
+  if (workspace.reason?.includes(text)) {
+    throw new Error(
+      `expected the reason for workspace "${workspace.label}" not to mention "${text}", but it says ${JSON.stringify(workspace.reason)}`,
+    );
+  }
+}
+
 /** The live stream told the app that the workspace reached this state (it is already, or will be). */
 export async function expectWorkspaceToBecome(
   app: AppAccess,

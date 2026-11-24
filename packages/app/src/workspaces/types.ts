@@ -1,12 +1,19 @@
 import type { CheckStep, WorkspaceInfo } from "@agentcontrol/protocol";
 import type { Link } from "../sync/index.ts";
 
+/** The relay binary built for a machine's OS and CPU, with what to do when that file is missing. */
+interface RelayBinaryFor {
+  (machine: { os: string; arch: string }): string;
+  /** Said after "no relay" when the file does not exist, e.g. how to build it. */
+  missingAdvice?: (machine: { os: string; arch: string }) => string;
+}
+
 /** How the app reaches ssh workspaces. */
 export interface SshSettings {
   /** A config file for `ssh -F`; the usual ~/.ssh/config when left out. */
   configFile?: string;
   /** The relay binary built for a machine's OS and CPU (`linux`/`darwin`, `x64`/`arm64`). */
-  relayBinaryFor: (machine: { os: string; arch: string }) => string;
+  relayBinaryFor: RelayBinaryFor;
   /** Where on a host AgentControl keeps its files. Default `~/.agentcontrol`. */
   remoteRoot?: string;
   /** The longest pause between connection attempts to a host, in ms (15000 by default). */
