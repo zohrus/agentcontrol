@@ -180,7 +180,7 @@ footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padd
 
 <script>
 /* ===== DATA: edit this block to update the page ===== */
-const UPDATED = "24 Nov 2026, 12:10 UTC";
+const UPDATED = "24 Nov 2026, 18:45 UTC";
 const STATUS = { done:"Done", progress:"In progress", blocked:"Blocked", planned:"Not started", external:"External" };
 
 const PHASES = [
@@ -256,6 +256,8 @@ const C = [
   // Phase 6
   { id:"config-deploy", phase:"p6", name:"Harness config", status:"done", desc:"One config for MCP servers, instructions, permissions, hooks, skills, commands and environment. The Config screen shows the file changes per agent before anything is written, then Apply, Undo, import of an existing setup and a drift banner. Verified against real Claude Code and Codex file formats.", path:"packages/ui-template/src/config" },
   // Phase 7
+  { id:"harness-controls", phase:"p6", name:"Harness controls and model picker", status:"planned", desc:"Mode, model and effort pickers per session, built from what each agent reports; defaults per agent. Researched; waiting for four decisions from you.", path:"" },
+  { id:"model-catalog", phase:"p6", name:"Model catalog", status:"planned", desc:"Your own providers and models (OpenAI Responses or Anthropic Messages endpoints), applied per session; keys in the macOS Keychain.", path:"" },
   { id:"usage", phase:"p7", name:"Usage and analytics", status:"done", desc:"Analytics screen: tokens, cost, working and waiting time per session, model, workspace and day, with rule-based insights. Usage is kept in the app's database, so it works with a workspace offline. Not yet: usage against plan limits for subscription logins.", path:"packages/app/src/analytics" },
   // External (diagram only)
   { id:"claude", phase:null, name:"Claude Code", status:"external", desc:"via claude-agent-acp" },
@@ -264,9 +266,9 @@ const C = [
 ];
 
 const NOW = [
-  "Walkthrough done: a real Claude Code session in the built app produced pull request 8, with screenshots of each step",
-  "Next: your look at pull request 8, then the v0.1.0 tag, which publishes the first unsigned release",
-  "Then your test on a real Mac, and fixing what it shows",
+  "Your test on your Mac, running from source: pull, then try a real session and tell me what feels slow or wrong",
+  "Waiting for your four decisions before building harness controls, the model picker and the model catalog",
+  "Still to do when you say so: the v0.1.0 tag (first unsigned release) and pull request 8",
 ];
 const BLOCKED = [
   "Parked by you: Apple Developer ID. The first release ships unsigned, so macOS needs a manual Open Anyway on first launch",
@@ -300,6 +302,7 @@ const LOG = [
   ["23 Nov 2026 18:30", "Workspace picker and Config screen landed with 24 browser tests. Every planned screen of phases 5, 6 and 7 is now on main and the compiled app passes 10 of 10 smoke steps. Not started: the optional AI gateway and browser VS Code. Next: review fixes, and resume after a relay restart."],
   ["23 Nov 2026 20:45", "Landed: agents are installed once and started without the app's internal variables (real Claude Code and Codex adapters answer through the compiled relay); a session interrupted by a relay restart shows Interrupted with a Resume button; review fixes for Console and Analytics (analytics requests 10 times faster, terminal output limited, three flaky tests fixed); the compiled-app smoke test now runs inside bun run integrate. CI on GitHub had been red since the Console landed and I had only been reading the build result: the cause was a test that did not ignore invisible control sequences from the runner's shell. Fixed and green on main again."],
   ["24 Nov 2026 12:10", "Landed on main: Console, workspace and Config gaps; coverage and resume follow-ups; Browser VS Code. Two bugs found by the landing gate were fixed (a test that asserted something not guaranteed, and the relay accepting connections before writing its pid file). Then a real Claude Code session was run by hand in the compiled app and its change became pull request 8. Not started: the optional AI gateway. Not verified: a real Mac, the real code-server workbench, Codex."],
+  ["24 Nov 2026 18:45", "After your first run on your Mac, four changes landed on main. New sessions start from the latest remote trunk and are created without a prompt (you write it in the session). The app replaces a relay that runs older code after an update, instead of failing with a schema dump. Every main action now reacts at once: create session went from about 2,100 ms to 37 ms and sending a message from about 1,900 ms to 6 ms with the back end held for two seconds. Research done for harness controls and a model catalog."],
 ];
 /* ===== END DATA ===== */
 
