@@ -8,6 +8,8 @@ import type { Session } from "./relay.ts";
 import type { RunningRelay } from "./start-relay.ts";
 import { Timeline } from "./timeline.ts";
 
+const SHELL_FINISH_WAIT_MS = 15_000;
+
 /** What a program that reads a terminal's output slowly got in the end. */
 export interface SlowReading {
   /** Bytes of terminal output the relay sent, as JSON lines. */
@@ -77,8 +79,11 @@ export async function readsTerminalOutputOnlyAfterTheShellFinishes(
   const terminalId = await opensATerminal({ socket, lines, session: call.session });
   socket.pause();
   types({ socket, terminalId, text: `${call.command}\n` });
-  await eventually("expected the shell to finish its command", () =>
-    Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+  // The shell writes megabytes against a paused reader: on a busy machine that takes a while.
+  await eventually(
+    "expected the shell to finish its command",
+    () => Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+    SHELL_FINISH_WAIT_MS,
   );
   socket.resume();
   types({ socket, terminalId, text: "exit\n" });

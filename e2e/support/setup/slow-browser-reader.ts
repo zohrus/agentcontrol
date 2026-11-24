@@ -6,6 +6,8 @@ import { onTestEnd } from "./cleanup.ts";
 import { eventually } from "./eventually.ts";
 import type { SlowReading } from "./slow-terminal-reader.ts";
 
+const SHELL_FINISH_WAIT_MS = 15_000;
+
 /** A masked WebSocket text frame (the mask is all zeros, which leaves the text as it is). */
 function textFrame(message: object): Buffer {
   const payload = Buffer.from(JSON.stringify(message));
@@ -74,8 +76,11 @@ export async function readsTheTerminalOnlyAfterTheShellFinishes(
   socket.write(textFrame({ type: "open", cols: 80, rows: 24 }));
   types(socket, `${call.command}\n`);
   socket.pause();
-  await eventually("expected the shell to finish its command", () =>
-    Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+  // The shell writes megabytes against a paused reader: on a busy machine that takes a while.
+  await eventually(
+    "expected the shell to finish its command",
+    () => Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+    SHELL_FINISH_WAIT_MS,
   );
   socket.resume();
   types(socket, "exit\n");
