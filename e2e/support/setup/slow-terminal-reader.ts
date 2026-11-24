@@ -20,9 +20,14 @@ interface Shell {
   doneFile: string;
 }
 
+/** A flood of 100 MB takes a while on a busy machine, but must end before the test does. */
+export const FLOOD_WAIT_MS = 15_000;
+
 function eventuallyDone(doneFile: string): Promise<void> {
-  return eventually("expected the shell to finish its command", () =>
-    Promise.resolve(existsSync(doneFile) ? undefined : "it has not finished"),
+  return eventually(
+    "expected the shell to finish its command",
+    () => Promise.resolve(existsSync(doneFile) ? undefined : "it has not finished"),
+    FLOOD_WAIT_MS,
   );
 }
 

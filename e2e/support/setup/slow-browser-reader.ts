@@ -4,7 +4,7 @@ import { TERMINAL_PROTOCOL, TOKEN_PROTOCOL_PREFIX } from "@agentcontrol/protocol
 import type { AppAccess, Session } from "./app.ts";
 import { onTestEnd } from "./cleanup.ts";
 import { eventually } from "./eventually.ts";
-import type { SlowReading } from "./slow-terminal-reader.ts";
+import { FLOOD_WAIT_MS, type SlowReading } from "./slow-terminal-reader.ts";
 
 /** A masked WebSocket text frame (the mask is all zeros, which leaves the text as it is). */
 function textFrame(message: object): Buffer {
@@ -74,8 +74,10 @@ export async function readsTheTerminalOnlyAfterTheShellFinishes(
   socket.write(textFrame({ type: "open", cols: 80, rows: 24 }));
   types(socket, `${call.command}\n`);
   socket.pause();
-  await eventually("expected the shell to finish its command", () =>
-    Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+  await eventually(
+    "expected the shell to finish its command",
+    () => Promise.resolve(existsSync(call.doneFile) ? undefined : "it has not finished"),
+    FLOOD_WAIT_MS,
   );
   socket.resume();
   types(socket, "exit\n");
