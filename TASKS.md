@@ -33,6 +33,7 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 ## Workspaces and the relay
 - [x] Remote (SSH) workspaces, core (23 Nov 2026): `workspaces.list/add/remove/check/restartRelay/hosts` in the app API and SDK, the relay installed on the host over ssh, per-workspace links, live workspace state, tests against a real private `sshd` (`docs/decisions/2026-11-22-remote-workspaces.md`). A busy relay of an older version stays attached and shows "needs relay update" instead of being replaced.
 - [ ] SSH workspaces UI: workspace picker, add-SSH-workspace dialog, restart relay. In progress.
+- [ ] Creating a session waits for `ls-remote` and `fetch` (up to 15 s each on a hung remote) before the session exists. Log `session-created` first and resolve the base in the background (needs the resolved base recorded by a later event).
 - [ ] Verify SSH workspaces on a real remote Linux host and on arm64 (only a local `sshd` was tried).
 - [ ] New-session dialog: the "Starts from the latest <trunk>" hint uses the default branch stored when the repository was added; refresh it from the remote (`ls-remote`) when the dialog opens, and say "no remote" for repositories without one.
 - [ ] Three ssh lines are not covered by any end-to-end test: `ssh-hosts.ts:37` and `ssh-check.ts:28-29`.

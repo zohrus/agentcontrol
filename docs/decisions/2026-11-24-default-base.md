@@ -26,7 +26,7 @@ Why not `refs/remotes/origin/HEAD` (or `git remote set-head origin --auto`), che
   with an explicit refspec updates exactly the one remote-tracking branch we start from, even in
   a single-branch clone.
 
-The fetch and `ls-remote` run with `GIT_TERMINAL_PROMPT=0` and a 30 second limit, so a missing
+The fetch and `ls-remote` run with `GIT_TERMINAL_PROMPT=0` and a 15 second limit for each of the two commands, so a missing
 credential or a hanging network ends in the offline fallback instead of freezing the start.
 
 ## What the session stores and the diff compares with

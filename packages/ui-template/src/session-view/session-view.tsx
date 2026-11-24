@@ -35,6 +35,12 @@ function placeholderOf(summary: SessionSummary): string {
     : `Reply to ${agent}…`;
 }
 
+const TAKES_A_PROMPT = new Set(["ready", "running", "idle", "waiting"]);
+
+/** A message held while the session started cannot be sent: setup failed, or the agent is gone. */
+const notReadyOf = ({ status, waitingReason }: SessionSummary): boolean =>
+  waitingReason === "setup-failed" || !TAKES_A_PROMPT.has(status);
+
 function Footer(props: SessionViewProps) {
   if (props.summary.status === "archived") {
     return <ArchivedBanner archivedAt={props.summary.archivedAt} />;
@@ -44,10 +50,11 @@ function Footer(props: SessionViewProps) {
     <>
       {props.summary.status === "interrupted" && <InterruptedBanner onResume={props.onResume} />}
       <Composer
+        key={props.summary.id}
         running={props.turnRunning ?? isTurnRunning(props.events)}
         placeholder={placeholderOf(props.summary)}
         starting={props.summary.status === "starting"}
-        ready={props.summary.status === "ready"}
+        notReady={notReadyOf(props.summary)}
         onSendPrompt={props.onSendPrompt}
         onCancel={props.onCancel}
         onArchive={props.onArchive}

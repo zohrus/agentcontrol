@@ -83,7 +83,7 @@ test(
     // ********************************************************************
     await expectPageToShow(app, "Worktree setup failed", "setup broke");
     // AND the message was not sent and is still in the message box
-    await expectPageToShow(app, "Not sent: the session could not be set up.");
+    await expectPageToShow(app, "Not sent: the session did not become ready.");
     await expectMessageBoxToHold(app, "Add rate limiting");
   },
   BROWSER_TEST_TIMEOUT_MS,

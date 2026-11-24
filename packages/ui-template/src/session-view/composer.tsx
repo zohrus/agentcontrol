@@ -7,8 +7,8 @@ export type ComposerProps = {
   onSendPrompt: (text: string) => void;
   /** The session is still being set up: a message is held, not sent, until it is ready. */
   starting?: boolean;
-  /** The agent is up and takes its first prompt; a held message is sent when this is true. */
-  ready?: boolean;
+  /** The session did not become ready: a held message is given back, not sent. */
+  notReady?: boolean;
   onCancel: () => void;
   /** Omit to hide the Archive button (for example in the Modify chat). */
   onArchive?: () => void;
@@ -54,16 +54,16 @@ type Held = {
 };
 
 /** A message written while the session starts is held, and sent once the agent is ready. */
-function useHeldMessage(call: { starting: boolean; ready: boolean; deliver: () => void }): Held {
-  const { starting, ready, deliver } = call;
+function useHeldMessage(call: { starting: boolean; notReady: boolean; deliver: () => void }): Held {
+  const { starting, notReady, deliver } = call;
   const [queued, setQueued] = useState(false);
   const [notSent, setNotSent] = useState(false);
   useEffect(() => {
     if (!queued || starting) return;
     setQueued(false);
-    if (ready) deliver();
-    else setNotSent(true);
-  }, [queued, starting, ready, deliver]);
+    if (notReady) setNotSent(true);
+    else deliver();
+  }, [queued, starting, notReady, deliver]);
   return {
     queued,
     notSent,
@@ -88,7 +88,7 @@ function HeldNote({ held }: { held: Held }) {
   if (!held.notSent) return null;
   return (
     <p role="alert" className="m-0 text-[11px] text-fail">
-      Not sent: the session could not be set up. Your message is still here.
+      Not sent: the session did not become ready. Your message is still here.
     </p>
   );
 }
@@ -124,13 +124,13 @@ function Buttons({ held, canSend, running, onSend, onCancel, onArchive }: Button
 
 /** The text being written, and what Send does with it: send now, or hold it while the session starts. */
 function useMessage(props: ComposerProps) {
-  const { starting = false, ready = false, onSendPrompt } = props;
+  const { starting = false, notReady = false, onSendPrompt } = props;
   const [text, setText] = useState("");
   const deliver = () => {
     onSendPrompt(text.trim());
     setText("");
   };
-  const held = useHeldMessage({ starting, ready, deliver });
+  const held = useHeldMessage({ starting, notReady, deliver });
   const send = () => {
     if (text.trim() === "" || held.queued) return;
     if (starting) held.hold();

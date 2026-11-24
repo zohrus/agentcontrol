@@ -8,7 +8,7 @@ export interface StartPoint {
   notes: string[];
 }
 
-const NETWORK_MS = 30_000;
+const NETWORK_MS = 15_000;
 
 /** Options for a command that talks to a remote: never wait for a password, never wait forever. */
 const network = (cwd: string) => ({
@@ -20,7 +20,8 @@ const network = (cwd: string) => ({
 const reasonOf = (error: unknown): string => {
   const text = error instanceof Error ? error.message : String(error);
   const line = text.split("\n").find((part) => part.trim() !== "") ?? text;
-  return line.replace(/^git \w+ failed: /, "").replace(/^fatal: /, "");
+  const reason = line.replace(/^git \w+ failed: /, "").replace(/^fatal: /, "");
+  return reason === "" ? "it did not answer in time" : reason;
 };
 
 async function refExists(cwd: string, ref: string): Promise<boolean> {

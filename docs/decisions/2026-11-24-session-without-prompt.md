@@ -28,9 +28,11 @@ writes the first prompt in the session's message box.
 
 Held in the message box, not sent. While the status is `starting` Send holds the text (the box is
 read-only, "Queued: it is sent as the first message as soon as the session is ready", with a
-"Take back" button). When the status becomes `ready` it is sent as the first turn. When the
-session does not become ready (setup failed) the text is not sent and stays in the box with
-"Not sent: the session could not be set up." Nothing is lost and nothing is sent twice.
+"Take back" button). When the status leaves `starting` it is sent as the first turn. When the
+session could not be set up (setup failed) the text is not sent and stays in the box with
+"Not sent: the session did not become ready." Nothing is lost and nothing is sent twice.
+Each session has its own message box: switching to another session drops a draft or a held
+message of the one left (it is never sent to the wrong session).
 The relay itself does not queue: a `prompt` call on a `starting` session is refused with
 "This session is still being set up: send the message again once it is ready." API clients wait
 for `ready` (or pass the prompt in `create`).
