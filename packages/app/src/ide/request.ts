@@ -94,14 +94,23 @@ interface Call {
   path: string;
 }
 
+/**
+ * A browser that gave up while the relay was answering (a reload) leaves nobody to read it. The
+ * close must come after the answer: before it the relay has not registered the tunnel yet.
+ */
+const nobodyReads = (request: Request): boolean => request.signal.aborted;
+
+const isBodiless = (call: { status: number; request: Request }): boolean =>
+  NO_BODY.has(call.status) || call.request.method === "HEAD";
+
 async function relayAnswer(call: Call & { body: string | undefined; tunnel: Tunnel }) {
   const { link, sessionId, request, path, body, tunnel } = call;
   const { tunnelId } = tunnel;
   const headers = forwardedHeaders(request.headers);
   const params = { sessionId, tunnelId, method: request.method, path, headers };
   const result = await link.call(N.ideRequest, { ...params, ...(body && { body }) });
-  const empty = NO_BODY.has(result.status) || request.method === "HEAD";
-  if (empty) {
+  const empty = isBodiless({ status: result.status, request });
+  if (empty || nobodyReads(request)) {
     tunnel.stop();
     tunnel.close();
   }
@@ -117,11 +126,6 @@ export async function proxyRequest(call: Call): Promise<Response> {
   const body = await readBody(call.request);
   if (body instanceof Response) return body;
   const tunnel = openTunnel(call.link);
-  // The browser gave up (a reload) while the relay was still answering: end the tunnel.
-  call.request.signal.addEventListener("abort", () => {
-    tunnel.stop();
-    tunnel.close();
-  });
   try {
     return await relayAnswer({ ...call, body, tunnel });
   } catch (error) {
