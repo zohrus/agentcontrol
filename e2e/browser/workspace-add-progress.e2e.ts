@@ -5,6 +5,10 @@ import {
   expectDialogNotToShow,
   expectSetupStepsToHaveBeenShownInOrder,
 } from "../support/browser/workspaces-browser-expectations.ts";
+import {
+  addsTheHostInTheForm,
+  opensTheAddFormWatchingTheSteps,
+} from "../support/browser/workspaces-setups.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 // Every ssh call is a real handshake and the suite runs files side by side.
@@ -19,15 +23,12 @@ test(
     // ** GIVEN the Add workspace form is open, and the page notes what the dialog shows
     // ********************************************************************
     const app = await startSshAppInBrowser();
-    await app.page.opensTheWorkspaceMenu();
-    await app.page.choosesAddWorkspace();
-    await app.page.watchesTheSetupSteps();
+    await opensTheAddFormWatchingTheSteps(app);
 
     // ********************************************************************
     // ** WHEN the user adds the host
     // ********************************************************************
-    await app.page.typesTheHost(app.host.alias);
-    await app.page.submitsTheHost();
+    await addsTheHostInTheForm(app);
 
     // ********************************************************************
     // ** THEN the steps were shown as running, then passed, one after the other
@@ -55,15 +56,12 @@ test(
     // ********************************************************************
     const app = await startSshAppInBrowser();
     app.host.network.goesDown();
-    await app.page.opensTheWorkspaceMenu();
-    await app.page.choosesAddWorkspace();
-    await app.page.watchesTheSetupSteps();
+    await opensTheAddFormWatchingTheSteps(app);
 
     // ********************************************************************
     // ** WHEN the user adds the host
     // ********************************************************************
-    await app.page.typesTheHost(app.host.alias);
-    await app.page.submitsTheHost();
+    await addsTheHostInTheForm(app);
 
     // ********************************************************************
     // ** THEN the connect step is shown as running and then failed, with the reason

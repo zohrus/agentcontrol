@@ -21,7 +21,7 @@ export {
   useWorkspaceCheck,
   useWorkspaces,
 } from "./hooks.ts";
-export type { ConfigState, SetupStep } from "./model.ts";
+export type { ConfigState } from "./model.ts";
 export { useModify } from "./modify-hooks.ts";
 export { LOCAL_WORKSPACE, type SessionRef } from "./session-ref.ts";
 export type { Controller } from "./controller.ts";

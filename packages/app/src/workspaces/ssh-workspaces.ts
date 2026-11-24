@@ -99,7 +99,8 @@ async function addSsh(
   context.targets.set(id, target);
   const report = reporterFor({ hub: context.hub, requestId, workspaceId: id });
   const { relayBinaryFor } = context.settings;
-  const reached = await hostSteps({ target, relayBinaryFor, report });
+  // Whatever goes wrong while reaching the host, the workspace is kept and its connection started.
+  const reached = await hostSteps({ target, relayBinaryFor, report }).catch(() => ({ ok: false }));
   const entry = start(context, workspace);
   if (reached.ok)
     await firstConnection(context, { entry, id, ...(requestId && { request: requestId }) });

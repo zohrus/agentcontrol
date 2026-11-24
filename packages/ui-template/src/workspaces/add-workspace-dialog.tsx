@@ -2,9 +2,8 @@ import type { CheckStep } from "@agentcontrol/sdk";
 import { Loader } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import { Button, Dialog, Field, inputClass } from "../components/index.ts";
-import type { SetupStep } from "../data/index.ts";
 import { CheckList } from "../workspace-setup/index.ts";
-import { checklistOf, runningStepOf } from "./setup-steps.ts";
+import { checklistOf, runningStepOf, type SetupStep } from "./setup-steps.ts";
 
 /** Where adding a workspace is: asking for the host, connecting, running the checklist, or done. */
 export type AddStage = "form" | "connecting" | "checking" | "result";

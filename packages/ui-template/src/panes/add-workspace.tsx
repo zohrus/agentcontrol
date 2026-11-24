@@ -71,7 +71,7 @@ function useAddWorkspace(open: boolean) {
   };
   useEffect(() => {
     if (!open) return;
-    update({ stage: "form", refusal: undefined });
+    setFlow(FRESH);
     void workspaces.hosts().then(setHosts);
   }, [open, workspaces]);
   const { id, requestId } = flow;

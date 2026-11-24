@@ -52,8 +52,16 @@ export async function reported(options: {
   begin: { id: string; label: string; message: string };
   work: () => Promise<CheckStep> | CheckStep;
 }): Promise<CheckStep> {
-  options.report.begin(options.begin);
-  const result = await options.work();
-  options.report.end(result);
-  return result;
+  const { report, begin } = options;
+  report.begin(begin);
+  try {
+    const result = await options.work();
+    report.end(result);
+    return result;
+  } catch (error) {
+    // A step that throws must not stay "started" for ever on the live stream.
+    const detail = error instanceof Error ? error.message : String(error);
+    report.end({ id: begin.id, label: begin.label, status: "failed", detail });
+    throw error;
+  }
 }

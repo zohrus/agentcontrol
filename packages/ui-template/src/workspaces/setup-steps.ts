@@ -1,5 +1,12 @@
 import type { CheckStep } from "@agentcontrol/sdk";
-import type { SetupStep } from "../data/index.ts";
+
+/** One step of a setup as the dialog gets it (the same shape the data layer keeps). */
+export type SetupStep = {
+  id: string;
+  label: string;
+  state: "started" | "ok" | "failed";
+  message: string;
+};
 
 /** The steps a setup announced, as checklist rows; the one that is still running has no result yet. */
 export function checklistOf(steps: readonly SetupStep[]): CheckStep[] {

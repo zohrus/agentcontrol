@@ -53,6 +53,13 @@ export async function aRelayFolder(): Promise<DaemonFolder> {
 
 /** Starts the relay daemon as its own process in the folder; returns its process id. */
 export async function aRelayRunsIn(folder: DaemonFolder): Promise<number> {
+  const pid = aRelayStartsIn(folder);
+  await waitForSocket(folder.dataDir);
+  return pid;
+}
+
+/** Starts the relay daemon as its own process in the folder and returns at once, with its process id. */
+export function aRelayStartsIn(folder: DaemonFolder): number {
   const daemon = Bun.spawn(["bun", relayMain, "daemon", "--data-dir", folder.dataDir], {
     stdout: "ignore",
     stderr: "inherit",
@@ -61,7 +68,6 @@ export async function aRelayRunsIn(folder: DaemonFolder): Promise<number> {
     daemon.kill("SIGKILL");
     return Promise.resolve();
   });
-  await waitForSocket(folder.dataDir);
   return daemon.pid;
 }
 

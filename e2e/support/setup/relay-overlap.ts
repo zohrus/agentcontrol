@@ -1,11 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { onTestEnd } from "./cleanup.ts";
 import type { DaemonFolder } from "./daemon-process.ts";
 import { eventually } from "./eventually.ts";
 import { tryConnect } from "./try-connect.ts";
-
-const relayMain = join(import.meta.dir, "../../../packages/relay/src/main.ts");
 
 const socketOf = (folder: DaemonFolder): string => join(folder.dataDir, "relay.sock");
 
@@ -16,19 +13,6 @@ export async function waitsUntilTheRelayTakesNoMoreClients(folder: DaemonFolder)
     socket?.destroy();
     return socket === undefined ? undefined : "it still accepts connections";
   });
-}
-
-/** Starts another relay daemon in the folder and returns at once, without waiting for it to listen. */
-export function aNewRelayStartsIn(folder: DaemonFolder): number {
-  const daemon = Bun.spawn(["bun", relayMain, "daemon", "--data-dir", folder.dataDir], {
-    stdout: "ignore",
-    stderr: "inherit",
-  });
-  onTestEnd(() => {
-    daemon.kill("SIGKILL");
-    return Promise.resolve();
-  });
-  return daemon.pid;
 }
 
 /** Waits until a client can connect to the folder's relay socket; what the relay's pid file says. */

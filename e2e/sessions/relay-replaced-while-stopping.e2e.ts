@@ -1,9 +1,8 @@
 import { afterEach, test } from "bun:test";
 import { expectPidFileToName } from "../support/expect/relay-overlap-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
-import { aRelayFolder, aRelayRunsIn } from "../support/setup/daemon-process.ts";
+import { aRelayFolder, aRelayRunsIn, aRelayStartsIn } from "../support/setup/daemon-process.ts";
 import {
-  aNewRelayStartsIn,
   connectsToTheRelayInTheFolder,
   waitsUntilTheRelayTakesNoMoreClients,
 } from "../support/setup/relay-overlap.ts";
@@ -24,7 +23,7 @@ test("a relay that starts while the old one is still stopping keeps its socket a
   // ********************************************************************
   const stopping = folder.stopsIt();
   await waitsUntilTheRelayTakesNoMoreClients(folder);
-  const newPid = aNewRelayStartsIn(folder);
+  const newPid = aRelayStartsIn(folder);
   await stopping;
 
   // ********************************************************************
