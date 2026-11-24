@@ -20,6 +20,12 @@ export interface MockAgentOptions {
   diesRightAfterStarting(): void;
   /** The agent is slow to start: it answers `session/new` only once a file exists at this path. */
   startsWhenFileExists(path: string): void;
+  /** The agent process is slow to boot: it answers nothing, `initialize` included, for this long. */
+  bootsInMs(ms: number): void;
+  /** The agent process does not listen until a file exists at this path. */
+  bootsWhenFileExists(path: string): void;
+  /** The agent ignores SIGTERM, so only a kill stops it. */
+  ignoresTheStopSignal(): void;
 }
 
 /** The options of one script, set by writing into it. */
@@ -42,6 +48,24 @@ export function optionsOf(script: MockAgentScript): MockAgentOptions {
     },
     startsWhenFileExists: (path) => {
       script.startsWhenFileExists = path;
+    },
+    ...processOptionsOf(script),
+  };
+}
+
+/** How the agent's process boots and ends, as opposed to what the agent does in a session. */
+function processOptionsOf(
+  script: MockAgentScript,
+): Pick<MockAgentOptions, "bootsInMs" | "bootsWhenFileExists" | "ignoresTheStopSignal"> {
+  return {
+    bootsInMs: (ms) => {
+      script.bootsAfterMs = ms;
+    },
+    bootsWhenFileExists: (path) => {
+      script.bootsWhenFileExists = path;
+    },
+    ignoresTheStopSignal: () => {
+      script.ignoresTheStopSignal = true;
     },
   };
 }

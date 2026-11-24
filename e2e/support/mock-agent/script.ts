@@ -63,6 +63,12 @@ const scriptSchema = z.object({
   exitsAfterStarting: z.boolean().optional(),
   /** `session/new` is answered only once a file exists at this path: a test lets the agent start by writing it. */
   startsWhenFileExists: z.string().optional(),
+  /** The process listens only after this many milliseconds, as an adapter that loads a lot of code does. */
+  bootsAfterMs: z.number().int().optional(),
+  /** The process listens only once a file exists at this path: a test lets it boot by writing it. */
+  bootsWhenFileExists: z.string().optional(),
+  /** SIGTERM does nothing: only a kill ends the process, as with an agent that is busy or wedged. */
+  ignoresTheStopSignal: z.boolean().optional(),
   /** `session/set_mode` fails, as when the user's Claude Code policy forbids changing the mode. */
   refusesModeChange: z.boolean().optional(),
 });

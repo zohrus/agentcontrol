@@ -45,11 +45,16 @@ function resumeBanner(page: Page) {
   };
 }
 
-/** Opens the "Worktree setup finished" block, which holds the setup lines. */
-const opensSetupOutput = (page: Page) =>
-  streamOf(page)
-    .locator("summary", { hasText: /^Worktree setup/ })
-    .click();
+/** The blocks of the stream that say what starting and archiving the session did, step by step. */
+function setupBlocks(page: Page) {
+  const open = (heading: RegExp) => streamOf(page).locator("summary", { hasText: heading }).click();
+  return {
+    /** Opens the "Worktree setup finished" block, which holds the setup steps and lines. */
+    opensTheSetupOutput: () => open(/^Worktree setup/),
+    /** Opens the "Archived · 1.2 s" block, which holds the steps of archiving. */
+    opensTheArchiveSteps: () => open(/^Archiv/),
+  };
+}
 
 /** The open session: its conversation stream, the permission card and the composer. */
 export function sessionPage(page: Page) {
@@ -63,7 +68,7 @@ export function sessionPage(page: Page) {
       streamOf(page)
         .locator("summary", { hasText: /^(Read|Searched) / })
         .click(),
-    opensTheSetupOutput: () => opensSetupOutput(page),
+    ...setupBlocks(page),
     /** Everything the conversation stream shows, or "" while no session is open. */
     streamText: async (): Promise<string> => {
       return textOf(streamOf(page));
