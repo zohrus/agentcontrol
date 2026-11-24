@@ -12,6 +12,7 @@ const base = {
 export const SessionEvent = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("acp"), payload: p.AcpPayload }),
   z.object({ ...base, kind: z.literal("session-created"), payload: p.SessionCreatedPayload }),
+  z.object({ ...base, kind: z.literal("base-resolved"), payload: p.BaseResolvedPayload }),
   z.object({ ...base, kind: z.literal("setup-output"), payload: p.SetupOutputPayload }),
   z.object({ ...base, kind: z.literal("setup-finished"), payload: p.SetupFinishedPayload }),
   z.object({ ...base, kind: z.literal("agent-started"), payload: p.AgentStartedPayload }),

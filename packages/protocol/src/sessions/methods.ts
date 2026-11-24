@@ -11,6 +11,16 @@ export const SessionsListResult = z.object({ sessions: z.array(SessionSummary) }
 
 /** Params of relay/sessions.create for a session in its own git worktree. */
 export const WorktreeSessionParams = z.object({
+  /**
+   * The id to give the session. Left out, the relay makes one. A client that shows the session
+   * before the relay has answered (see the UI's optimistic session) chooses it itself. It must be
+   * a UUID: it becomes the name of the session's folder and branch.
+   */
+  sessionId: z
+    .uuid()
+    .transform((id) => id.toLowerCase())
+    .pipe(SessionId)
+    .optional(),
   agent: AgentKind,
   repoPath: z.string(),
   /**

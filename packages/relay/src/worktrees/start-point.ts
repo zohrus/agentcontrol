@@ -24,7 +24,7 @@ const reasonOf = (error: unknown): string => {
   return reason === "" ? "it did not answer in time" : reason;
 };
 
-async function refExists(cwd: string, ref: string): Promise<boolean> {
+export async function refExists(cwd: string, ref: string): Promise<boolean> {
   const result = await runGit(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { cwd });
   return result.exitCode === 0;
 }

@@ -8,6 +8,10 @@ export async function expectFileToRead(
   call: { session: Session; path: string; ref: FsReadParams["ref"]; content: string },
 ): Promise<void> {
   const { session, path, ref, content } = call;
+  await relay.events.waitFor(
+    (event) => event.sessionId === session.id && event.kind === "setup-finished",
+    `expected the worktree of session "${session.title}" to be made`,
+  );
   const read = await relay.call(RelayName.fsRead, { sessionId: session.id, path, ref });
   if (read.content !== content) {
     throw new Error(

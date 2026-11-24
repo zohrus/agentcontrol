@@ -19,6 +19,16 @@ export interface SessionContext {
   hostEnv: HostEnv;
   /** Agents that are running right now. */
   live: Map<SessionId, AgentProcess>;
+  /**
+   * Sessions whose worktree is being made, each with whether it was; one that could not be made stays
+   * here, resolved to false. Whatever needs the folder (a terminal, an archive) waits on this
+   * instead of finding it missing.
+   */
+  creating: Map<SessionId, Promise<boolean>>;
+  /** Sessions being archived: what is still setting one up must not start an agent for it. */
+  archiving: Set<SessionId>;
+  /** Ids given to sessions being created, so two creates with one client-chosen id cannot both go on. */
+  claimed: Set<SessionId>;
   /** Resumes in progress, so two requests to resume one session start one agent. */
   resuming: Map<SessionId, Promise<AgentProcess>>;
   /** After this, `record` drops events: only what is still starting up when the relay stops. */

@@ -76,8 +76,12 @@ export async function expectProcessToBeGone(pid: number, who: string): Promise<v
   });
 }
 
-/** The folder of the session's worktree, as the live stream first announced it. */
+/** The folder of the session's worktree, once it is made. */
 export async function worktreeOf(app: AppAccess, session: Session): Promise<string> {
+  await app.streamed.waitFor(
+    (event) => event.sessionId === session.id && event.kind === "setup-finished",
+    `expected the worktree of session "${session.title}" to be made`,
+  );
   const created = await app.streamed.waitFor(
     (event) => event.sessionId === session.id && event.kind === "session-created",
     `expected session "${session.title}" to have been created`,

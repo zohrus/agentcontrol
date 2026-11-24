@@ -21,6 +21,7 @@ export const AcpPayload = z.object({
 export const SessionCreatedPayload = z.object({
   agent: AgentKind,
   repoPath: z.string(),
+  /** Empty while the relay is still finding the latest trunk; a "base-resolved" event then sets it. */
   baseBranch: z.string(),
   branch: z.string(),
   worktreePath: z.string(),
@@ -98,6 +99,9 @@ export const PermissionAnsweredPayload = z.union([
     automatic: AutomaticAnswer.optional(),
   }),
 ]);
+
+/** Payload of "base-resolved": what a session without a named base branch starts from, once known. */
+export const BaseResolvedPayload = z.object({ baseBranch: z.string() });
 
 /** Payload of "prompt-sent": the user's message to the agent. */
 export const PromptSentPayload = z.object({ text: z.string() });

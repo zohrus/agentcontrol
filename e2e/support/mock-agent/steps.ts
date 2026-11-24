@@ -116,9 +116,14 @@ const waitUntilCancelled: Handler<"waitUntilCancelled"> = async (_step, turn) =>
   return "cancelled";
 };
 
-/** Holds the turn open until a file exists: a test lets the agent go on by writing it. */
+/** Resolves once a file exists at `path`: a test lets the agent go on by writing it. */
+export async function untilFileExists(path: string): Promise<void> {
+  while (!(await Bun.file(path).exists())) await Bun.sleep(FILE_POLL_MS);
+}
+
+/** Holds the turn open until a file exists. */
 const waitForFile: Handler<"waitForFile"> = async (step) => {
-  while (!(await Bun.file(step.path).exists())) await Bun.sleep(FILE_POLL_MS);
+  await untilFileExists(step.path);
   return undefined;
 };
 
