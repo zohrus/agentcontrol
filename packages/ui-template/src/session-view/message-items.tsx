@@ -1,5 +1,6 @@
 import { Button } from "../components/index.ts";
 import { Markdown } from "./markdown.tsx";
+import { usePacedText } from "./use-paced-text.ts";
 import type { ItemOf } from "./view-items.ts";
 
 const bubble = "max-w-[78%] self-end whitespace-pre-wrap rounded-[10px] bg-accent-soft px-3 py-2";
@@ -57,15 +58,9 @@ export function OutgoingMessage(props: OutgoingProps) {
   );
 }
 
+/** The agent's reply; while it is still arriving its text is revealed at a pace and its tail waits. */
 export function AgentMessage({ item }: { item: ItemOf<"message"> }) {
-  return <Markdown text={item.text} />;
-}
-
-export function Thought({ item }: { item: ItemOf<"thought"> }) {
-  return (
-    <div className="whitespace-pre-wrap border-l-2 border-line pl-2.5 text-xs text-muted">
-      <span className="font-medium">Thinking · </span>
-      {item.text}
-    </div>
-  );
+  const streaming = item.streaming === true;
+  const text = usePacedText({ text: item.text, live: streaming, fresh: item.fresh === true });
+  return <Markdown text={text} final={!streaming} />;
 }

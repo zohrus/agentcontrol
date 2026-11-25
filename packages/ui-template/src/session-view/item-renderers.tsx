@@ -1,9 +1,10 @@
-import { Fragment, type ReactNode } from "react";
-import { AgentMessage, OutgoingMessage, Thought, UserMessage } from "./message-items.tsx";
+import { Fragment, memo, type ReactNode } from "react";
+import { AgentMessage, OutgoingMessage, UserMessage } from "./message-items.tsx";
 import { PermissionCard } from "./permission-card.tsx";
 import { PlanCard } from "./plan-card.tsx";
 import { SetupOutput } from "./setup-block.tsx";
 import { AgentExited, ModeLine, Notice, TurnEnded } from "./status-items.tsx";
+import { Thought } from "./thought.tsx";
 import { ToolCard } from "./tool-card.tsx";
 import { ToolGroup } from "./tool-group.tsx";
 import type { ItemOf, ItemType, ViewItem } from "./view-items.ts";
@@ -51,6 +52,30 @@ function renderOne<K extends ItemType>(kind: K, item: ItemOf<K>, actions: ItemAc
   return renderers[kind](item, actions);
 }
 
-export function StreamItem({ item, actions }: { item: ViewItem; actions: ItemActions }) {
-  return <Fragment>{renderOne(item.type, item, actions)}</Fragment>;
+type Props = { item: ViewItem; actions: ItemActions };
+
+/** Whether the item's own buttons would act differently: only a permission or an unsent message has any. */
+function sameActions(item: ViewItem, call: { before: ItemActions; after: ItemActions }): boolean {
+  const { before, after } = call;
+  if (item.type === "permission") {
+    return (
+      before.onAnswerPermission === after.onAnswerPermission &&
+      before.answering[item.requestId] === after.answering[item.requestId]
+    );
+  }
+  if (item.type !== "outgoing") return true;
+  return (
+    before.onRetryMessage === after.onRetryMessage &&
+    before.onDismissMessage === after.onDismissMessage
+  );
 }
+
+/** One item of the stream. An item that has not changed is not drawn again. */
+export const StreamItem = memo(
+  function StreamItem({ item, actions }: Props) {
+    return <Fragment>{renderOne(item.type, item, actions)}</Fragment>;
+  },
+  (before, after) =>
+    before.item === after.item &&
+    sameActions(after.item, { before: before.actions, after: after.actions }),
+);
