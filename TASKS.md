@@ -234,3 +234,12 @@ Landed: see `docs/decisions/2026-11-24-instant-feedback.md` (numbers, shared pie
 - [ ] Archiving a session while its setup script runs removes the folder under the script (it is not stopped); the session reads archived but its log ends with a setup failure. Track the setup run and stop it first.
 - [ ] The Modify chat shows a request as "Sending…" until the app answers; if the live stream delivers the request first it can show twice for that time. Reuse the outgoing-message settling.
 - [ ] A session whose worktree could not be made reads an empty diff and file list also after a relay restart (the folder is checked); a test for the restart is missing.
+
+## Conversation stream: data, rendering and pacing (25 Nov 2026)
+Landed: see `docs/decisions/2026-11-25-stream-stability.md`. Still open:
+- [ ] The view model compares every item with its last copy on each frame (a few comparisons per item). With several thousand items an index of the items a batch touched would avoid that; measure with a long session first.
+- [ ] A reconnect that appends a few events to the item being shown reveals them at the pace (about 250 ms) instead of at once; only a history of more than 100 events, or a session opened, shows at once.
+- [ ] Markdown: no italics, links, numbered-list start numbers, nested lists or table column alignment. Inline `**` and backticks are closed at the tail; `_x_` and `*x*` show their characters.
+- [ ] The paced reveal cuts at spaces; text without spaces (CJK) is revealed in steps of up to 40 characters.
+- [ ] No word fade-in (owner decision of 25 Nov: not for now).
+- [ ] `ModifyChat` still builds its items from scratch on each change (`buildViewItems`); give it `useViewItems` when the Modify stream is made fluid too.
