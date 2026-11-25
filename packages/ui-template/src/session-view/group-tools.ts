@@ -2,7 +2,7 @@ import type { ItemOf, ViewItem } from "./view-items.ts";
 
 type ToolItem = ItemOf<"tool">;
 
-/** Tool kinds that are collapsed when they come in a row; edits, commands and questions never are. */
+/** Tool kinds that are drawn as a group, alone or in a row; edits, commands and questions never are. */
 const quietKinds = new Set(["read", "search"]);
 
 function isQuiet(item: ViewItem): item is ToolItem {
@@ -11,22 +11,19 @@ function isQuiet(item: ViewItem): item is ToolItem {
 
 function append(out: ViewItem[], item: ViewItem): void {
   const last = out.at(-1);
-  if (!isQuiet(item) || !last) {
+  if (!isQuiet(item)) {
     out.push(item);
     return;
   }
-  if (last.type === "tool-group") {
+  if (last?.type === "tool-group") {
     last.tools.push(item);
     return;
   }
-  if (isQuiet(last)) {
-    out[out.length - 1] = { type: "tool-group", key: `group-${last.key}`, tools: [last, item] };
-    return;
-  }
-  out.push(item);
+  // Even a lone lookup is drawn as a group, so it keeps its place and element when a second comes.
+  out.push({ type: "tool-group", key: `group-${item.key}`, tools: [item] });
 }
 
-/** Collapses runs of two or more consecutive read/search tool calls into one "tool-group" item. */
+/** Collapses runs of consecutive read/search tool calls (one or more) into one "tool-group" item. */
 export function groupTools(items: readonly ViewItem[]): ViewItem[] {
   const out: ViewItem[] = [];
   for (const item of items) append(out, item);

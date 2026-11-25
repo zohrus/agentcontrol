@@ -1,7 +1,26 @@
+import { RunningFor } from "./running-for.tsx";
 import type { ItemOf } from "./view-items.ts";
 
+/** The line at the end of a turn, running or ended: one height, so one replaces the other in place. */
+const turnLine = "flex h-5 items-center justify-center text-[11px] text-muted";
+
 export function TurnEnded({ item }: { item: ItemOf<"turn-ended"> }) {
-  return <div className="text-center text-[11px] text-muted">Turn ended · {item.stopReason}</div>;
+  return <div className={turnLine}>Turn ended · {item.stopReason}</div>;
+}
+
+/** "Working · 12 s": the last row of the stream while a turn runs; the end of the turn replaces it. */
+export function Working({ since }: { since: string | undefined }) {
+  return (
+    <div className={turnLine}>
+      Working
+      {since !== undefined && (
+        <>
+          {" · "}
+          <RunningFor since={since} />
+        </>
+      )}
+    </div>
+  );
 }
 
 function exitText({ exitCode, signal }: ItemOf<"agent-exited">): string {

@@ -1,22 +1,9 @@
 import { formatDuration } from "@agentcontrol/protocol";
-import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { RunningFor } from "./running-for.tsx";
 import type { ItemOf, StepView } from "./view-items.ts";
 
 type Setup = ItemOf<"setup">;
-
-/** How long it has been since `since`, counting up every second until unmounted. */
-function RunningFor({ since }: { since: string }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, []);
-  return <span>{formatDuration(Math.max(0, now - Date.parse(since)))}</span>;
-}
 
 const MARKS = { running: "…", done: "✓", failed: "✕" } as const;
 
@@ -50,6 +37,10 @@ function total(item: Setup): string | undefined {
 /** Archiving that has a failed step and no end will not go on: nothing about it is still running. */
 const hasFailed = (item: Setup): boolean => item.steps.some((step) => step.state === "failed");
 
+/** Whether the block ended badly: a step failed, or the setup script exited with an error. */
+const isBad = (item: Setup): boolean =>
+  hasFailed(item) || (item.exitCode !== undefined && item.exitCode !== 0);
+
 function archiveHeading(item: Setup): string {
   if (item.endedAt !== undefined) return `Archived · ${total(item) ?? ""}`;
   return hasFailed(item) ? "Archiving failed" : "Archiving…";
@@ -64,34 +55,49 @@ function headingOf(item: Setup): string {
   return withTime(`Worktree setup failed (exit ${String(item.exitCode)})`);
 }
 
-/**
- * What starting (or archiving) a session did: one line that says how long it all took, which opens
- * into the steps, each with its own time, and the setup script's output.
- */
-export function SetupOutput({ item }: { item: Setup }) {
-  const open = item.phase === "archive" ? item.endedAt === undefined : item.exitCode !== 0;
-  const going = item.endedAt === undefined && !hasFailed(item);
+/** The step the one-line summary names: the one that failed, else the one that runs now. */
+function stepInFocus(item: Setup): StepView | undefined {
+  const failed = item.steps.find((step) => step.state === "failed");
+  return failed ?? item.steps.filter((step) => step.state === "running").at(-1);
+}
+
+/** After the heading: the step that is running (with how long so far) or that failed. */
+function LiveStep({ item }: { item: Setup }) {
+  const step = stepInFocus(item);
+  if (step === undefined || item.endedAt !== undefined) return null;
   return (
-    <details className="rounded-lg border border-line text-xs" open={open}>
-      <summary className="cursor-pointer px-2.5 py-1.5 text-muted">
-        {headingOf(item)}
-        {going && <TimeSoFar item={item} />}
-      </summary>
-      <StepList steps={item.steps} ticking={going} />
-      {item.text !== "" && (
-        <pre className="m-0 overflow-x-auto bg-code p-2.5 font-mono text-[11px]">{item.text}</pre>
-      )}
-    </details>
+    <>
+      {" · "}
+      {step.label} {step.state === "running" && <RunningFor since={step.startedAt} />}
+    </>
   );
 }
 
-/** How long it has been going, beside the heading, while there are steps to wait for. */
-function TimeSoFar({ item }: { item: Setup }) {
-  if (item.steps.length === 0) return null;
+/**
+ * What starting (or archiving) a session did: one line of fixed height that says what is going on
+ * or how long it all took, and opens into the steps and the setup script's output. It starts
+ * closed and stays as the user leaves it, whatever happens to the setup.
+ */
+export function SetupOutput({ item }: { item: Setup }) {
+  const going = item.endedAt === undefined && !hasFailed(item);
   return (
-    <span className="ml-2 font-mono">
-      <RunningFor since={item.startedAt} />
-    </span>
+    <details className="group rounded-lg border border-line text-xs">
+      <summary
+        className={`flex h-8 cursor-pointer items-center gap-1.5 px-2.5 ${isBad(item) ? "text-del-fg" : "text-muted"}`}
+      >
+        <ChevronRight className="size-3.5 flex-none transition-transform group-open:rotate-90" />
+        <span className="min-w-0 flex-1 truncate">
+          {headingOf(item)}
+          <LiveStep item={item} />
+        </span>
+      </summary>
+      <StepList steps={item.steps} ticking={going} />
+      {item.text !== "" && (
+        <pre className="m-0 max-h-60 overflow-auto bg-code p-2.5 font-mono text-[11px]">
+          {item.text}
+        </pre>
+      )}
+    </details>
   );
 }
 

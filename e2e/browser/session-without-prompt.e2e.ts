@@ -79,9 +79,11 @@ test(
     await setup.breaks();
 
     // ********************************************************************
-    // ** THEN the session shows the failure and the setup output
+    // ** THEN the session shows the failure, and the setup output once the user opens the line
     // ********************************************************************
-    await expectPageToShow(app, "Worktree setup failed", "setup broke");
+    await expectPageToShow(app, "Worktree setup failed");
+    await app.page.opensTheSetupOutput();
+    await expectPageToShow(app, "setup broke");
     // AND the message was not sent and is still in the message box
     await expectPageToShow(app, "Not sent: the session did not become ready.");
     await expectMessageBoxToHold(app, "Add rate limiting");
