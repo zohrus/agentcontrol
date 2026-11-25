@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { MockAgentScript, Step, StopReason } from "../mock-agent/script.ts";
 import { onTestEnd } from "./cleanup.ts";
+import { type ChunkedReplies, chunkedReplies } from "./mock-agent-chunks.ts";
 import { type MockAgentOptions, optionsOf } from "./mock-agent-options.ts";
 
-export interface MockAgent extends MockAgentOptions {
+export interface MockAgent extends MockAgentOptions, ChunkedReplies {
   readonly dataFolder: string;
   readonly scriptPath: string;
   willReply(text: string): void;
@@ -153,6 +154,7 @@ function scriptedSteps(add: (step: Step) => void): ScriptedSteps {
     },
     ...fileSteps(add),
     ...streamLineSteps(add),
+    ...chunkedReplies(add),
     willAskToRunCommand: (command) => {
       add({ kind: "askToRunCommand", command });
     },

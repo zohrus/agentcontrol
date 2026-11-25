@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { methods, type SessionUpdate } from "@agentclientprotocol/sdk";
+import { chunkSteps } from "./chunk-steps.ts";
 import { processSteps, writeFile } from "./file-steps.ts";
 import type { Step, StopReason } from "./script.ts";
 import { streamSteps } from "./stream-steps.ts";
@@ -148,6 +149,7 @@ const handlers: { [K in Step["kind"]]: Handler<K> } = {
   writeFile,
   ...processSteps,
   ...streamSteps,
+  ...chunkSteps,
   compactContext,
   sendUpdate,
   finish,

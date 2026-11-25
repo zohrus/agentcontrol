@@ -3,9 +3,21 @@ import { z } from "zod";
 const planStatus = z.enum(["pending", "in_progress", "completed"]);
 const stopReason = z.enum(["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]);
 
+/** Text sent in chunks of `size` characters, `gapMs` apart. */
+const chunked = <K extends string>(kind: K) =>
+  z.object({
+    kind: z.literal(kind),
+    text: z.string(),
+    size: z.number().int().positive(),
+    gapMs: z.number().optional(),
+  });
+
 const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("reply"), text: z.string() }),
   z.object({ kind: z.literal("think"), text: z.string() }),
+  chunked("replyInChunks"),
+  chunked("thinkInChunks"),
+  z.object({ kind: z.literal("pause"), ms: z.number() }),
   z.object({
     kind: z.literal("plan"),
     entries: z.array(z.object({ content: z.string(), status: planStatus })),
