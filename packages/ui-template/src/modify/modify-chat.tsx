@@ -12,7 +12,7 @@ type Props = {
 };
 
 const noop = () => undefined;
-const sentView = { localId: "sending", text: "", state: "sending" as const, error: undefined };
+const sentView = { text: "", state: "sending" as const, error: undefined };
 const modifyActions = {
   onAnswerPermission: noop,
   answering: {},
@@ -24,7 +24,8 @@ const modifyActions = {
 export function ModifyChat({ events, canSend, sending, onSendPrompt }: Props) {
   // The relay answers this agent's requests by itself: a card with buttons would only mislead.
   const outgoing = useMemo(
-    () => (sending === undefined ? [] : [{ ...sentView, text: sending }]),
+    () =>
+      sending === undefined ? [] : [{ ...sentView, localId: crypto.randomUUID(), text: sending }],
     [sending],
   );
   const built = useViewItems(events, outgoing);

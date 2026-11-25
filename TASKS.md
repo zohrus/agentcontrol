@@ -234,7 +234,7 @@ Landed: see `docs/decisions/2026-11-24-instant-feedback.md` (numbers, shared pie
 - [ ] Archiving a session while its setup script runs removes the folder under the script (it is not stopped); the session reads archived but its log ends with a setup failure. Track the setup run and stop it first.
 - [ ] The Modify chat shows a request as "Sending…" until the app answers; if the live stream delivers the request first it can show twice for that time. Reuse the outgoing-message settling.
 - [ ] A session whose worktree could not be made reads an empty diff and file list also after a relay restart (the folder is checked); a test for the restart is missing.
-- [ ] Stream stability, left over: a plan card whose entries change count moves what is below it; a message that failed to send swaps the bubble's neighbour for a taller "Not sent" block; the composer's "Queued" note changes the composer's height; `OutgoingMessage` in `message-items.tsx` and its renderer are unused now that the stream draws `SentMessage` (remove once the other half has landed); a tool whose kind changes after it was shown (for example to read) would still change from a card to a group.
+- [ ] Stream stability, left over: a plan card whose entries change count moves what is below it; a message that failed to send swaps the bubble's neighbour for a taller "Not sent" block; the composer's "Queued" note changes the composer's height; a tool whose kind changes after it was shown (for example to read) would still change from a card to a group.
 
 ## Conversation stream: data, rendering and pacing (25 Nov 2026)
 Landed: see `docs/decisions/2026-11-25-stream-stability.md`. Still open:
