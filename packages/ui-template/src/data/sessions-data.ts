@@ -75,16 +75,18 @@ async function loadUsage(ctx: Context, ref: SessionRef): Promise<void> {
 }
 
 /** Sessions already opened must be kept current; the row itself carries what the list needs. */
-function needsEvents(state: DataState, row: SessionRow): boolean {
+function needsEvents(ctx: Context, row: SessionRow): boolean {
   const ref = refOf(row);
-  return state.events[keyOf(ref)] !== undefined && lastSeqOf(state, ref) < row.lastSeq;
+  const state = ctx.store.get();
+  const held = Math.max(queueOf(ctx).lastSeq(ref) ?? 0, lastSeqOf(state, ref));
+  return state.events[keyOf(ref)] !== undefined && held < row.lastSeq;
 }
 
 /** Fetches the history of every session that has fallen behind its summary. */
 function catchUp(ctx: Context): void {
   const state = ctx.store.get();
   for (const row of state.sessions) {
-    if (needsEvents(state, row)) inBackground(ctx, loadEvents(ctx, refOf(row)));
+    if (needsEvents(ctx, row)) inBackground(ctx, loadEvents(ctx, refOf(row)));
   }
 }
 

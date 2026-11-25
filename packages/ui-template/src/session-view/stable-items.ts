@@ -10,7 +10,11 @@ function sameValue(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-/** Whether two items show the same: every field equal, lists compared item by item. */
+/**
+ * Whether two items show the same: every field equal, lists compared item by item. This holds
+ * only because the reducers replace a nested value (a step, a plan entry) instead of changing it
+ * in place: one that changes in place would look unchanged here.
+ */
 function sameItem(a: ViewItem, b: ViewItem): boolean {
   const x: Fields = a;
   const y: Fields = b;

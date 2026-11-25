@@ -63,10 +63,15 @@ export function reduceEvent(state: ViewState, event: SessionEvent): void {
   dispatch(state, event.kind, event);
 }
 
+/** The events that open or close a turn: the last of them says whether one is running. */
+export const TURN_EDGES = new Set([
+  "prompt-sent",
+  "turn-ended",
+  "agent-exited",
+  "agent-interrupted",
+]);
+
 /** True while a prompt has been sent and its turn has not ended. */
 export function isTurnRunning(events: readonly SessionEvent[]): boolean {
-  const last = events.findLast((e) =>
-    ["prompt-sent", "turn-ended", "agent-exited", "agent-interrupted"].includes(e.kind),
-  );
-  return last?.kind === "prompt-sent";
+  return events.findLast((e) => TURN_EDGES.has(e.kind))?.kind === "prompt-sent";
 }

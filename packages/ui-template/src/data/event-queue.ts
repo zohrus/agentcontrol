@@ -5,11 +5,23 @@ import { keyOf } from "./session-ref.ts";
 /** Runs a function once at the next screen frame; returns the function that cancels it. */
 export type Frames = (run: () => void) => () => void;
 
-/** A tab that is hidden gets no animation frames: a timer makes sure the events are not held for ever. */
+/** A tab hidden while events wait gets no frame: this timer makes sure they are not held for ever. */
 const HIDDEN_TAB_DELAY_MS = 100;
 
-/** The browser's next frame, or the timer when no frame comes (a hidden tab). */
+/** Right away (after the events that arrive in the same task) for a hidden tab: its timers are throttled to seconds. */
+function soon(run: () => void): () => void {
+  let wanted = true;
+  queueMicrotask(() => {
+    if (wanted) run();
+  });
+  return () => {
+    wanted = false;
+  };
+}
+
+/** The browser's next frame, or the timer when no frame comes. A hidden tab gets no frames. */
 export const browserFrames: Frames = (run) => {
+  if (document.hidden) return soon(run);
   const frame = requestAnimationFrame(run);
   const timer = setTimeout(run, HIDDEN_TAB_DELAY_MS);
   return () => {

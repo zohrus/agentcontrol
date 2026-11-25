@@ -105,6 +105,7 @@ export function SessionView(props: SessionViewProps) {
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface">
       <SessionHeader summary={props.summary} usage={props.usage} />
       <Stream
+        key={props.summary.id}
         items={items}
         actions={{
           onAnswerPermission: props.onAnswerPermission,

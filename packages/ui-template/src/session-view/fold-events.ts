@@ -1,5 +1,5 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
-import { reduceEvent } from "./reduce-events.ts";
+import { reduceEvent, TURN_EDGES } from "./reduce-events.ts";
 import type { ItemOf, ViewItem } from "./view-items.ts";
 import { createViewState, type ViewState } from "./view-state.ts";
 
@@ -35,7 +35,6 @@ export function extendsFold(fold: Fold, events: readonly SessionEvent[]): boolea
 }
 
 const LIFECYCLE = new Set(["agent-started", "agent-exited", "agent-interrupted"]);
-const TURN_EDGES = new Set(["prompt-sent", "turn-ended", "agent-exited", "agent-interrupted"]);
 
 /** The key of the exit item to take out: an exit without a code right before the interruption. */
 function interruptedExitKey(lifecycle: SessionEvent | undefined, event: SessionEvent) {
