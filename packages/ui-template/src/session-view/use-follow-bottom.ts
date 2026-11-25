@@ -127,7 +127,7 @@ function scrollHandlers(follow: Follow) {
   return {
     onScroll: (event: UIEvent<HTMLElement>): void => {
       const view = event.currentTarget;
-      const movedUp = view.scrollTop < seen.top && view.scrollHeight >= seen.height;
+      const movedUp = view.scrollTop < seen.top && view.scrollHeight === seen.height;
       seen.top = view.scrollTop;
       seen.height = view.scrollHeight;
       if (movedUp) follow.release();
