@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { advancePace, type Pace, startPace } from "./pace.ts";
 
-/** Where animation frames come from; tests can hand in their own. */
+/** Where animation frames come from: the page's own (a test controls them with the page's clock). */
 export type FrameSource = {
   request: (run: (now: number) => void) => number;
   cancel: (id: number) => void;

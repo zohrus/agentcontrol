@@ -3,7 +3,8 @@ import { usePacedText } from "./use-paced-text.ts";
 import type { ItemOf } from "./view-items.ts";
 
 /** The thinking box shows about six lines (16 px each); the rest scrolls inside it. */
-const box = "whitespace-pre-wrap text-xs leading-4";
+/** The right padding keeps the text clear of the Show more button. */
+const box = "whitespace-pre-wrap pr-20 text-xs leading-4";
 const capped = "max-h-24 overflow-y-auto";
 /** Within this many pixels of its end the box counts as showing its end. */
 const AT_END_PX = 4;

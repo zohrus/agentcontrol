@@ -39,7 +39,7 @@ test(
     const recording = await stream.recording();
     expectNothingAlreadyShownWasRedrawn(recording);
     // AND the number and its dot never showed on a line of their own
-    expectMarkersWereNeverShown(recording, ["Steps:3", "Steps:2", "Steps:1"]);
+    expectMarkersWereNeverShown(recording, ["Steps:1", "first2", "second3"]);
     // AND the list reads in full at the end
     await expectStreamToShowAll(app, "first", "second", "third");
   },
