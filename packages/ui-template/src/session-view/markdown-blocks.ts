@@ -1,15 +1,10 @@
-/** The few kinds of block the agents' replies use. Anything else is a paragraph. */
-export type Block =
-  | { type: "heading"; level: number; text: string }
-  | { type: "code"; lang: string; text: string }
-  | { type: "list"; items: string[] }
-  | { type: "paragraph"; text: string };
+import { BULLET, FENCE, HEADING, splitLines } from "./markdown-lines.ts";
+import { startsTable, table } from "./markdown-table.ts";
+import { shownLines, withoutDanglingRow } from "./markdown-tail.ts";
+import type { Block, Read, Shape } from "./markdown-types.ts";
 
-type Read = (lines: string[], at: number) => { block: Block; next: number } | undefined;
-
-const FENCE = /^\s*```(\S*)\s*$/;
-const HEADING = /^(#{1,6})\s+(.*)$/;
-const BULLET = /^\s*(?:[-*]|\d+[.)])\s+(.*)$/;
+export type { Block } from "./markdown-types.ts";
+export { parseInline, type Span } from "./markdown-inline.ts";
 
 const fence: Read = (lines, at) => {
   const open = FENCE.exec(lines[at] ?? "");
@@ -36,19 +31,24 @@ const list: Read = (lines, at) => {
   return end === at ? undefined : { block: { type: "list", items }, next: end };
 };
 
-const startsOtherBlock = (line: string): boolean =>
-  line.trim() === "" || FENCE.test(line) || HEADING.test(line) || BULLET.test(line);
+const isBlank = (lines: string[], at: number): boolean => (lines[at] ?? "").trim() === "";
+const isFence = (lines: string[], at: number): boolean => FENCE.test(lines[at] ?? "");
+const isHeading = (lines: string[], at: number): boolean => HEADING.test(lines[at] ?? "");
+const isBullet = (lines: string[], at: number): boolean => BULLET.test(lines[at] ?? "");
+
+const startsOtherBlock = (lines: string[], at: number): boolean =>
+  [isBlank, isFence, isHeading, isBullet, startsTable].some((test) => test(lines, at));
 
 /** Consecutive lines up to the next blank line or block, line breaks kept. */
 const paragraph: Read = (lines, at) => {
   let end = at + 1;
-  while (end < lines.length && !startsOtherBlock(lines[end] ?? "")) end++;
+  while (end < lines.length && !startsOtherBlock(lines, end)) end++;
   return { block: { type: "paragraph", text: lines.slice(at, end).join("\n") }, next: end };
 };
 
-const readers: Read[] = [fence, heading, list, paragraph];
+const readers: Read[] = [fence, heading, table, list, paragraph];
 
-function readBlock(lines: string[], at: number): { block: Block; next: number } {
+function readBlock(lines: string[], at: number): { block: Shape; next: number } {
   for (const read of readers) {
     const found = read(lines, at);
     if (found) return found;
@@ -56,37 +56,27 @@ function readBlock(lines: string[], at: number): { block: Block; next: number } 
   return { block: { type: "paragraph", text: lines[at] ?? "" }, next: at + 1 };
 }
 
-/** Splits an agent's reply into blocks; an unclosed code fence runs to the end, as while it streams. */
-export function parseMarkdown(text: string): Block[] {
-  const lines = text.split("\n");
+/**
+ * Splits an agent's reply into blocks; an unclosed code fence runs to the end, as while it streams.
+ * While the reply is still arriving (`final` false) only what cannot change its look is shown: see
+ * `shownLines`. Each block says where it starts in the text.
+ */
+export function parseMarkdown(text: string, call: { final: boolean }): Block[] {
+  const { lines, starts } = splitLines(text);
+  if (call.final) return readBlocks(lines, starts);
+  return withoutDanglingRow(readBlocks(shownLines(lines), starts));
+}
+
+function readBlocks(lines: string[], starts: number[]): Block[] {
   const blocks: Block[] = [];
-  let at = 0;
-  while (at < lines.length) {
+  for (let at = 0; at < lines.length; ) {
     if ((lines[at] ?? "").trim() === "") {
       at++;
       continue;
     }
     const { block, next } = readBlock(lines, at);
-    blocks.push(block);
+    blocks.push({ ...block, offset: starts[at] ?? 0 });
     at = next;
   }
   return blocks;
-}
-
-/** A piece of a line: plain text, `code` or **bold**. */
-export type Span = { type: "text" | "code" | "bold"; text: string };
-
-const INLINE = /(`[^`\n]+`|\*\*[^*\n]+\*\*)/;
-
-function spanOf(part: string): Span {
-  if (part.startsWith("`")) return { type: "code", text: part.slice(1, -1) };
-  if (part.startsWith("**")) return { type: "bold", text: part.slice(2, -2) };
-  return { type: "text", text: part };
-}
-
-export function parseInline(text: string): Span[] {
-  return text
-    .split(INLINE)
-    .filter((part) => part !== "")
-    .map(spanOf);
 }

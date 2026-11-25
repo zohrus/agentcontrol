@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode, useMemo } from "react";
 import { type Block, parseInline, parseMarkdown, type Span } from "./markdown-blocks.ts";
 
 const spanViews: Record<Span["type"], (text: string) => ReactNode> = {
@@ -16,6 +16,8 @@ function Inline({ text }: { text: string }) {
     </>
   );
 }
+
+const cell = "border border-line px-2 py-1 text-left align-top";
 
 type BlockViews = { [K in Block["type"]]: (block: Extract<Block, { type: K }>) => ReactNode };
 
@@ -39,6 +41,32 @@ const blockViews: BlockViews = {
       ))}
     </ul>
   ),
+  table: (block) => (
+    <div className="overflow-x-auto">
+      <table className="border-collapse text-[13px]">
+        <thead>
+          <tr>
+            {block.header.map((text, index) => (
+              <th key={index} className={`${cell} bg-surface font-semibold`}>
+                <Inline text={text} />
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {block.rows.map((row, at) => (
+            <tr key={at}>
+              {row.map((text, index) => (
+                <td key={index} className={cell}>
+                  <Inline text={text} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ),
   paragraph: (block) => (
     <p className="m-0 whitespace-pre-wrap">
       <Inline text={block.text} />
@@ -46,17 +74,36 @@ const blockViews: BlockViews = {
   ),
 };
 
-function BlockView({ block }: { block: Block }) {
-  const view = blockViews[block.type] as (block: Block) => ReactNode;
-  return view(block);
+/** Whether two blocks are the same to the reader: same kind, same text, so the view need not change. */
+function sameBlock(a: Block, b: Block): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** An agent's reply: headings, lists, code blocks, `code` and **bold**, nothing else. Never HTML. */
-export function Markdown({ text }: { text: string }) {
+/** One block. A block that is finished is not drawn again when the blocks after it change. */
+const BlockView = memo(
+  function BlockView({ block }: { block: Block }) {
+    const view = blockViews[block.type] as (block: Block) => ReactNode;
+    return view(block);
+  },
+  (before, after) => sameBlock(before.block, after.block),
+);
+
+type Props = {
+  text: string;
+  /** False while the reply is still arriving: what could still change its look waits. */
+  final?: boolean;
+};
+
+/**
+ * An agent's reply: headings, lists, tables, code blocks, `code` and **bold**, nothing else.
+ * Never HTML. A block is named by where it starts, so it keeps its element while it grows.
+ */
+export function Markdown({ text, final = true }: Props) {
+  const blocks = useMemo(() => parseMarkdown(text, { final }), [text, final]);
   return (
-    <div className="flex flex-col gap-2 leading-relaxed">
-      {parseMarkdown(text).map((block, index) => (
-        <BlockView key={index} block={block} />
+    <div data-markdown="" className="flex flex-col gap-2 leading-relaxed">
+      {blocks.map((block) => (
+        <BlockView key={block.offset} block={block} />
       ))}
     </div>
   );
