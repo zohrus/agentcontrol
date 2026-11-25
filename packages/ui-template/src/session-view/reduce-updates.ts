@@ -26,6 +26,7 @@ function newTool(state: ViewState, toolCallId: string): ItemOf<"tool"> {
     stat: undefined,
   };
   state.items.push(tool);
+  state.tools.set(toolCallId, tool);
   return tool;
 }
 

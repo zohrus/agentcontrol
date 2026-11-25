@@ -1,15 +1,15 @@
 import type { SessionEvent, SessionSummary } from "@agentcontrol/protocol";
-import { useMemo } from "react";
 import { ArchivedBanner } from "../archive/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { SessionUsage } from "../status/index.ts";
 import { Composer } from "./composer.tsx";
 import { InterruptedBanner } from "./interrupted-banner.tsx";
 import { ReadOnlyBanner } from "./read-only-banner.tsx";
-import { buildViewItems, isTurnRunning } from "./reduce-events.ts";
+import { isTurnRunning } from "./reduce-events.ts";
 import { SessionHeader } from "./session-header.tsx";
 import { Stream } from "./stream.tsx";
-import { type OutgoingView, withOutgoing } from "./outgoing-items.ts";
+import type { OutgoingView } from "./outgoing-items.ts";
+import { useViewItems } from "./use-view-items.ts";
 
 /** The actions of a session that are in flight. */
 type InFlight = { cancelling?: boolean; archiving?: boolean; resuming?: boolean };
@@ -100,10 +100,7 @@ const noAnswers = {};
 /** Header, event stream and composer for one session; archived sessions are read-only. */
 export function SessionView(props: SessionViewProps) {
   const { outgoing = noOutgoing } = props;
-  const items = useMemo(
-    () => withOutgoing(buildViewItems(props.events), outgoing),
-    [props.events, outgoing],
-  );
+  const items = useViewItems(props.events, outgoing);
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface">
       <SessionHeader summary={props.summary} usage={props.usage} />

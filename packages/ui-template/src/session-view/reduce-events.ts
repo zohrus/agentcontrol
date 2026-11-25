@@ -1,9 +1,7 @@
 import type { SessionEvent } from "@agentcontrol/protocol";
-import { groupTools } from "./group-tools.ts";
 import { applyUpdate } from "./reduce-updates.ts";
 import { reducePermissionAnswered, reducePermissionRequested } from "./reduce-permission.ts";
 import { reduceArchived, reduceSetupFinished, reduceSetupOutput } from "./reduce-setup.ts";
-import type { ViewItem } from "./view-items.ts";
 import { addChunk, itemKey, type ViewState } from "./view-state.ts";
 
 type EventMap = { [E in SessionEvent as E["kind"]]: E };
@@ -60,32 +58,9 @@ function dispatch<K extends keyof EventMap>(state: ViewState, kind: K, event: Ev
   reducers[kind](state, event);
 }
 
-const LIFECYCLE = ["agent-started", "agent-exited", "agent-interrupted"];
-
-/**
- * Without the exits that only record the relay stopping: the interruption says it in one line, so
- * an exit without a code whose next lifecycle event is the interruption (the stop's signal, or
- * the exit the relay wrote for an agent that died with it) is not shown as a second line.
- */
-function withoutInterruptedExits(events: readonly SessionEvent[]): SessionEvent[] {
-  let next: string | undefined;
-  const kept = events.toReversed().filter((event) => {
-    // A crash with an exit code stays visible: only a stop by signal (no code) is the relay's.
-    const hidden =
-      event.kind === "agent-exited" &&
-      event.payload.exitCode === null &&
-      next === "agent-interrupted";
-    if (LIFECYCLE.includes(event.kind)) next = event.kind;
-    return !hidden;
-  });
-  return kept.toReversed();
-}
-
-/** Reduces the relay event log to the items the stream shows. Pure. */
-export function buildViewItems(events: readonly SessionEvent[]): ViewItem[] {
-  const state: ViewState = { items: [] };
-  for (const event of withoutInterruptedExits(events)) dispatch(state, event.kind, event);
-  return groupTools(state.items);
+/** Applies one relay event to the view state. */
+export function reduceEvent(state: ViewState, event: SessionEvent): void {
+  dispatch(state, event.kind, event);
 }
 
 /** True while a prompt has been sent and its turn has not ended. */

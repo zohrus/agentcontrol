@@ -37,8 +37,24 @@ type ItemMap = {
     state: "sending" | "sent" | "failed";
     error: string | undefined;
   };
-  message: { type: "message"; key: string; text: string; messageId: string | undefined };
-  thought: { type: "thought"; key: string; text: string; messageId: string | undefined };
+  message: {
+    type: "message";
+    key: string;
+    text: string;
+    messageId: string | undefined;
+    /** True while this is the last item of a running turn: its text is revealed at a pace. */
+    streaming?: boolean;
+    /** True when it began while the page was open on the session: its first text is revealed too. */
+    fresh?: boolean;
+  };
+  thought: {
+    type: "thought";
+    key: string;
+    text: string;
+    messageId: string | undefined;
+    streaming?: boolean;
+    fresh?: boolean;
+  };
   plan: { type: "plan"; key: string; entries: PlanEntryView[] };
   tool: ToolItem;
   /** A run of consecutive read/search calls, collapsed into one line. */

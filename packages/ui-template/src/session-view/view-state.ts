@@ -3,9 +3,15 @@ import type { ItemOf, ViewItem } from "./view-items.ts";
 /** The items built so far; reducers add to it or update items in place. */
 export type ViewState = {
   items: ViewItem[];
+  /** The tool items by tool call id, so an update finds its tool without a scan. */
+  tools: Map<string, ItemOf<"tool">>;
+  /** True while events that arrive live are folded in (not a history loaded at once). */
+  live: boolean;
   /** The session's worktree folder: paths below it are shown relative to it. */
   root?: string;
 };
+
+export const createViewState = (): ViewState => ({ items: [], tools: new Map(), live: false });
 
 /** A path shown relative to the session's folder, as the agent sees its project. */
 export function relativePath(state: ViewState, path: string): string;
@@ -32,13 +38,15 @@ export function addChunk(state: ViewState, chunk: Chunk): void {
     last.text += chunk.text;
     return;
   }
-  state.items.push(chunk);
+  state.items.push(beginning(state, chunk));
 }
 
+/** A text that begins while the page watches is marked, so that its first words are revealed too. */
+const beginning = (state: ViewState, chunk: Chunk): Chunk & { fresh?: boolean } =>
+  state.live && chunk.type !== "user" ? { ...chunk, fresh: true } : chunk;
+
 export function findTool(state: ViewState, toolCallId: string): ItemOf<"tool"> | undefined {
-  return state.items.find(
-    (item): item is ItemOf<"tool"> => item.type === "tool" && item.toolCallId === toolCallId,
-  );
+  return state.tools.get(toolCallId);
 }
 
 export function findPermission(
