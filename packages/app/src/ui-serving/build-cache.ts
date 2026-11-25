@@ -1,0 +1,131 @@
+import { cp, mkdir, readdir, rename, rm, stat, utimes } from "node:fs/promises";
+import { join } from "node:path";
+import { contentKey } from "../ui-workspace/index.ts";
+import { type RunningBuilds, viteBuild } from "./vite-build.ts";
+
+/** How many builds are kept: the one served and the ones a rollback is most likely to want. */
+const KEEP_BUILDS = 3;
+const PARTIAL = ".partial";
+
+/** What a build of a folder came to; `key` names the build of that folder's content. */
+export interface BuildResult {
+  key: string;
+  ok: boolean;
+  output: string;
+}
+
+/**
+ * The folder `<dataDir>/ui-build`: one finished build per content key, each in a folder of its
+ * own. A build is written beside its place and renamed into it, so a folder that has its name is
+ * complete. Equal content is built once, whoever asks.
+ */
+export interface BuildCache {
+  keyOf(dir: string): Promise<string>;
+  has(key: string): Promise<boolean>;
+  dirOf(key: string): string;
+  /** The key of the build used or made last, if there is one. */
+  newest(): Promise<string | undefined>;
+  /** Builds the UI in `dir` unless its content has a build already. Never throws. */
+  build(dir: string): Promise<BuildResult>;
+  /** Files a folder that was built elsewhere (the release's prebuilt UI) under a key. */
+  adopt(options: { key: string; from: string }): Promise<void>;
+  /** Notes that a build is served, and deletes the oldest ones beyond the few that are kept. */
+  used(key: string): Promise<void>;
+  /** Ends the builds that are running. */
+  stop(): void;
+}
+
+export async function isDir(path: string): Promise<boolean> {
+  return stat(path).then(
+    (info) => info.isDirectory(),
+    () => false,
+  );
+}
+
+/** The finished builds, newest first (a folder's time is when it was made or last used). */
+async function finished(root: string): Promise<{ key: string; at: number }[]> {
+  const names = await readdir(root).catch(() => []);
+  const keys = names.filter((name) => !name.endsWith(PARTIAL));
+  const found = await Promise.all(
+    keys.map(async (key) => ({ key, at: (await stat(join(root, key))).mtimeMs })),
+  );
+  return found.sort((a, b) => b.at - a.at);
+}
+
+/** Deletes the oldest builds beyond the few that are kept, and any build that never finished. */
+async function prune(root: string): Promise<void> {
+  const all = await finished(root);
+  for (const old of all.slice(KEEP_BUILDS)) await rm(join(root, old.key), { recursive: true });
+  for (const name of await readdir(root)) {
+    if (name.endsWith(PARTIAL)) await rm(join(root, name), { recursive: true, force: true });
+  }
+}
+
+interface Parts {
+  root: string;
+  salt: string;
+  running: RunningBuilds;
+  inFlight: Map<string, Promise<BuildResult>>;
+}
+
+const keyOf = (parts: Parts, dir: string) => contentKey({ dir, salt: parts.salt });
+const dirOf = (parts: Parts, key: string) => join(parts.root, key);
+
+async function make(parts: Parts, call: { dir: string; key: string }): Promise<BuildResult> {
+  const { dir, key } = call;
+  const partial = join(parts.root, key + PARTIAL);
+  await mkdir(parts.root, { recursive: true });
+  await rm(partial, { recursive: true, force: true });
+  const result = await viteBuild({ dir, outDir: partial, running: parts.running });
+  // Files edited while Vite read them would make a build that fits no key.
+  const changed = result.ok && (await keyOf(parts, dir)) !== key;
+  if (!result.ok || changed) {
+    await rm(partial, { recursive: true, force: true });
+    const output = changed ? "The UI files changed while the UI was being built." : result.output;
+    return { key, ok: false, output };
+  }
+  await rename(partial, dirOf(parts, key));
+  return { key, ok: true, output: result.output };
+}
+
+async function buildOnce(parts: Parts, dir: string): Promise<BuildResult> {
+  const key = await keyOf(parts, dir);
+  if (await isDir(dirOf(parts, key))) return { key, ok: true, output: "" };
+  const started = parts.inFlight.get(key) ?? make(parts, { dir, key });
+  parts.inFlight.set(key, started);
+  return started.finally(() => parts.inFlight.delete(key));
+}
+
+async function adopt(parts: Parts, call: { key: string; from: string }): Promise<void> {
+  const partial = join(parts.root, call.key + PARTIAL);
+  await mkdir(parts.root, { recursive: true });
+  await cp(call.from, partial, { recursive: true });
+  await rename(partial, dirOf(parts, call.key));
+}
+
+async function used(parts: Parts, key: string): Promise<void> {
+  const now = new Date();
+  await utimes(dirOf(parts, key), now, now);
+  await prune(parts.root);
+}
+
+export function createBuildCache(options: { root: string; salt: string }): BuildCache {
+  const parts: Parts = { ...options, running: new Set(), inFlight: new Map() };
+  return {
+    keyOf: (dir) => keyOf(parts, dir),
+    has: (key) => isDir(dirOf(parts, key)),
+    dirOf: (key) => dirOf(parts, key),
+    newest: async () => (await finished(parts.root))[0]?.key,
+    build: (dir) =>
+      buildOnce(parts, dir).catch((error: unknown) => ({
+        key: "",
+        ok: false,
+        output: String(error),
+      })),
+    adopt: (call) => adopt(parts, call),
+    used: (key) => used(parts, key),
+    stop: () => {
+      for (const child of parts.running) child.kill();
+    },
+  };
+}

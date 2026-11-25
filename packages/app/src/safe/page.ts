@@ -90,9 +90,17 @@ const ACTIONS: Record<ModifyStatus, string> = {
 const part = (value: string | undefined, render: (text: string) => string): string =>
   value ? render(value) : "";
 
-function stateSection(state: ModifyState): string {
+const BUILD_FAILED =
+  "The UI could not be built, so the version from before is shown. Restore an earlier version below, or ask the Modify agent for a fix.";
+
+function stateSection(options: { state: ModifyState; buildFailure: string | undefined }): string {
+  const { state, buildFailure } = options;
   const changed = state.changedFiles.map(escapeHtml).join(", ");
   return [
+    part(
+      buildFailure,
+      (text) => `<p>${BUILD_FAILED}</p>\n<pre>${escapeHtml(text.slice(-4000))}</pre>`,
+    ),
     `<p>Status: <b>${escapeHtml(state.status)}</b></p>`,
     part(state.request, (text) => `<p>Request: ${escapeHtml(text)}</p>`),
     part(state.failure, (text) => `<p>${escapeHtml(text)}</p>`),
@@ -111,8 +119,12 @@ function versionItem(version: UiVersion): string {
 }
 
 /** The recovery page: plain HTML, no build step, works with the UI folder broken or missing. */
-export function renderSafePage(options: { state: ModifyState; versions: UiVersion[] }): string {
-  const { state, versions } = options;
+export function renderSafePage(options: {
+  state: ModifyState;
+  versions: UiVersion[];
+  buildFailure: string | undefined;
+}): string {
+  const { state, versions, buildFailure } = options;
   const undo = state.status === "idle" ? button("undo", "Undo last change") : "";
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -123,7 +135,7 @@ export function renderSafePage(options: { state: ModifyState; versions: UiVersio
 <p id="error"></p>
 <h2>Modify agent</h2>
 <div id="status">
-${stateSection(state)}
+${stateSection({ state, buildFailure })}
 <p>${undo}</p>
 </div>
 <textarea id="request" rows="3" placeholder="Describe a change to the UI"></textarea>

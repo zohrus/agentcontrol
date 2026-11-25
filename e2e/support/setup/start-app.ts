@@ -39,8 +39,10 @@ export interface RunningApp extends AppAccess, Outsiders {
 export interface StartOptions extends WorkspaceOptions {
   /** Also serve the default UI, so a browser can use the app. */
   withUi?: boolean;
-  /** Serve this folder of built UI files instead (what a release does). */
+  /** Serve this folder of built UI files instead. */
   uiDist?: string;
+  /** Serve a production build of the live UI folder, as a release does (needs `modify`). */
+  productionUi?: boolean;
   /** The default UI and the agent that edits it; the live and staging UI are ready at start. */
   modify?: ModifyConfig;
   /** How long a preview link stays valid after its last use, in milliseconds (default: an hour). */
@@ -56,7 +58,8 @@ export interface StartOptions extends WorkspaceOptions {
 
 const uiRoot = join(import.meta.dir, "../../../packages/ui-template");
 
-function uiOf(options: StartOptions): { root?: string; dist?: string } {
+function uiOf(options: StartOptions): { root?: string; dist?: string; production?: boolean } {
+  if (options.productionUi) return { production: true };
   if (options.uiDist !== undefined) return { dist: options.uiDist };
   return options.withUi ? { root: uiRoot } : {};
 }
@@ -134,7 +137,7 @@ interface OpenOptions {
   env: Record<string, string>;
   host: RelayHost;
   heard: Heard;
-  ui: { root?: string; dist?: string };
+  ui: { root?: string; dist?: string; production?: boolean };
   ssh?: Partial<SshSettings> | undefined;
   relayDown: boolean | undefined;
   canReplace: boolean | undefined;

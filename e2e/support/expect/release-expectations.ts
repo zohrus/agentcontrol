@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { AppAccess } from "../setup/app.ts";
 import type { ReleaseApp } from "../setup/release-app.ts";
+import { eventually } from "../setup/eventually.ts";
 import type { ResourcesFolder } from "../setup/release-folder.ts";
 
 async function markerSeenFrom(app: AppAccess, folder: "ui" | "ui-staging"): Promise<string> {
@@ -25,26 +26,38 @@ export async function expectUiDependenciesToComeFrom(
   }
 }
 
-/** The app answers its root address with the UI that is in its data folder, served by Vite. */
+/** A first build takes a few seconds, with Vite starting up on a loaded machine. */
+const BUILD_WAIT_MS = 30_000;
+
+/** The app answers its root address with the built UI that was made from the data folder's UI. */
 export async function expectUiServedFromTheDataFolder(app: ReleaseApp): Promise<void> {
-  const answer = await fetch(`${app.baseUrl}/`);
-  const page = await answer.text();
   const copy = await readFile(join(app.dataDir, "ui", "index.html"), "utf8");
-  if (answer.status !== 200 || !page.includes("Fixture UI") || !copy.includes("Fixture UI")) {
-    throw new Error(
-      `expected the app to serve the fixture UI from ${app.dataDir}/ui, but / answered ${String(answer.status)}: ${page}`,
-    );
-  }
+  await eventually(
+    `expected the app to serve the fixture UI built from ${app.dataDir}/ui`,
+    async () => {
+      const answer = await fetch(`${app.baseUrl}/`);
+      const page = await answer.text();
+      const built =
+        answer.status === 200 && page.includes("Fixture UI") && copy.includes("Fixture UI");
+      return built ? undefined : `/ answered ${String(answer.status)}: ${page}`;
+    },
+    BUILD_WAIT_MS,
+  );
 }
 
-/** The UI server hands out the UI's own script, not a refusal. */
+/** The built UI's script is handed out, not refused. */
 export async function expectUiScriptToBeServed(app: ReleaseApp): Promise<void> {
-  const answer = await fetch(`${app.baseUrl}/src/main.ts`);
-  if (answer.status !== 200) {
-    throw new Error(
-      `expected the UI server to serve /src/main.ts, but it answered ${String(answer.status)}: ${await answer.text()}`,
-    );
-  }
+  await eventually(
+    "expected the app to serve the script of the built UI",
+    async () => {
+      const page = await (await fetch(`${app.baseUrl}/`)).text();
+      const source = /<script[^>]* src="([^"]+)"/.exec(page)?.[1];
+      if (source === undefined) return `the page names no script: ${page}`;
+      const answer = await fetch(`${app.baseUrl}${source}`);
+      return answer.status === 200 ? undefined : `${source} answered ${String(answer.status)}`;
+    },
+    BUILD_WAIT_MS,
+  );
 }
 
 /** The app's database has every migration of the drizzle folder, not only the ones it was built with. */

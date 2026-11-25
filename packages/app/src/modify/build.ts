@@ -11,7 +11,14 @@ function foldersOf(options: ModifyOptions) {
   const { dataDir, templateVersion } = options;
   const versions = createUiVersions({ gitDir: join(dataDir, "ui.git"), now: () => new Date() });
   const templateDir = join(dataDir, "ui-template");
-  const workspace = createUiWorkspace({ dataDir, templateDir, templateVersion, versions });
+  const workspace = createUiWorkspace({
+    dataDir,
+    templateDir,
+    templateVersion,
+    versions,
+    buildUi: options.uiBuilds.build,
+    liveChanged: options.uiBuilds.sync,
+  });
   return { versions, workspace };
 }
 

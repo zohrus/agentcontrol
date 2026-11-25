@@ -67,7 +67,7 @@ interface ProcessLaunch {
   /** The port to come back on after a restart (so a browser can find the app); free port if left out. */
   port?: number;
   /** Serve the UI: a project folder with Vite, or a folder of built files. */
-  ui?: { root?: string; dist?: string };
+  ui?: { root?: string; dist?: string; production?: boolean };
 }
 
 interface LaunchOptions extends ProcessLaunch {

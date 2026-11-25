@@ -10,16 +10,15 @@ const target = localTarget({
   command: localRelayCommand(process.env),
   dataDir: join(config.dataDir, "relay"),
 });
-// A release has no source tree to point --ui-root at: it serves the UI folder in the data folder.
+// A release has no source tree to point --ui-root at: it serves a production build of the UI
+// folder in the data folder. Only --ui-root (`bun dev`) runs Vite's dev server.
 const shipped = findResources({ env: process.env, execPath: process.execPath }).shipped;
-const uiRoot =
-  config.uiRoot ??
-  (shipped && config.uiDist === undefined ? join(config.dataDir, "ui") : undefined);
+const production = shipped && config.uiRoot === undefined && config.uiDist === undefined;
 const app = await startApp({
   dataDir: config.dataDir,
   port: config.port,
   modify: readModifyConfig(process.env),
-  ui: { root: uiRoot, dist: config.uiDist },
+  ui: { root: config.uiRoot, dist: config.uiDist, production },
   connectRelay: () => relayClientOver(spawnBridge({ argv: target.bridgeCommand() })),
   stopLocalRelay: () => target.stopRelay(),
 }).catch((error: unknown) => {

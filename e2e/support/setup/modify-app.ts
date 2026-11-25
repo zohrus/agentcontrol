@@ -15,11 +15,12 @@ export interface ModifiableApp extends RunningApp {
 }
 
 /** A copy of the fixture UI that the test owns; its node_modules is the real one, for tsc and vite. */
-export async function createUiTemplate(): Promise<string> {
+export async function createUiTemplate(files: Record<string, string> = {}): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "agentcontrol-ui-template-"));
   onTestEnd(() => rm(dir, { recursive: true, force: true }));
   await cp(fixtureDir, dir, { recursive: true });
   await symlink(realModules, join(dir, "node_modules"), "dir");
+  for (const [path, content] of Object.entries(files)) await Bun.write(join(dir, path), content);
   return dir;
 }
 
@@ -31,21 +32,36 @@ const baseConfig = (templateDir: string, agent: ModifyConfig["agent"]): ModifyCo
 
 const mockAgentMain = join(import.meta.dir, "../mock-agent/main.ts");
 
+/** Which UI the app serves besides its API, if any: the dev server, or a production build. */
+function uiServedBy(options: { withUi?: boolean; productionUi?: boolean }) {
+  return {
+    ...(options.withUi && { withUi: true }),
+    ...(options.productionUi && { productionUi: true }),
+  };
+}
+
 /**
  * Starts the app with default UI version 1.0, ready for Modify requests. The Modify agent is the
  * mock agent; with `agent: "claude-code"` it is started as Claude Code would be, but the command
  * behind that name is the mock agent too.
  */
 export async function startAppWithModifiableUi(
-  options: { agent?: ModifyConfig["agent"]; withUi?: boolean } = {},
+  options: {
+    agent?: ModifyConfig["agent"];
+    withUi?: boolean;
+    /** Serve a production build of the live UI, as a release does. */
+    productionUi?: boolean;
+    /** Files of the default UI that differ from the fixture's (path in the UI folder, content). */
+    templateFiles?: Record<string, string>;
+  } = {},
 ): Promise<ModifiableApp> {
-  const templateDir = await createUiTemplate();
+  const templateDir = await createUiTemplate(options.templateFiles);
   const agent = options.agent ?? "mock";
   const relayEnv = { AGENTCONTROL_AGENT_CLAUDE_CODE_CMD: JSON.stringify(["bun", mockAgentMain]) };
   const modify = baseConfig(templateDir, agent);
   const app = await startAppWithLocalWorkspace({
     modify,
-    ...(options.withUi ? { withUi: true } : {}),
+    ...uiServedBy(options),
     ...(agent === "mock" ? {} : { relayEnv }),
   });
   return Object.assign(app, { templateDir });

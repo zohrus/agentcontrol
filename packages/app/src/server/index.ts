@@ -29,7 +29,10 @@ function createRoot(options: {
   const root = new Hono()
     .use(guard(options.guarded))
     .route("/api", createApi(options.deps))
-    .route("/_safe", safeRoutes(options.deps.modify))
+    .route(
+      "/_safe",
+      safeRoutes(options.deps.modify, () => options.ui?.failure?.()),
+    )
     .route(
       "/preview",
       previewRoutes({ previews: options.deps.previews, source: previewSource(options.deps) }),

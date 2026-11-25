@@ -9,11 +9,8 @@ import "./styles.css";
 // the app put into this page; if the app restarted and made a new one, reload once to get it.
 const client = createClient({ baseUrl: "", onUnauthorized: reloadOnceWhenUnauthorized });
 
+// StrictMode renders everything twice to find mistakes: useful while developing, a cost in the
+// built UI that users run (Vite replaces `import.meta.env.DEV` by false there).
+const app = <App client={client} />;
 const root = document.getElementById("root");
-if (root) {
-  createRoot(root).render(
-    <StrictMode>
-      <App client={client} />
-    </StrictMode>,
-  );
-}
+if (root) createRoot(root).render(import.meta.env.DEV ? <StrictMode>{app}</StrictMode> : app);

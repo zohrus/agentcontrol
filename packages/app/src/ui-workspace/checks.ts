@@ -1,7 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 interface CommandResult {
@@ -22,7 +20,7 @@ type CheckStep = CheckResult["steps"][number];
 
 const MAX_LINES = 200;
 const TIMEOUT_MS = 5 * 60_000;
-/** Makes a compiled app binary behave as the `bun` command, so it can run vite and tsc itself. */
+/** Makes a compiled app binary behave as the `bun` command, so it can run tsc itself. */
 const BE_BUN = { BUN_BE_BUN: "1" };
 
 export const runWithBun: RunCommand = async ({ cmd, cwd }) => {
@@ -57,27 +55,14 @@ async function step(options: {
   return { name: options.name, ok: result.exitCode === 0, output: lastLines(result.output) };
 }
 
-async function build(options: { stagingDir: string; run: RunCommand }): Promise<CheckStep> {
-  const outDir = await mkdtemp(join(tmpdir(), "agentcontrol-ui-build-"));
-  const vite = join(options.stagingDir, "node_modules", "vite", "bin", "vite.js");
-  const result = await step({
-    name: "build",
-    run: options.run,
-    cwd: options.stagingDir,
-    // The "runner" config loader writes no temporary file into the (shared) node_modules.
-    cmd: [
-      process.execPath,
-      vite,
-      "build",
-      "--configLoader",
-      "runner",
-      "--outDir",
-      outDir,
-      "--emptyOutDir",
-    ],
-  });
-  await rm(outDir, { recursive: true, force: true });
-  return result;
+/** Builds the UI in a folder; says whether it worked and what the build printed. */
+export type BuildUi = (dir: string) => Promise<{ ok: boolean; output: string }>;
+
+async function build(options: { stagingDir: string; buildUi: BuildUi }): Promise<CheckStep> {
+  const result = await options
+    .buildUi(options.stagingDir)
+    .catch((error: unknown) => ({ ok: false, output: String(error) }));
+  return { name: "build", ok: result.ok, output: lastLines(result.output) };
 }
 
 /**
@@ -92,15 +77,16 @@ function typescriptBin(stagingDir: string): string {
 }
 
 /**
- * Typecheck with the template's own tsc project, then build with the linked vite into a temp
- * folder outside the live folder. Both run through the current Bun binary, which needs no node.
+ * Typecheck with the template's own tsc project (through the current Bun binary, which needs no
+ * node), then build the UI the way `buildUi` does, which keeps the result for the live UI to use.
  * The build is skipped when the typecheck fails: the agent fixes one thing at a time.
  */
 export async function runChecks(options: {
   stagingDir: string;
   run: RunCommand;
+  buildUi: BuildUi;
 }): Promise<CheckResult> {
-  const { stagingDir, run } = options;
+  const { stagingDir, run, buildUi } = options;
   const tsc = typescriptBin(stagingDir);
   const typecheck = await step({
     name: "typecheck",
@@ -109,6 +95,6 @@ export async function runChecks(options: {
     cmd: [process.execPath, tsc, "-p", "tsconfig.json"],
   });
   if (!typecheck.ok) return { ok: false, steps: [typecheck] };
-  const built = await build({ stagingDir, run });
+  const built = await build({ stagingDir, buildUi });
   return { ok: built.ok, steps: [typecheck, built] };
 }
