@@ -1,11 +1,9 @@
 import { afterEach, test } from "bun:test";
 import { expectStreamToShow } from "../support/browser/browser-expectations.ts";
-import {
-  expectJumpToLatestOffered,
-  expectStreamToBeAtTheEnd,
-} from "../support/browser/stable-stream-expectations.ts";
+import { expectStreamToBeAtTheEnd } from "../support/browser/stable-stream-expectations.ts";
 import {
   aSessionWritingALongAnswerOpenInTheBrowser,
+  aUserWhoScrolledUpWhileTheAgentWroteMore,
   LONG_ANSWER,
   paragraph,
 } from "../support/browser/stable-stream-setups.ts";
@@ -24,10 +22,7 @@ test(
     // ** GIVEN a user who scrolled up while the agent wrote ten more paragraphs
     // ********************************************************************
     const app = await startAppInBrowser();
-    const { firstHold, secondHold } = await aSessionWritingALongAnswerOpenInTheBrowser(app);
-    await app.page.scrollsTheStreamUp(400);
-    await firstHold.letsTheAgentGoOn();
-    await expectJumpToLatestOffered(app);
+    const { secondHold } = await aUserWhoScrolledUpWhileTheAgentWroteMore(app);
 
     // ********************************************************************
     // ** WHEN the user scrolls down to the end and the agent writes its last paragraph

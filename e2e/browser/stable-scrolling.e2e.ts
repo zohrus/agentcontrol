@@ -9,6 +9,8 @@ import {
 } from "../support/browser/stable-stream-expectations.ts";
 import {
   aSessionWritingALongAnswerOpenInTheBrowser,
+  theAgentWritesTenMoreParagraphs,
+  aUserWhoScrolledUpWhileTheAgentWroteMore,
   LONG_ANSWER,
   paragraph,
 } from "../support/browser/stable-stream-setups.ts";
@@ -34,8 +36,7 @@ test(
     // ********************************************************************
     await app.page.scrollsTheStreamUp(400);
     const before = await app.page.streamView();
-    await firstHold.letsTheAgentGoOn();
-    await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
+    await theAgentWritesTenMoreParagraphs(app, firstHold);
 
     // ********************************************************************
     // ** THEN the view has not moved: same scroll position, same paragraph in the same place
@@ -59,8 +60,7 @@ test(
     // ********************************************************************
     await app.page.pressesKeyInTheStream("PageUp");
     const before = await app.page.streamView();
-    await firstHold.letsTheAgentGoOn();
-    await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
+    await theAgentWritesTenMoreParagraphs(app, firstHold);
 
     // ********************************************************************
     // ** THEN the view has not moved
@@ -85,8 +85,7 @@ test(
     // ********************************************************************
     await app.page.selectsTextInTheStream(paragraph(LONG_ANSWER.first));
     const before = await app.page.streamView();
-    await firstHold.letsTheAgentGoOn();
-    await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
+    await theAgentWritesTenMoreParagraphs(app, firstHold);
 
     // ********************************************************************
     // ** THEN the view has not moved
@@ -111,8 +110,7 @@ test(
     // ********************************************************************
     // ** WHEN the agent writes ten more paragraphs
     // ********************************************************************
-    await firstHold.letsTheAgentGoOn();
-    await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
+    await theAgentWritesTenMoreParagraphs(app, firstHold);
 
     // ********************************************************************
     // ** THEN the conversation offers to jump to the latest output
@@ -131,10 +129,7 @@ test(
     // ** GIVEN a user who scrolled up while the agent wrote ten more paragraphs
     // ********************************************************************
     const app = await startAppInBrowser();
-    const { firstHold, secondHold } = await aSessionWritingALongAnswerOpenInTheBrowser(app);
-    await app.page.scrollsTheStreamUp(400);
-    await firstHold.letsTheAgentGoOn();
-    await expectJumpToLatestOffered(app);
+    const { secondHold } = await aUserWhoScrolledUpWhileTheAgentWroteMore(app);
 
     // ********************************************************************
     // ** WHEN the user presses Jump to latest and the agent writes its last paragraph

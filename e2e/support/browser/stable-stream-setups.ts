@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { Session } from "../setup/app.ts";
 import { expectStreamToShow } from "./browser-expectations.ts";
-import { theMarkedItem } from "./stable-stream-expectations.ts";
+import { expectJumpToLatestOffered, theMarkedItem } from "./stable-stream-expectations.ts";
 import type { ItemBox } from "./stable-stream-page.ts";
 import type { AppInBrowser } from "./start-app-in-browser.ts";
 
@@ -22,10 +22,7 @@ export function theAgentWaitsForTheTest(app: AppInBrowser): Hold {
 }
 
 /** The agent writes the paragraphs "Paragraph 1 of the answer." and so on, one update each. */
-export function theAgentWritesParagraphs(
-  app: AppInBrowser,
-  range: { from: number; to: number },
-): void {
+function theAgentWritesParagraphs(app: AppInBrowser, range: { from: number; to: number }): void {
   for (let number = range.from; number <= range.to; number++) {
     app.mockAgent.willReply(`Paragraph ${String(number)} of the answer.\n\n`);
   }
@@ -57,4 +54,22 @@ export async function theCardMarkedAs(app: AppInBrowser, mark: string): Promise<
   await expectStreamToShow(app, "Reject");
   await app.page.marksTheItemWith("Reject", mark);
   return theMarkedItem(app, mark);
+}
+
+/** A long answer whose reader scrolled up, while the agent wrote ten more paragraphs out of view. */
+export async function aUserWhoScrolledUpWhileTheAgentWroteMore(app: AppInBrowser) {
+  const answer = await aSessionWritingALongAnswerOpenInTheBrowser(app);
+  await app.page.scrollsTheStreamUp(400);
+  await answer.firstHold.letsTheAgentGoOn();
+  await expectJumpToLatestOffered(app);
+  return answer;
+}
+
+/** The agent goes on and writes paragraphs 41 to 50, and they are all in the conversation. */
+export async function theAgentWritesTenMoreParagraphs(
+  app: AppInBrowser,
+  hold: Hold,
+): Promise<void> {
+  await hold.letsTheAgentGoOn();
+  await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
 }
