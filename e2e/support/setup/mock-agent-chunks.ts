@@ -8,8 +8,6 @@ export interface ChunkedReplies {
   willStreamReplyInChunks(text: string, chunks: Chunks): void;
   /** The agent thinks this text, in chunks of `size` characters. */
   willStreamThoughtInChunks(text: string, chunks: Chunks): void;
-  /** The agent does nothing for this long before its next step. */
-  willPauseFor(ms: number): void;
 }
 
 export function chunkedReplies(add: (step: Step) => void): ChunkedReplies {
@@ -19,9 +17,6 @@ export function chunkedReplies(add: (step: Step) => void): ChunkedReplies {
     },
     willStreamThoughtInChunks: (text, chunks) => {
       add({ kind: "thinkInChunks", text, ...chunks });
-    },
-    willPauseFor: (ms) => {
-      add({ kind: "pause", ms });
     },
   };
 }

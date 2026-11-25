@@ -17,7 +17,6 @@ const stepSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("think"), text: z.string() }),
   chunked("replyInChunks"),
   chunked("thinkInChunks"),
-  z.object({ kind: z.literal("pause"), ms: z.number() }),
   z.object({
     kind: z.literal("plan"),
     entries: z.array(z.object({ content: z.string(), status: planStatus })),

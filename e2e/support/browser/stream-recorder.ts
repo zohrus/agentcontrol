@@ -44,15 +44,9 @@ function recorded(page: Page) {
     /** Everything recorded so far. */
     recording: (): Promise<StreamRecording> =>
       page.evaluate<StreamRecording>("window.__stream.state"),
-    /** Remembers the element of this block of this reply, to ask later whether it is still the one shown. */
-    remembersBlock: async (call: { message: number; block: number }): Promise<void> => {
-      await page.evaluate(`window.__stream.pin(${String(call.message)}, ${String(call.block)})`);
-    },
-    /** Whether the remembered element is still on the page, in the same place. */
-    rememberedBlockIsStillShown: (call: { message: number; block: number }): Promise<boolean> =>
-      page.evaluate<boolean>(
-        `window.__stream.pinnedIsStillThere(${String(call.message)}, ${String(call.block)})`,
-      ),
+    /** Whether the first block of the first reply is still the element that was shown first. */
+    firstBlockIsStillTheOneShownFirst: (): Promise<boolean> =>
+      page.evaluate<boolean>("window.__stream.firstBlockIsStillShown()"),
   };
 }
 

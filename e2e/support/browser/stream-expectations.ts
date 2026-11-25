@@ -1,4 +1,4 @@
-import type { StreamRecording, StreamSample } from "./stream-recorder.ts";
+import type { StreamRecorder, StreamRecording, StreamSample } from "./stream-recorder.ts";
 
 const quote = (text: string): string => JSON.stringify(text);
 
@@ -122,35 +122,28 @@ export function expectReplyWasShownWholeAtOnce(call: {
   }
 }
 
-const LINE_PX = 16;
-
-/** The thinking box never grew past this many lines, and it was scrolled to its end while it overflowed. */
-export function expectThoughtBoxStayedWithinLines(call: {
-  recording: StreamRecording;
-  lines: number;
-}): void {
-  const boxes = call.recording.samples.flatMap((sample) => sample.thoughts);
-  const tallest = Math.max(...boxes.map((box) => box.height));
-  if (tallest > call.lines * LINE_PX) {
+/** The first paragraph of the first reply is the element that was drawn first, and nothing shown was redrawn or shortened. */
+export async function expectTheFirstParagraphWasNeverReplaced(
+  stream: StreamRecorder,
+): Promise<void> {
+  if (!(await stream.firstBlockIsStillTheOneShownFirst())) {
     throw new Error(
-      `expected the thinking box to stay within ${String(call.lines)} lines, but it was ${String(tallest)} px high`,
+      "expected the first paragraph to be the element drawn first, but it was replaced",
     );
   }
-  if (!boxes.some((box) => box.scrollHeight > box.height)) {
-    throw new Error("expected the thinking to be longer than its box, but it fitted");
-  }
+  const recording = await stream.recording();
+  expectNothingAlreadyShownWasRedrawn(recording);
+  expectShownTextNeverGotShorter(recording);
 }
 
-/** While the thinking streamed, its box showed the newest line. */
-export function expectThoughtBoxFollowedItsEnd(recording: StreamRecording): void {
-  const lost = recording.samples
-    .flatMap((sample) => sample.thoughts)
-    .find(
-      (box) => box.scrollHeight > box.height && box.scrollTop + box.height < box.scrollHeight - 1,
-    );
-  if (lost !== undefined) {
+/** The page changed fewer times than the reply had chunks. */
+export function expectFewerPageUpdatesThanChunks(call: {
+  recording: StreamRecording;
+  chunks: number;
+}): void {
+  if (call.recording.commits >= call.chunks) {
     throw new Error(
-      `expected the thinking box to show its last line, but it was scrolled to ${String(lost.scrollTop)} of ${String(lost.scrollHeight)}`,
+      `expected the page to change fewer than ${String(call.chunks)} times, but it changed ${String(call.recording.commits)} times`,
     );
   }
 }

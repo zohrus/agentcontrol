@@ -3,7 +3,7 @@
  * marked `data-markdown`): its blocks (identity and tag), its shown text, and the thinking boxes
  * (height and scroll). It also keeps the blocks that were removed from a message, whether a
  * permission card was on the page, the commits seen and the long tasks the browser reported.
- * `window.__stream.pin(message, block)` remembers one element to ask later whether it is the same.
+ * It remembers the first block of the first message, to say later whether it is still the same element.
  */
 export const STREAM_RECORDER_SCRIPT = `(() => {
   if (window.__stream) return;
@@ -13,11 +13,13 @@ export const STREAM_RECORDER_SCRIPT = `(() => {
     if (!ids.has(node)) ids.set(node, next++);
     return ids.get(node);
   };
-  const state = { samples: [], removedBlocks: [], longTasks: [], pinned: null, commits: 0 };
+  const state = { samples: [], removedBlocks: [], longTasks: [], commits: 0 };
+  const first = { node: null };
   const messages = () => [...document.querySelectorAll("[data-markdown]")];
   const hasButton = (name) =>
     [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === name);
   function sample() {
+    first.node ??= messages()[0]?.children[0] ?? null;
     const permission = hasButton("Allow");
     const thoughts = [...document.querySelectorAll('[data-testid="thought"]')].map((t) => {
       const box = t.firstElementChild;
@@ -53,13 +55,8 @@ export const STREAM_RECORDER_SCRIPT = `(() => {
   }
   window.__stream = {
     state,
-    pin: (message, block) => {
-      state.pinned = messages()[message]?.children[block] ?? null;
-    },
-    pinnedIsStillThere: (message, block) =>
-      state.pinned !== null &&
-      state.pinned.isConnected &&
-      messages()[message]?.children[block] === state.pinned,
+    firstBlockIsStillShown: () =>
+      first.node !== null && first.node.isConnected && messages()[0]?.children[0] === first.node,
   };
   sample();
 })();`;

@@ -1,13 +1,15 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, test } from "bun:test";
 import { expectStreamToShowAll } from "../support/browser/page-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
 import {
+  expectThinkingBoxToBeAtMostLines,
+  expectThinkingBoxToBeMoreThanLines,
   expectThoughtBoxFollowedItsEnd,
   expectThoughtBoxStayedWithinLines,
-} from "../support/browser/stream-expectations.ts";
+} from "../support/browser/stream-thinking-expectations.ts";
 import {
   aReadySessionWhoseStreamIsRecorded,
   theUserAsksAndTheTurnEnds,
@@ -20,7 +22,6 @@ const LONG_THOUGHT = Array.from(
   { length: 40 },
   (_, at) => `Considering option ${String(at + 1)}.`,
 ).join("\n");
-const SIX_LINES_PX = 96;
 
 async function aSessionThatThinksAtLength() {
   const app = await startAppInBrowser();
@@ -63,7 +64,8 @@ test(
     // ********************************************************************
     const { app, stream } = await aSessionThatThinksAtLength();
     await theUserAsksAndTheTurnEnds(app, "Think hard");
-    expect(await stream.thinkingBoxHeight()).toBeLessThanOrEqual(SIX_LINES_PX);
+    // AND its thinking is shown in a box of six lines
+    await expectThinkingBoxToBeAtMostLines({ stream, lines: 6 });
 
     // ********************************************************************
     // ** WHEN the user presses "Show more" under the thinking
@@ -73,7 +75,7 @@ test(
     // ********************************************************************
     // ** THEN the box is taller than six lines
     // ********************************************************************
-    expect(await stream.thinkingBoxHeight()).toBeGreaterThan(SIX_LINES_PX);
+    await expectThinkingBoxToBeMoreThanLines({ stream, lines: 6 });
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

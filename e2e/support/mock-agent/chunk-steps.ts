@@ -39,9 +39,4 @@ const thinkInChunks: Handler<"thinkInChunks"> = async (step, turn) => {
   return undefined;
 };
 
-const pause: Handler<"pause"> = async (step) => {
-  await Bun.sleep(step.ms);
-  return undefined;
-};
-
-export const chunkSteps = { replyInChunks, thinkInChunks, pause };
+export const chunkSteps = { replyInChunks, thinkInChunks };

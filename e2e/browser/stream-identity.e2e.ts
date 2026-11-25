@@ -1,9 +1,8 @@
-import { afterEach, expect, test } from "bun:test";
-import { expectStreamToShowAll } from "../support/browser/page-expectations.ts";
+import { afterEach, test } from "bun:test";
 import { BROWSER_TEST_TIMEOUT_MS } from "../support/browser/start-app-in-browser.ts";
 import {
-  expectNothingAlreadyShownWasRedrawn,
-  expectShownTextNeverGotShorter,
+  expectFewerPageUpdatesThanChunks,
+  expectTheFirstParagraphWasNeverReplaced,
 } from "../support/browser/stream-expectations.ts";
 import {
   aSessionStreamingAReplyInChunks,
@@ -13,39 +12,30 @@ import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
 
-const FIRST = "First paragraph stays put.";
-const REPLY = `${FIRST}\n\n${"word ".repeat(300)}`;
-
 test(
   "the first paragraph of a long reply is the same element after two hundred more chunks",
   async () => {
     // ********************************************************************
     // ** GIVEN an agent that streams a long reply in chunks of five characters
     // ********************************************************************
-    const { app, stream } = await aSessionStreamingAReplyInChunks({ reply: REPLY, size: 5 });
+    const reply = `First paragraph stays put.\n\n${"word ".repeat(300)}`;
+    const { app, stream } = await aSessionStreamingAReplyInChunks({ reply, size: 5 });
 
     // ********************************************************************
-    // ** WHEN the user asks, and the first paragraph has been shown
+    // ** WHEN the user asks and the turn ends
     // ********************************************************************
-    await app.page.sendsMessage("Write a lot");
-    await expectStreamToShowAll(app, FIRST);
-    await stream.remembersBlock({ message: 0, block: 0 });
-    // AND the rest of the reply streams in
-    await expectStreamToShowAll(app, "Turn ended");
+    await theUserAsksAndTheTurnEnds(app, "Write a lot");
 
     // ********************************************************************
-    // ** THEN that paragraph is still the same element, and nothing shown was redrawn
+    // ** THEN the first paragraph is still the element drawn first, and nothing shown was redrawn
     // ********************************************************************
-    expect(await stream.rememberedBlockIsStillShown({ message: 0, block: 0 })).toBe(true);
-    const recording = await stream.recording();
-    expectNothingAlreadyShownWasRedrawn(recording);
-    expectShownTextNeverGotShorter(recording);
+    await expectTheFirstParagraphWasNeverReplaced(stream);
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
 
 test(
-  "every chunk of a reply is not a separate update of the page",
+  "a hundred small chunks are fewer updates of the page",
   async () => {
     // ********************************************************************
     // ** GIVEN an agent that streams a reply in a hundred small chunks, a few milliseconds apart
@@ -63,8 +53,7 @@ test(
     // ********************************************************************
     // ** THEN the page changed fewer times than there were chunks
     // ********************************************************************
-    const { commits } = await stream.recording();
-    expect(commits).toBeLessThan(100);
+    expectFewerPageUpdatesThanChunks({ recording: await stream.recording(), chunks: 100 });
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

@@ -2,8 +2,10 @@
 const BASE_CHARS_PER_SECOND = 90;
 /** A backlog of more than this much text (about 120 ms of it at the base pace) is drained faster. */
 const BACKLOG_LIMIT_CHARS = (BASE_CHARS_PER_SECOND * 120) / 1000;
-/** Over how long a larger backlog is drained. */
+/** Over how long a larger backlog is drained (it is down to about 2% after this long). */
 const DRAIN_MS = 250;
+/** The backlog shrinks by a share of `elapsed / this` per frame. */
+const DRAIN_TIME_CONSTANT_MS = DRAIN_MS / 4;
 /** A frame that comes later than this (a busy page) is counted as this long. */
 const LONGEST_FRAME_MS = 250;
 const FIRST_FRAME_MS = 16;
@@ -30,8 +32,9 @@ function wordStart(text: string, call: { from: number; limit: number }): number 
 
 /** How many characters the pace moves on in the time since the last frame. */
 function stepOf(backlog: number, elapsedMs: number): number {
-  if (backlog > BACKLOG_LIMIT_CHARS) return (backlog * elapsedMs) / DRAIN_MS;
-  return (BASE_CHARS_PER_SECOND * elapsedMs) / 1000;
+  const base = (BASE_CHARS_PER_SECOND * elapsedMs) / 1000;
+  if (backlog <= BACKLOG_LIMIT_CHARS) return base;
+  return Math.max(base, (backlog * elapsedMs) / DRAIN_TIME_CONSTANT_MS);
 }
 
 /**
