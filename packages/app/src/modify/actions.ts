@@ -24,6 +24,7 @@ export async function keepChange(ctx: Ctx): Promise<void> {
   const { kind, requests, merge } = ctx.change;
   if (kind === "update" && merge) {
     await ctx.versions.finishUpdate({ dir: ctx.workspace.liveDir, templateVersion: merge.version });
+    await ctx.workspace.serveLive();
     ctx.available = undefined;
   } else {
     await ctx.workspace.keep(requests.join("; "));

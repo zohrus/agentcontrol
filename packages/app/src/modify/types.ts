@@ -1,4 +1,5 @@
 import type { AgentKind, SessionId } from "@agentcontrol/protocol";
+import type { UiBuilds } from "../ui-serving/index.ts";
 import type { RelayCalls, SessionEvents } from "./agent-turns.ts";
 
 /** Where one Modify request is: asked, checked, waiting for Keep or Undo, or given up. */
@@ -54,6 +55,8 @@ export interface ModifyOptions {
   events: SessionEvents;
   /** Shows a new state to listeners (the SSE stream). */
   publish: (state: ModifyState) => void;
+  /** Builds the UI for the checks, and keeps the UI that is served in step with the live folder. */
+  uiBuilds: Pick<UiBuilds, "build" | "sync">;
 }
 
 /** The change being made right now, from the user's request to Keep or Undo. */

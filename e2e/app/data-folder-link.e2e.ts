@@ -27,7 +27,7 @@ test("an app whose data folder is reached through a link still prepares its UI o
   await expectLiveUiFileToContain(app, { path: "src/session-table.ts", text: "columns" });
 });
 
-test("the UI server serves the UI's script when the data folder is reached through a link", async () => {
+test("the app builds and serves the UI's script when the data folder is reached through a link", async () => {
   // ********************************************************************
   // ** GIVEN a resources folder with a default UI and Vite in its dependencies
   // ********************************************************************
@@ -39,7 +39,7 @@ test("the UI server serves the UI's script when the data folder is reached throu
   const app = await startReleaseApp(resources, { dataFolderBehindALink: true });
 
   // ********************************************************************
-  // ** THEN the UI's script is served, not refused as outside Vite's allowed folders
+  // ** THEN the built UI's script is served
   // ********************************************************************
   await expectUiScriptToBeServed(app);
 });

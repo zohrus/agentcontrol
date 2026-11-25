@@ -73,7 +73,7 @@ test("an app without a default UI says where it looked", () => {
   expectReadingTheDefaultUiToFailSaying(read, `${missing}/ui-template`);
 });
 
-test("an app started like a release serves the UI of its data folder with Vite", async () => {
+test("an app started like a release serves a build of the UI of its data folder", async () => {
   // ********************************************************************
   // ** GIVEN a resources folder with a default UI, and Vite in its dependencies
   // ********************************************************************
@@ -85,7 +85,7 @@ test("an app started like a release serves the UI of its data folder with Vite",
   const app = await startReleaseApp(resources);
 
   // ********************************************************************
-  // ** THEN the root address serves the UI that was made in the data folder
+  // ** THEN the root address serves a build of the UI that was made in the data folder
   // ********************************************************************
   await expectUiServedFromTheDataFolder(app);
 });

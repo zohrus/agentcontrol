@@ -6,10 +6,18 @@ import { createPreviews } from "./preview/index.ts";
 import type { RelayClient } from "./relays/index.ts";
 import { createToken } from "./security/index.ts";
 import { startServer } from "./server/index.ts";
+import { explainStartFailure } from "./start-failure.ts";
+import { closeParts } from "./start-close.ts";
 import { startIde } from "./start-ide.ts";
 import { createStore, type Store } from "./store/index.ts";
 import { createHub, type Hub } from "./sync/index.ts";
-import { startUi, type UiHandler, type UiSource } from "./ui-serving/index.ts";
+import {
+  createBuilds,
+  startUi,
+  type UiBuilds,
+  type UiHandler,
+  type UiSource,
+} from "./ui-serving/index.ts";
 import {
   createWorkspaces,
   type SshSettings,
@@ -53,11 +61,15 @@ export interface RunningApp {
 
 const sourceCheckoutBinaries = join(import.meta.dir, "../../../dist");
 
-function modifyOf(options: AppOptions, parts: { store: Store; hub: Hub; workspaces: Workspaces }) {
-  const { store, hub, workspaces } = parts;
+function modifyOf(
+  options: AppOptions,
+  parts: { store: Store; hub: Hub; workspaces: Workspaces; builds: UiBuilds; config: ModifyConfig },
+) {
+  const { store, hub, workspaces, builds, config } = parts;
   return createModify({
     dataDir: options.dataDir,
-    ...(options.modify ?? readModifyConfig(process.env)),
+    ...config,
+    uiBuilds: builds,
     relay: workspaces.localLink,
     events: {
       after: (query) =>
@@ -82,15 +94,6 @@ function previewsOf(options: AppOptions) {
   return createPreviews(previewLifetimeMs === undefined ? {} : { lifetimeMs: previewLifetimeMs });
 }
 
-/** A busy port gets a plain message that says what to do; every other failure is kept as it is. */
-function explainStartFailure(error: unknown, port: number): unknown {
-  if (!(error instanceof Error) || (error as { code?: string }).code !== "EADDRINUSE") return error;
-  return new Error(
-    `Port ${String(port)} is already in use. AgentControl may already be running: open http://127.0.0.1:${String(port)}. To run another copy, pick a free port, for example: bun dev --port ${String(port + 1)}`,
-    { cause: error },
-  );
-}
-
 function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): Workspaces {
   const ssh = { relayBinaryFor: shippedRelayBinaries(sourceCheckoutBinaries), ...options.ssh };
   const { stopLocalRelay } = options;
@@ -102,24 +105,12 @@ function workspacesOf(options: AppOptions, parts: { store: Store; hub: Hub }): W
   });
 }
 
-/** Ends what a started app holds, in order: the Modify agent's session first, the database last. */
-async function closeParts(parts: {
-  modify: Modify;
-  ui: UiHandler | undefined;
-  workspaces: Workspaces;
-  store: Store;
-}): Promise<void> {
-  await parts.modify.stop();
-  await parts.ui?.close();
-  await parts.workspaces.stop();
-  parts.store.close();
-}
-
 interface Parts {
   store: Store;
   hub: Hub;
   workspaces: Workspaces;
   modify: Modify;
+  builds: UiBuilds;
   token: ReturnType<typeof createToken>;
   /** Filled in once the UI is up, so a failure after that can close it. */
   opened: { ui?: UiHandler | undefined };
@@ -156,10 +147,10 @@ async function serveWithIde(call: {
 }
 
 async function listen(options: AppOptions, parts: Parts) {
-  const { store, hub, workspaces, modify, token, opened } = parts;
+  const { store, hub, workspaces, modify, builds, token, opened } = parts;
   // The live UI folder is made from the default UI first, because the UI may be served from it.
-  if (options.modify) await modify.ready();
-  const ui = await startUi(options.ui ?? {}, options.dataDir);
+  if (options.modify || options.ui?.production) await modify.ready();
+  const ui = await startUi(options.ui ?? {}, { dataDir: options.dataDir, builds });
   opened.ui = ui;
   const deps = { store, hub, workspaces, modify, previews: previewsOf(options) };
   return serveWithIde({ options, deps, ui, token });
@@ -175,19 +166,24 @@ export async function startApp(options: AppOptions): Promise<RunningApp> {
   const store = createStore({ path: join(options.dataDir, "state.db") });
   const hub = createHub();
   const workspaces = workspacesOf(options, { store, hub });
-  const modify = modifyOf(options, { store, hub, workspaces });
+  const config = options.modify ?? readModifyConfig(process.env);
+  const builds = createBuilds({
+    dataDir: options.dataDir,
+    templateDir: config.templateDir,
+    version: config.templateVersion,
+  });
+  const modify = modifyOf(options, { store, hub, workspaces, builds, config });
   const opened: Parts["opened"] = {};
-  const server = await listen(options, { store, hub, workspaces, modify, token, opened }).catch(
-    async (error: unknown) => {
-      await closeParts({ modify, ui: opened.ui, workspaces, store });
-      throw explainStartFailure(error, options.port);
-    },
-  );
+  const parts = { store, hub, workspaces, modify, builds, token, opened };
+  const server = await listen(options, parts).catch(async (error: unknown) => {
+    await closeParts({ modify, builds, ui: opened.ui, workspaces, store });
+    throw explainStartFailure(error, options.port);
+  });
   return {
     url: `http://127.0.0.1:${String(server.port)}`,
     stop: async () => {
       await server.stop();
-      await closeParts({ modify, ui: opened.ui, workspaces, store });
+      await closeParts({ modify, builds, ui: opened.ui, workspaces, store });
     },
   };
 }

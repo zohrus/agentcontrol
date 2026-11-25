@@ -5,6 +5,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 /** Maps a relative posix path to the SHA-256 of the file's content. */
 type Fingerprint = Map<string, string>;
 
+const KEY_LENGTH = 20;
+
 /** node_modules, build output and dot-folders (.vite, .git, ...) are never copied or compared. */
 function isSkipped(name: string): boolean {
   return name === "node_modules" || name === "dist" || name.startsWith(".");
@@ -43,6 +45,17 @@ async function fingerprint(root: string): Promise<Fingerprint> {
   const into: Fingerprint = new Map();
   if (await exists(root)) await fingerprintInto({ root, rel: "", into });
   return into;
+}
+
+/**
+ * A short digest of a folder's content, the same for equal content: what the UI build is named by.
+ * `salt` is mixed in, so something else that changes the build (the app's version) changes the key.
+ */
+export async function contentKey(options: { dir: string; salt: string }): Promise<string> {
+  const files = [...(await fingerprint(options.dir))].sort(([a], [b]) => (a < b ? -1 : 1));
+  const hash = createHash("sha256").update(`${options.salt}\0`);
+  for (const [path, digest] of files) hash.update(`${path}\0${digest}\0`);
+  return hash.digest("hex").slice(0, KEY_LENGTH);
 }
 
 export interface Plan {

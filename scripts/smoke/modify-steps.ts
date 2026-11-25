@@ -1,6 +1,7 @@
 // The smoke steps that change the UI through the Modify agent of the compiled app: the shipped
-// TypeScript and Vite must run, from the shipped node_modules, with no `bun` on PATH.
-import { existsSync, readFileSync } from "node:fs";
+// TypeScript and Vite (which builds the change) must run, from the shipped node_modules, with no
+// `bun` on PATH.
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { callApi, waitUntil } from "./api.ts";
 import type { SmokeApp } from "./app-process.ts";
@@ -62,19 +63,19 @@ export async function modifyPromotes(app: SmokeApp): Promise<void> {
   await typecheckWasReported(app, state);
 }
 
-export async function viteServesChange(app: SmokeApp): Promise<void> {
-  let last = "nothing yet";
-  await waitUntil({
-    what: "the UI server to serve the changed file",
-    seconds: 60,
-    read: async () => {
-      const page = await pageAt(app, "/src/smoke-note.ts");
-      last = `${String(page.status)} ${page.type}: ${page.body.slice(0, 200)}`;
-      return page.body.includes("hello from the smoke test") ? page : undefined;
-    },
-  }).catch((error: unknown) => {
-    throw new Error(`${String(error)}; last answer was ${last}`);
-  });
+/** The build the app serves is the one `/_ui-build` names: the newest of the builds in the data folder. */
+export async function builtUiServesChange(app: SmokeApp): Promise<void> {
+  const answer = await pageAt(app, "/_ui-build");
+  const key = (JSON.parse(answer.body) as { mark: string }).mark.split("|")[0] ?? "";
+  const builds = readdirSync(join(app.dataDir, "ui-build"));
+  expect(builds.includes(key), `the build ${key} that is served is not among ${builds.join(", ")}`);
+  // The shipped build was filed on the first start; the promoted change is the second.
+  expect(
+    builds.length === 2,
+    `expected the shipped build and one new build, found ${builds.join(", ")}`,
+  );
+  const failed = (await pageAt(app, "/")).body.includes("could not be built");
+  expect(!failed, "the page says the change could not be built");
 }
 
 export function leavesResourcesAlone(app: SmokeApp): Promise<void> {
