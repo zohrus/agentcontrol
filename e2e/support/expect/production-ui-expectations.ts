@@ -52,12 +52,19 @@ export function expectTheServedUiToShow(app: AppAccess, text: string): Promise<v
   );
 }
 
-/** The UI the app serves does not show this text. */
-export async function expectTheServedUiNotToShow(app: AppAccess, text: string): Promise<void> {
-  const { page, scripts } = await servedUi(app);
-  if ((page + scripts).includes(text)) {
-    throw new Error(`expected the served UI not to show ${quote(text)}, but it does`);
-  }
+/**
+ * The UI the app serves does not show this text (any more): going back to an older version does not
+ * wait for its build, so the build served before is shown until the older one is ready.
+ */
+export function expectTheServedUiNotToShow(app: AppAccess, text: string): Promise<void> {
+  return eventually(
+    `expected the served UI not to show ${quote(text)}`,
+    async () => {
+      const { page, scripts } = await servedUi(app);
+      return (page + scripts).includes(text) ? "it still does" : undefined;
+    },
+    BUILD_WAIT_MS,
+  );
 }
 
 /** The page tells the user plainly that the last change could not be built, and links the recovery page. */

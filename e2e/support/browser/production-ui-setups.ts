@@ -1,15 +1,18 @@
 import { readModifyConfig } from "@agentcontrol/app";
 import { startsAppLikeARelease } from "../setup/production-ui.ts";
+import { aDefaultUiFolderThatShipsItsBuild } from "../setup/shipped-default-ui.ts";
 import { startAppWithLocalWorkspace } from "../setup/start-app.ts";
 import { type AppPage, appPageOf } from "./app-page.ts";
 import { openTab } from "./open-tab.ts";
 import { openInBrowser } from "./start-app-in-browser.ts";
 
-/** The app started like a release, with the real default UI, open in a browser. */
+/** The app started like a release (the default UI comes with its build), open in a browser. */
 export async function startReleaseWithTheDefaultUiInABrowser() {
+  const templateDir = await aDefaultUiFolderThatShipsItsBuild();
+  const env = { ...process.env, AGENTCONTROL_UI_TEMPLATE_DIR: templateDir };
   const app = await startAppWithLocalWorkspace({
     productionUi: true,
-    modify: { ...readModifyConfig(process.env), agent: "mock" },
+    modify: { ...readModifyConfig(env), agent: "mock" },
   });
   return openInBrowser(app);
 }

@@ -30,7 +30,7 @@ test(
     // ********************************************************************
     await expectThePageToRunAProductionBuild(app.page);
   },
-  BROWSER_TEST_TIMEOUT_MS * 2,
+  BROWSER_TEST_TIMEOUT_MS * 3,
 );
 
 test(
