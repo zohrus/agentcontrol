@@ -57,6 +57,7 @@ test(
     // AND the turn can end
     await endsTheTurn();
     await letsFramesRunUntilTheConversationShows({ app, stream, text: "Turn ended" });
+    await expectStreamToShowAll(app, "Turn ended", reply);
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

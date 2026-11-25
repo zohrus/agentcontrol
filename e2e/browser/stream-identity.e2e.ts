@@ -4,11 +4,11 @@ import {
   expectFewerPageUpdatesThanChunks,
   expectTheFirstParagraphWasNeverReplaced,
 } from "../support/browser/stream-expectations.ts";
+import { letsFramesRunUntilTheConversationShows } from "../support/browser/stream-frames.ts";
 import {
   aSessionStreamingAReplyInChunks,
   theUserAsksAndTheTurnEnds,
 } from "../support/browser/stream-setups.ts";
-import { letsFramesRunUntilTheConversationShows } from "../support/browser/stream-frames.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
 afterEach(cleanUpAfterTest);
