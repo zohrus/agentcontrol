@@ -30,7 +30,7 @@ function droppedTail(): Tail {
   let length = 0;
   const firstLength = (): number => pieces[first]?.length ?? 0;
   const compact = (): void => {
-    if (first < 1024) return;
+    if (first * 2 < pieces.length) return;
     pieces = pieces.slice(first);
     first = 0;
   };
