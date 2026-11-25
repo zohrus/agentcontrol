@@ -7,7 +7,8 @@ import { InterruptedBanner } from "./interrupted-banner.tsx";
 import { ReadOnlyBanner } from "./read-only-banner.tsx";
 import { isTurnRunning } from "./reduce-events.ts";
 import { SessionHeader } from "./session-header.tsx";
-import { Stream } from "./stream.tsx";
+import { Stream, type TurnRunning } from "./stream.tsx";
+import { turnStartedAt } from "./turn-clock.ts";
 import type { OutgoingView } from "./outgoing-items.ts";
 import { useViewItems } from "./use-view-items.ts";
 
@@ -93,6 +94,12 @@ function Footer(props: SessionViewProps) {
   );
 }
 
+/** What the stream's last row says while a turn runs; nothing when none does. */
+function workingOf(props: SessionViewProps): TurnRunning | undefined {
+  const running = props.turnRunning ?? isTurnRunning(props.events);
+  return running ? { since: turnStartedAt(props.events) } : undefined;
+}
+
 const nothing = (): void => undefined;
 const noOutgoing: readonly OutgoingView[] = [];
 const noAnswers = {};
@@ -107,6 +114,7 @@ export function SessionView(props: SessionViewProps) {
       <Stream
         key={props.summary.id}
         items={items}
+        working={workingOf(props)}
         actions={{
           onAnswerPermission: props.onAnswerPermission,
           answering: props.answering ?? noAnswers,

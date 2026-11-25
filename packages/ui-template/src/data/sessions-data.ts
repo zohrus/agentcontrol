@@ -44,6 +44,11 @@ function holdEvents(ctx: Context, ref: SessionRef, fresh: readonly SessionEvent[
 
 const queues = new WeakMap<Context, EventQueue>();
 
+/** The newest event the UI knows of for the session: held in its history or waiting for the next frame. */
+export function newestSeq(ctx: Context, ref: SessionRef): number {
+  return Math.max(queueOf(ctx).lastSeq(ref) ?? 0, lastSeqOf(ctx.store.get(), ref));
+}
+
 /** The live events of a context wait here for the next frame, then go into the store as one update. */
 function queueOf(ctx: Context): EventQueue {
   const known = queues.get(ctx);
@@ -138,7 +143,7 @@ export function applyEvent(ctx: Context, event: LiveSessionEvent): void {
   const ref = { workspaceId: event.workspaceId, id: event.sessionId };
   const queue = queueOf(ctx);
   const { seq } = event;
-  const last = Math.max(queue.lastSeq(ref) ?? 0, lastSeqOf(ctx.store.get(), ref));
+  const last = newestSeq(ctx, ref);
   if (ctx.store.get().events[keyOf(ref)] === undefined || seq <= last) return;
   if (seq === last + 1) {
     queue.add(ref, event);

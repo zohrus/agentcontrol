@@ -135,8 +135,10 @@ test(
     // ** THEN the row says the setup failed
     // ********************************************************************
     await expectSessionRowToSay(app, { title: session.title, text: "setup failed" });
-    // AND the conversation shows the exit code and the script's output
-    await expectStreamToShowAll(app, "Worktree setup failed (exit 3)", "the copy is broken");
+    // AND the conversation shows the exit code, and the script's output once the user opens the line
+    await expectStreamToShowAll(app, "Worktree setup failed (exit 3)");
+    await app.page.opensTheSetupOutput();
+    await expectStreamToShowAll(app, "the copy is broken");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

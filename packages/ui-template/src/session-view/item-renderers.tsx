@@ -1,5 +1,5 @@
 import { Fragment, memo, type ReactNode } from "react";
-import { AgentMessage, OutgoingMessage, UserMessage } from "./message-items.tsx";
+import { AgentMessage, UserMessage } from "./message-items.tsx";
 import { PermissionCard } from "./permission-card.tsx";
 import { PlanCard } from "./plan-card.tsx";
 import { SetupOutput } from "./setup-block.tsx";
@@ -17,18 +17,13 @@ export type ItemActions = {
   onDismissMessage: (localId: string) => void;
 };
 
-type Renderers = { [K in ItemType]: (item: ItemOf<K>, actions: ItemActions) => ReactNode };
+/** What the stream draws through `StreamItem`: a message on its way has its own row (`SentMessage`). */
+type Drawn = Exclude<ItemType, "outgoing">;
+type Renderers = { [K in Drawn]: (item: ItemOf<K>, actions: ItemActions) => ReactNode };
 
 /** One renderer per kind of stream item. */
 const renderers: Renderers = {
   user: (item) => <UserMessage item={item} />,
-  outgoing: (item, actions) => (
-    <OutgoingMessage
-      item={item}
-      onRetry={actions.onRetryMessage}
-      onDismiss={actions.onDismissMessage}
-    />
-  ),
   message: (item) => <AgentMessage item={item} />,
   thought: (item) => <Thought item={item} />,
   plan: (item) => <PlanCard item={item} />,
@@ -48,14 +43,15 @@ const renderers: Renderers = {
   notice: (item) => <Notice item={item} />,
 };
 
-function renderOne<K extends ItemType>(kind: K, item: ItemOf<K>, actions: ItemActions): ReactNode {
+function renderOne<K extends Drawn>(kind: K, item: ItemOf<K>, actions: ItemActions): ReactNode {
   return renderers[kind](item, actions);
 }
 
-type Props = { item: ViewItem; actions: ItemActions };
+type DrawnItem = Exclude<ViewItem, { type: "outgoing" }>;
+type Props = { item: DrawnItem; actions: ItemActions };
 
-/** Whether the item's own buttons would act differently: only a permission or an unsent message has any. */
-function sameActions(item: ViewItem, call: { before: ItemActions; after: ItemActions }): boolean {
+/** Whether the item's own buttons would act differently: only a permission has any. */
+function sameActions(item: DrawnItem, call: { before: ItemActions; after: ItemActions }): boolean {
   const { before, after } = call;
   if (item.type === "permission") {
     return (
@@ -63,11 +59,7 @@ function sameActions(item: ViewItem, call: { before: ItemActions; after: ItemAct
       before.answering[item.requestId] === after.answering[item.requestId]
     );
   }
-  if (item.type !== "outgoing") return true;
-  return (
-    before.onRetryMessage === after.onRetryMessage &&
-    before.onDismissMessage === after.onDismissMessage
-  );
+  return true;
 }
 
 /** One item of the stream. An item that has not changed is not drawn again. */

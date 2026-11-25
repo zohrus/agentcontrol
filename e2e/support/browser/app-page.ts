@@ -11,9 +11,16 @@ import type { Page } from "./playwright.ts";
 import { sessionListPage } from "./session-list-page.ts";
 import { sessionPage } from "./session-page.ts";
 import { shellPage } from "./shell-page.ts";
+import { streamPage } from "./stable-stream-page.ts";
 import { workspacePage } from "./workspace-page.ts";
 import { workspacesPage } from "./workspaces-page.ts";
 import { firstTextOf } from "./read-text.ts";
+
+/** The connection indicator in the status bar: "Connected", "Reconnecting…" or "Offline". */
+function connectionText(page: Page): Promise<string> {
+  const status = page.getByRole("status").filter({ hasText: /^(Connected|Reconnecting|Offline)/ });
+  return firstTextOf(status);
+}
 
 /** What a person does and sees in the default UI, in the words of the UI. */
 export function appPageOf(page: Page) {
@@ -21,6 +28,7 @@ export function appPageOf(page: Page) {
     ...analyticsPage(page),
     ...sessionListPage(page),
     ...sessionPage(page),
+    ...streamPage(page),
     ...changesPage(page),
     ...dialogsPage(page),
     ...workspacePage(page),
@@ -33,13 +41,7 @@ export function appPageOf(page: Page) {
     ...terminalPage(page),
     ...idePage(page),
     ...modifyPage(page),
-    /** The connection indicator in the status bar: "Connected", "Reconnecting…" or "Offline". */
-    connectionText: async (): Promise<string> => {
-      const status = page
-        .getByRole("status")
-        .filter({ hasText: /^(Connected|Reconnecting|Offline)/ });
-      return firstTextOf(status);
-    },
+    connectionText: () => connectionText(page),
     /** The part of the page address after `#`, which names the open session. */
     addressHash: () => page.evaluate<string>("window.location.hash"),
     bodyText: () => page.locator("body").innerText(),

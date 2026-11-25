@@ -32,8 +32,3 @@ export function createViewModel(): ViewModel {
     },
   };
 }
-
-/** The items for a history in one go: no memory of an earlier call. */
-export function buildViewItems(events: readonly SessionEvent[]): ViewItem[] {
-  return createViewModel().items(events, []);
-}

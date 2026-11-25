@@ -1,4 +1,7 @@
 import { join } from "node:path";
+import { expectStreamToShow } from "./browser-expectations.ts";
+import { expectJumpToLatestOffered } from "./stable-stream-expectations.ts";
+import { type Hold, paragraph, theAgentWaitsForTheTest } from "./stable-stream-setups.ts";
 import { expectStreamToShowAll } from "./page-expectations.ts";
 import { aReadySessionOpenInTheBrowser } from "./ready-session-setups.ts";
 import { type AppInBrowser, startAppInBrowser } from "./start-app-in-browser.ts";
@@ -76,4 +79,35 @@ export async function aSessionPartwayThroughALongReply(call: {
     await Bun.write(gates.next, "");
   };
   return { app, stream, agentGoesOn };
+}
+
+/** The paragraph numbers of the answer the agent writes before its hold, and the last one it writes after. */
+export const GROWING_ANSWER = { before: 40, last: 70 };
+
+/**
+ * A session open in the browser whose agent wrote 40 paragraphs, waits, and then writes 30 more
+ * in one chunk: the chunk is revealed at a pace, below what is on the screen.
+ */
+export async function aSessionWhoseAnswerGrowsByOneLargeChunk() {
+  const app = await startAppInBrowser();
+  for (let at = 1; at <= GROWING_ANSWER.before; at++) {
+    app.mockAgent.willReply(`${paragraph(at)}\n\n`);
+  }
+  const hold: Hold = theAgentWaitsForTheTest(app);
+  const more = Array.from(
+    { length: GROWING_ANSWER.last - GROWING_ANSWER.before },
+    (_, at) => `${paragraph(GROWING_ANSWER.before + at + 1)}\n\n`,
+  );
+  app.mockAgent.willReply(more.join(""));
+  await aReadySessionOpenInTheBrowser(app);
+  await app.page.sendsMessage("Write a lot");
+  await expectStreamToShow(app, paragraph(GROWING_ANSWER.before));
+  return { app, hold };
+}
+
+/** The same, and the reader scrolled up before the chunk arrived. */
+export async function aSessionWhoseReaderScrolledUpBeforeALargeChunk() {
+  const { app, hold } = await aSessionWhoseAnswerGrowsByOneLargeChunk();
+  await app.page.scrollsTheStreamUp(400);
+  return { app, hold, offersJump: () => expectJumpToLatestOffered(app) };
 }

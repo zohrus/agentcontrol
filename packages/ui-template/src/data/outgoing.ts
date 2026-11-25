@@ -3,6 +3,7 @@ import { describeError } from "./errors.ts";
 import type { OutgoingMessage } from "./model.ts";
 import { changeOutgoing } from "./pending.ts";
 import { isRow, keyOf, type SessionRef } from "./session-ref.ts";
+import { newestSeq } from "./sessions-data.ts";
 
 type Target = { ref: SessionRef; localId: string };
 
@@ -29,8 +30,7 @@ async function deliver(ctx: Context, call: Target & { text: string }): Promise<v
 function seenSeq(ctx: Context, ref: SessionRef): number {
   const state = ctx.store.get();
   const listed = state.sessions.filter((row) => isRow(row, ref)).map((row) => row.lastSeq);
-  const held = state.events[keyOf(ref)]?.at(-1)?.seq ?? 0;
-  return Math.max(held, ...listed);
+  return Math.max(newestSeq(ctx, ref), ...listed);
 }
 
 /** Shows the message in the conversation at once, then sends it; the history's own copy replaces it. */
