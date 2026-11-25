@@ -1,4 +1,4 @@
-import { cp, mkdir, rename, rm, symlink } from "node:fs/promises";
+import { cp, mkdir, readdir, rename, rm, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { temporaryFolder } from "./release-folder.ts";
 
@@ -47,10 +47,15 @@ async function theBuiltDefaultUi(): Promise<string> {
   const finished = join(cacheRoot, await digestOfSources());
   if (await Bun.file(join(finished, "index.html")).exists()) return finished;
   await mkdir(cacheRoot, { recursive: true });
-  const partial = `${finished}.${String(process.pid)}.partial`;
+  const partial = `${finished}.${crypto.randomUUID()}.partial`;
   await buildDefaultUi(partial);
   // A test file that built it at the same moment may have been faster: its build is as good.
   await rename(partial, finished).catch(() => rm(partial, { recursive: true, force: true }));
+  // Finished builds of sources that are gone are not needed any more (unfinished ones may be another test file's).
+  for (const name of await readdir(cacheRoot)) {
+    if (!name.endsWith(".partial") && join(cacheRoot, name) !== finished)
+      await rm(join(cacheRoot, name), { recursive: true, force: true });
+  }
   return finished;
 }
 
