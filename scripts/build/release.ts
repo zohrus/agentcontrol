@@ -4,7 +4,7 @@
 //   agentcontrol                  the app
 //   agentcontrol-relay            the relay for this platform
 //   relays/                       the Linux relays that remote workspaces are installed from
-//   resources/ui-template/        the default UI: sources and node_modules
+//   resources/ui-template/        the default UI: sources, node_modules and dist (built)
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type SharedUiParts, writeUiResources } from "./ui-resources.ts";

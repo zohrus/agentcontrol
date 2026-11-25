@@ -1,7 +1,7 @@
 // The default UI as a release ships it: the template's files and an installed node_modules (the
-// user has no package manager, and the Modify agent must typecheck and build the UI). There is no
-// prebuilt `dist/`: Vite serves the UI on a first start in about three seconds, so it would be
-// dead weight.
+// user has no package manager, and the Modify agent must typecheck and build the UI), and the UI
+// already built as `dist/`: a release serves a production build, and a first start has none yet
+// (docs/decisions/2026-11-25-production-ui-build.md).
 import { cp, mkdir, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
@@ -81,41 +81,58 @@ function runWithBun(args: string[], cwd: string): void {
   if (run.exitCode !== 0) throw new Error(`${args.join(" ")} failed:\n${run.stdout.toString()}`);
 }
 
-/** What does not depend on the platform, made once: the app's type declarations. */
+/** What does not depend on the platform, made once: the app's type declarations and the built UI. */
 export interface SharedUiParts {
   appTypes: string;
+  /** The default UI built for production: plain files, the same on every platform. */
+  uiDist: string;
 }
 
-/** Writes the app's declaration files, with this machine's TypeScript. */
+/** Writes the app's declaration files, with this machine's TypeScript, and builds the default UI. */
 export function buildSharedUiParts(into: string): SharedUiParts {
   const tsc = join(root, "node_modules/typescript/bin/tsc");
   const appTypes = resolve(into, "app-types");
   runWithBun([tsc, "-p", "scripts/build/app-types.tsconfig.json", "--outDir", appTypes], root);
-  return { appTypes };
+  const uiDist = resolve(into, "ui-dist");
+  const template = join(root, "packages/ui-template");
+  const vite = join(template, "node_modules/vite/bin/vite.js");
+  runWithBun([vite, "build", "--outDir", uiDist, "--emptyOutDir"], template);
+  return { appTypes, uiDist };
 }
 
 const NOT_TEMPLATE = new Set(["node_modules", "dist", ".vite"]);
 
-/** Writes `<resources>/ui-template` for one platform: sources and node_modules. */
+/** Puts the installed node_modules into the template: the platform's packages and the workspace's. */
+async function writeModules(options: {
+  platform: string;
+  resources: string;
+  target: string;
+  shared: SharedUiParts;
+}): Promise<void> {
+  const scratch = join(options.resources, ".install");
+  await rm(scratch, { recursive: true, force: true });
+  await install({ platform: options.platform, folder: scratch });
+  // A move, not a copy: copying turns the links inside node_modules into absolute ones.
+  await rename(join(scratch, "node_modules"), join(options.target, "node_modules"));
+  await rm(scratch, { recursive: true, force: true });
+  const modules = join(options.target, "node_modules");
+  await rm(join(modules, ".bin"), { recursive: true, force: true });
+  await copyLockedPackages({ names: FROM_LOCK, into: modules });
+  await copyWorkspacePackages({ modules, appTypes: options.shared.appTypes });
+}
+
+/** Writes `<resources>/ui-template` for one platform: sources, node_modules and the built UI. */
 export async function writeUiResources(options: {
   platform: string;
   resources: string;
   shared: SharedUiParts;
 }): Promise<void> {
   const target = join(options.resources, "ui-template");
-  const scratch = join(options.resources, ".install");
   await rm(target, { recursive: true, force: true });
-  await rm(scratch, { recursive: true, force: true });
   await cp(join(root, "packages/ui-template"), target, {
     recursive: true,
     filter: (source) => !NOT_TEMPLATE.has(source.slice(source.lastIndexOf("/") + 1)),
   });
-  await install({ platform: options.platform, folder: scratch });
-  // A move, not a copy: copying turns the links inside node_modules into absolute ones.
-  await rename(join(scratch, "node_modules"), join(target, "node_modules"));
-  await rm(scratch, { recursive: true, force: true });
-  await rm(join(target, "node_modules", ".bin"), { recursive: true, force: true });
-  const modules = join(target, "node_modules");
-  await copyLockedPackages({ names: FROM_LOCK, into: modules });
-  await copyWorkspacePackages({ modules, appTypes: options.shared.appTypes });
+  await writeModules({ ...options, target });
+  await cp(options.shared.uiDist, join(target, "dist"), { recursive: true });
 }

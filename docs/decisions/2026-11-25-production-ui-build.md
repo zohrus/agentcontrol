@@ -69,14 +69,23 @@ Date: 25 Nov 2026. Owner decision: users run the built UI, not Vite's dev server
 
 ## Cost
 
-- Release size: +15 MB (the prebuilt UI), on about 700 MB. The release build takes one more
-  `vite build`, about 8 s.
-- Data folder: about 15 MB per kept build, three at most.
-- First start: no build (prebuilt copy, tens of milliseconds); the dev server's 3 s cold start is
-  gone. A Modify change: the checks already built it, so `ready` is no later than before.
-  Rollback: instant when cached, else one build (about 8 s on the machine this was measured on).
-- Start of a UI that was changed outside the app's knowledge, or after an app update: one build
-  in the background while the previous build is served.
+Measured on a 4-core Linux machine, the compiled app, with the release folder run as an installed
+app would be (see the end of this file for how).
+
+- Release size: +15 MB (the prebuilt UI, `resources/ui-template/dist`), 710 to 725 MB. The release
+  build takes one more `vite build`: 14.5 s to 23.8 s in total.
+- Data folder: 15 MB per kept build, three at most.
+- First start: the app listens after 0.94 s and answers the page at once with the shipped build
+  (before: 1.4 to 1.6 s, with Vite starting, and about 3 s more for the UI to be on screen). No
+  Vite process runs in a release any more.
+- A build in the release (the binary acting as `bun` and running the shipped Vite): 8.5 s. A Modify
+  change: the checks already built it, so `ready` comes no later than before.
+- Rollback: instant when the older build is among the last three, else one build (about 8.5 s).
+- After an app update, or a UI changed outside the app's knowledge: one build in the background,
+  while the previous build is served.
+
+This replaces the "no prebuilt `dist/` is shipped" line of `2026-11-23-release-layout.md`: it
+measured the cost of a first start with the dev server, and a release now has no dev server.
 
 ## Rejected
 
