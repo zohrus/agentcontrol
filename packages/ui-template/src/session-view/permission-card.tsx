@@ -47,36 +47,49 @@ function Request({ item }: { item: ItemOf<"permission"> }) {
   );
 }
 
-/** Says which answer is on its way to the agent, once one was chosen. */
-function Sending({ item, sending }: Pick<Props, "item" | "sending">) {
-  if (sending === undefined) return null;
+/** What is on its way: the option chosen, until the agent has the answer. */
+function sendingText({ item, sending }: Pick<Props, "item" | "sending">): string {
+  if (sending === undefined || item.answer) return "";
   const name = item.options.find((option) => option.optionId === sending)?.name ?? sending;
+  return `Sending “${name}” to the agent…`;
+}
+
+/** Says which answer is on its way to the agent, in a line that is there, empty, from the start. */
+function Sending(props: Pick<Props, "item" | "sending">) {
   return (
-    <span role="status" className="text-xs text-muted">
-      Sending “{name}” to the agent…
+    <span role="status" className="block h-4 text-xs text-muted">
+      {sendingText(props)}
     </span>
   );
 }
 
-/** One button per option (locked once one was chosen), or the answer once the agent has it. */
+/**
+ * One button per option (locked once one was chosen). Once the agent has the answer the buttons
+ * give way to it in the same cell, so the row keeps its height whatever the buttons did.
+ */
 function Choices({ item, onAnswer, sending }: Props) {
-  if (item.answer) return <span className="text-xs text-muted">Answered: {item.answer}</span>;
   return (
-    <>
-      <Sending item={item} sending={sending} />
-      <div className="flex flex-wrap gap-2">
+    <div className="grid">
+      <div
+        className={`col-start-1 row-start-1 flex flex-wrap gap-2 ${item.answer ? "invisible" : ""}`}
+      >
         {item.options.map((option) => (
           <OptionButton
             key={option.optionId}
             option={option}
-            locked={sending !== undefined}
+            locked={sending !== undefined || Boolean(item.answer)}
             onChoose={() => {
               onAnswer(item.requestId, option.optionId);
             }}
           />
         ))}
       </div>
-    </>
+      {item.answer && (
+        <span className="col-start-1 row-start-1 self-center text-xs text-muted">
+          Answered: {item.answer}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -87,8 +100,9 @@ export function PermissionCard(props: Props) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-wait bg-wait-soft p-3">
       <b className="font-medium">{item.title}</b>
-      {!item.answer && <Request item={item} />}
+      <Request item={item} />
       <Choices {...props} />
+      <Sending item={item} sending={props.sending} />
     </div>
   );
 }
