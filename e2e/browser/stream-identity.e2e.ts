@@ -4,6 +4,7 @@ import {
   expectFewerPageUpdatesThanChunks,
   expectTheFirstParagraphWasNeverReplaced,
 } from "../support/browser/stream-expectations.ts";
+import { letsFramesRunUntilTheConversationShows } from "../support/browser/stream-frames.ts";
 import {
   aSessionStreamingAReplyInChunks,
   theUserAsksAndTheTurnEnds,
@@ -38,17 +39,19 @@ test(
   "a hundred small chunks are fewer updates of the page",
   async () => {
     // ********************************************************************
-    // ** GIVEN an agent that streams a reply in a hundred small chunks, a few milliseconds apart
+    // ** GIVEN an agent that streams a reply in a hundred small chunks, in a page whose frames the test controls
     // ********************************************************************
     const { app, stream } = await aSessionStreamingAReplyInChunks({
       reply: "word ".repeat(100),
       size: 5,
+      controlsTheFrames: true,
     });
 
     // ********************************************************************
-    // ** WHEN the user asks and the turn ends
+    // ** WHEN the user asks and the test lets frames run until the turn has ended
     // ********************************************************************
-    await theUserAsksAndTheTurnEnds(app, "Write some");
+    await app.page.sendsMessage("Write some");
+    await letsFramesRunUntilTheConversationShows({ app, stream, text: "Turn ended" });
 
     // ********************************************************************
     // ** THEN the page changed fewer times than there were chunks

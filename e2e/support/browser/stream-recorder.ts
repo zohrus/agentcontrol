@@ -1,4 +1,5 @@
 import type { Page } from "./playwright.ts";
+import { runsOn } from "./stable-stream-page.ts";
 import { STREAM_RECORDER_SCRIPT } from "./stream-recorder-script.ts";
 
 /** What the page showed of one message (a reply) after one change of the page. */
@@ -28,8 +29,7 @@ export type StreamRecording = {
   longTasks: number[];
 };
 
-const THINKING_BOX_HEIGHT =
-  "document.querySelector('[data-testid=thought]').firstElementChild.clientHeight";
+const BOX_HEIGHT = "(thought) => thought.firstElementChild.clientHeight";
 
 const HIDE_THE_TAB = `(() => {
   Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -59,7 +59,8 @@ function doings(page: Page) {
     /** Presses "Show more" under the agent's thinking. */
     expandsTheThinking: () => page.getByRole("button", { name: "Show more" }).click(),
     /** How high the box of the first thinking is now. */
-    thinkingBoxHeight: (): Promise<number> => page.evaluate<number>(THINKING_BOX_HEIGHT),
+    thinkingBoxHeight: (): Promise<number> =>
+      runsOn<number>(page.getByTestId("thought").first(), BOX_HEIGHT, null),
     /** The browser tab goes to the background. */
     goesToTheBackground: async (): Promise<void> => {
       await page.evaluate(HIDE_THE_TAB);

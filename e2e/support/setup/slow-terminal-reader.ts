@@ -20,7 +20,7 @@ interface Shell {
   doneFile: string;
 }
 
-/** A flood of 100 MB takes a while on a busy machine, but must end before the test does. */
+/** A flood of 40 MB must end before the test does, even on a busy machine. */
 export const FLOOD_WAIT_MS = 15_000;
 
 function eventuallyDone(doneFile: string): Promise<void> {

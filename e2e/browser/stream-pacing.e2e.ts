@@ -24,23 +24,28 @@ const LONG_REPLY = `${INTRO}${"The rest of the answer goes on and on. ".repeat(1
 /** An agent that streams the words in six chunks and keeps its turn open, in a session open in a browser. */
 function aSessionStreamingSixChunks(reply: string) {
   const size = Math.ceil(reply.length / 6);
-  return aSessionStreamingAReplyInChunks({ reply, size, holdsTheTurnOpen: true });
+  return aSessionStreamingAReplyInChunks({
+    reply,
+    size,
+    holdsTheTurnOpen: true,
+    controlsTheFrames: true,
+  });
 }
 
 test(
   "a reply that arrives in large chunks is revealed in smaller steps, and is whole when the turn ends",
   async () => {
     // ********************************************************************
-    // ** GIVEN an agent that streams a reply in six chunks and keeps its turn open
+    // ** GIVEN an agent that streams a reply in six chunks and keeps its turn open, in a page whose frames the test controls
     // ********************************************************************
     const reply = WORDS.trim();
     const { app, stream, endsTheTurn } = await aSessionStreamingSixChunks(reply);
 
     // ********************************************************************
-    // ** WHEN the user asks and the page has caught up with the reply
+    // ** WHEN the user asks and the test lets frames run until the page shows the whole reply
     // ********************************************************************
     await app.page.sendsMessage("Say a lot");
-    await expectStreamToShowAll(app, reply);
+    await letsFramesRunUntilTheConversationShows({ app, stream, text: reply });
 
     // ********************************************************************
     // ** THEN the page showed the reply in more steps than it came in chunks
@@ -51,6 +56,7 @@ test(
     expectShownTextNeverGotShorter(recording);
     // AND the turn can end
     await endsTheTurn();
+    await letsFramesRunUntilTheConversationShows({ app, stream, text: "Turn ended" });
     await expectStreamToShowAll(app, "Turn ended", reply);
   },
   BROWSER_TEST_TIMEOUT_MS,

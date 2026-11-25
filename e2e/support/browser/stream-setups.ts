@@ -19,22 +19,39 @@ export async function aReadySessionWhoseStreamIsRecorded(app: AppInBrowser) {
   return { session, stream };
 }
 
-/** An agent that streams this reply in chunks, in a session open in a browser that records the stream. */
+async function aSessionWithARunningClock(configure: (app: AppInBrowser) => void) {
+  const app = await startAppInBrowser();
+  configure(app);
+  const { session, stream } = await aReadySessionWhoseStreamIsRecorded(app);
+  return { app, session, stream };
+}
+
+/**
+ * An agent that streams this reply in chunks, in a session open in a browser that records the
+ * stream. With `controlsTheFrames` the page's clock stands still and moves on only when the test
+ * lets frames run, so how many steps the page takes does not depend on how busy the machine is.
+ */
 export async function aSessionStreamingAReplyInChunks(call: {
   reply: string;
   size: number;
   /** The turn stays open after the reply until the test calls `endsTheTurn`. */
   holdsTheTurnOpen?: boolean;
+  controlsTheFrames?: boolean;
 }) {
-  const app = await startAppInBrowser();
-  const gate = join(app.mockAgent.dataFolder, "end-of-turn");
-  app.mockAgent.willStreamReplyInChunks(call.reply, { size: call.size });
-  if (call.holdsTheTurnOpen === true) app.mockAgent.willWaitForFile(gate);
-  const { session, stream } = await aReadySessionWhoseStreamIsRecorded(app);
-  const endsTheTurn = async (): Promise<void> => {
-    await Bun.write(gate, "");
+  const gate = { file: "" };
+  const configure = (app: AppInBrowser): void => {
+    gate.file = join(app.mockAgent.dataFolder, "end-of-turn");
+    app.mockAgent.willStreamReplyInChunks(call.reply, { size: call.size });
+    if (call.holdsTheTurnOpen === true) app.mockAgent.willWaitForFile(gate.file);
   };
-  return { app, session, stream, endsTheTurn };
+  const started =
+    call.controlsTheFrames === true
+      ? await aSessionWithAFrozenClock(configure)
+      : await aSessionWithARunningClock(configure);
+  const endsTheTurn = async (): Promise<void> => {
+    await Bun.write(gate.file, "");
+  };
+  return { ...started, endsTheTurn };
 }
 
 /** A session open in a browser whose clock stands still: the page moves on only when the test lets frames run. */

@@ -19,10 +19,19 @@ const logOf = (page: Page): Locator => page.getByRole("log");
 
 /**
  * The scripts below run in the page, which this package has no types for: they are text. Each one
- * is a function expression that is called with the conversation's element and one argument.
+ * is a function expression that is called with the conversation's element and one argument. The
+ * locator waits for the element to be mounted before it runs the script.
  */
-const callWith = (script: string, argument: unknown): string =>
-  `(${script})(document.querySelector('[role="log"]'), ${JSON.stringify(argument)})`;
+const inTheStream = <T>(page: Page, script: string, argument: unknown): Promise<T> =>
+  runsOn(logOf(page), script, argument);
+
+/** Waits for the element, then runs the script text in the page with the element and the argument. */
+export const runsOn = <T>(element: Locator, script: string, argument: unknown): Promise<T> =>
+  element.evaluate(
+    (found, call) =>
+      ((0, eval)(call.script) as (...args: unknown[]) => unknown)(found, call.argument),
+    { script, argument },
+  ) as Promise<T>;
 
 /** Resolves once the view has stopped moving, as after a wheel turn that scrolls smoothly. */
 const UNTIL_SETTLED = `(el) => new Promise((resolve) => {
@@ -78,8 +87,7 @@ const LAST = `(el) => {
   return column.lastElementChild ? (${BOX_OF})(column, column.lastElementChild) : undefined;
 }`;
 
-const HEADER = `() => {
-  const bar = [...document.querySelectorAll("header")].find((h) => h.querySelector("h4"));
+const HEADER = `(bar) => {
   const [title, ...rest] = [...bar.children].map((child) => child.getBoundingClientRect());
   return {
     height: bar.getBoundingClientRect().height,
@@ -89,7 +97,7 @@ const HEADER = `() => {
 
 function scrolling(page: Page) {
   const log = logOf(page);
-  const settles = (): Promise<unknown> => page.evaluate(callWith(UNTIL_SETTLED, null));
+  const settles = (): Promise<unknown> => inTheStream(page, UNTIL_SETTLED, null);
   return {
     /** Turns the mouse wheel up over the conversation, as a user does, and waits for it to settle. */
     scrollsTheStreamUp: async (pixels: number): Promise<void> => {
@@ -112,7 +120,7 @@ function scrolling(page: Page) {
     /** Drops the selection, as a click on empty space does. */
     clearsTheSelection: () => page.evaluate("document.getSelection().removeAllRanges()"),
     /** Selects the first paragraph that says this, as a user does to copy it. */
-    selectsTextInTheStream: (text: string) => page.evaluate(callWith(SELECT, text)),
+    selectsTextInTheStream: (text: string) => inTheStream(page, SELECT, text),
   };
 }
 
@@ -120,7 +128,7 @@ function viewing(page: Page) {
   const log = logOf(page);
   return {
     /** Where the conversation is scrolled to and which paragraph is first in view. */
-    streamView: (): Promise<StreamView> => page.evaluate<StreamView>(callWith(VIEW, null)),
+    streamView: (): Promise<StreamView> => inTheStream<StreamView>(page, VIEW, null),
     /** The height of the conversation's own box: it does not change when a button lies over it. */
     streamBoxHeight: async (): Promise<number> => (await log.boundingBox())?.height ?? 0,
     offersJumpToLatest: async (): Promise<boolean> =>
@@ -132,18 +140,19 @@ function viewing(page: Page) {
 function items(page: Page) {
   return {
     /** Tags the first item that says this with a marker the page itself never sets or removes. */
-    marksTheItemWith: (text: string, mark: string) => page.evaluate(callWith(MARK, { text, mark })),
+    marksTheItemWith: (text: string, mark: string) => inTheStream(page, MARK, { text, mark }),
     /** The item that carries the marker, or undefined when no element carries it any more. */
     markedItem: (mark: string): Promise<ItemBox | undefined> =>
-      page.evaluate<ItemBox | undefined>(callWith(MARKED, mark)),
+      inTheStream<ItemBox | undefined>(page, MARKED, mark),
     /** Whether the marked item is a block the user has opened. */
     markedItemIsOpen: (mark: string): Promise<boolean> =>
-      page.evaluate<boolean>(callWith(MARKED_IS_OPEN, mark)),
+      inTheStream<boolean>(page, MARKED_IS_OPEN, mark),
     /** The last item of the conversation. */
     lastItem: (): Promise<ItemBox | undefined> =>
-      page.evaluate<ItemBox | undefined>(callWith(LAST, null)),
+      inTheStream<ItemBox | undefined>(page, LAST, null),
     /** The header over the conversation. */
-    sessionHeader: (): Promise<HeaderBox> => page.evaluate<HeaderBox>(`(${HEADER})()`),
+    sessionHeader: (): Promise<HeaderBox> =>
+      runsOn<HeaderBox>(page.locator("header:has(h4)").first(), HEADER, null),
   };
 }
 
