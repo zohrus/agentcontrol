@@ -49,7 +49,13 @@ async function finished(root: string): Promise<{ key: string; at: number }[]> {
   const names = await readdir(root).catch(() => []);
   const keys = names.filter((name) => !name.endsWith(PARTIAL));
   const found = await Promise.all(
-    keys.map(async (key) => ({ key, at: (await stat(join(root, key))).mtimeMs })),
+    keys.map(async (key) => ({
+      key,
+      at: await stat(join(root, key)).then(
+        (info) => info.mtimeMs,
+        () => 0,
+      ),
+    })),
   );
   return found.sort((a, b) => b.at - a.at);
 }
@@ -57,7 +63,9 @@ async function finished(root: string): Promise<{ key: string; at: number }[]> {
 /** Deletes the oldest builds beyond the few that are kept. */
 async function prune(root: string): Promise<void> {
   const all = await finished(root);
-  for (const old of all.slice(KEEP_BUILDS)) await rm(join(root, old.key), { recursive: true });
+  for (const old of all.slice(KEEP_BUILDS)) {
+    await rm(join(root, old.key), { recursive: true, force: true });
+  }
 }
 
 async function clean(root: string): Promise<void> {
@@ -77,21 +85,28 @@ interface Parts {
 const keyOf = (parts: Parts, dir: string) => contentKey({ dir, salt: parts.salt });
 const dirOf = (parts: Parts, key: string) => join(parts.root, key);
 
-async function make(parts: Parts, call: { dir: string; key: string }): Promise<BuildResult> {
-  const { dir, key } = call;
-  const partial = join(parts.root, key + PARTIAL);
+/** Runs Vite into a folder beside the build's place; the first failure to build says why. */
+async function runVite(parts: Parts, call: { dir: string; key: string; partial: string }) {
+  const { dir, key, partial } = call;
   await mkdir(parts.root, { recursive: true });
   await rm(partial, { recursive: true, force: true });
+  // Hashing the folder took time: the app may have started to quit meanwhile.
+  if (parts.stopped) return { ok: false, output: "The app is quitting." };
   const result = await viteBuild({ dir, outDir: partial, running: parts.running });
   // Files edited while Vite read them would make a build that fits no key.
   const changed = result.ok && (await keyOf(parts, dir)) !== key;
-  if (!result.ok || changed) {
-    await rm(partial, { recursive: true, force: true });
-    const output = changed ? "The UI files changed while the UI was being built." : result.output;
-    return { key, ok: false, output };
-  }
-  await rename(partial, dirOf(parts, key));
-  return { key, ok: true, output: result.output };
+  return changed
+    ? { ok: false, output: "The UI files changed while the UI was being built." }
+    : result;
+}
+
+async function make(parts: Parts, call: { dir: string; key: string }): Promise<BuildResult> {
+  const { key } = call;
+  const partial = join(parts.root, key + PARTIAL);
+  const result = await runVite(parts, { ...call, partial });
+  if (!result.ok) await rm(partial, { recursive: true, force: true });
+  else await rename(partial, dirOf(parts, key));
+  return { key, ...result };
 }
 
 async function buildOnce(parts: Parts, dir: string): Promise<BuildResult> {

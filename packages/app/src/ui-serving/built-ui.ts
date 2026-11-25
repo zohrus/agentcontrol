@@ -63,7 +63,8 @@ async function switchIfReady(options: BuiltUiOptions & { state: State; key: stri
   if (!(await cache.has(key))) return false;
   // The key is served before old builds are deleted, so a request never meets a deleted build.
   Object.assign(state, { key, failure: undefined });
-  await cache.used(key);
+  // Deleting old builds is housekeeping: failing at it is no reason to report a failed build.
+  await cache.used(key).catch(() => undefined);
   return true;
 }
 
@@ -126,8 +127,8 @@ export function createUiBuilds(options: BuiltUiOptions): UiBuilds {
     // Serving the dev server or a folder of built files, there is no build to keep up to date.
     sync: () => (serving ? sync() : Promise.resolve()),
     serve: async () => {
+      await cache.clean().catch(() => undefined);
       serving = true;
-      await cache.clean();
       await first({ ...options, state, sync }).catch((error: unknown) => {
         state.failure = String(error);
       });

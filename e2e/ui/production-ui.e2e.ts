@@ -83,9 +83,12 @@ test("Undo of a change that waits for Keep serves the UI from before", async () 
   // ** GIVEN a cost column change that waits for Keep, shown by the served UI
   // ********************************************************************
   const app = await startsAppLikeARelease();
+  // AND the Modify agent will add a cost column
   app.mockAgent.willWriteFile("src/session-table.ts", withCost);
+  // AND the user asked for it and the change passed the checks
   await app.user.asksToModifyTheUi("add a cost column");
   await expectUiChangeReadyToKeep(app);
+  // AND the served UI shows the cost column
   await expectTheServedUiToShow(app, "Cost");
 
   // ********************************************************************
