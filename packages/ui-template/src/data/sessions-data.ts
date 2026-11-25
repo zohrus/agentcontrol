@@ -1,5 +1,6 @@
 import type { Client, LiveSessionEvent, SessionEvent, SessionRow } from "@agentcontrol/sdk";
 import { type Context, inBackground } from "./context.ts";
+import { browserFrames, createEventQueue, type EventQueue } from "./event-queue.ts";
 import { appendEvents, mergeFetched, upsertSessions } from "./merge.ts";
 import type { DataState } from "./model.ts";
 import { isCreating, setCreating, settleOutgoing } from "./pending.ts";
@@ -25,17 +26,38 @@ async function fetchEventsAfter(
 const lastSeqOf = (state: DataState, ref: SessionRef): number =>
   state.events[keyOf(ref)]?.at(-1)?.seq ?? 0;
 
+/** The state with the events after the last one held added to the session's history. */
+function withEvents(s: DataState, call: { ref: SessionRef; fresh: readonly SessionEvent[] }) {
+  const key = keyOf(call.ref);
+  const have = s.events[key] ?? [];
+  const events = appendEvents(have, call.fresh);
+  // A message the user sent is in the history now: it stops being shown as outgoing.
+  return settleOutgoing(
+    { ...s, events: { ...s.events, [key]: events } },
+    { key, fresh: events.slice(have.length) },
+  );
+}
+
 function holdEvents(ctx: Context, ref: SessionRef, fresh: readonly SessionEvent[]): void {
-  const key = keyOf(ref);
-  ctx.store.update((s) => {
-    const have = s.events[key] ?? [];
-    const events = appendEvents(have, fresh);
-    // A message the user sent is in the history now: it stops being shown as outgoing.
-    return settleOutgoing(
-      { ...s, events: { ...s.events, [key]: events } },
-      { key, fresh: events.slice(have.length) },
-    );
+  ctx.store.update((s) => withEvents(s, { ref, fresh }));
+}
+
+const queues = new WeakMap<Context, EventQueue>();
+
+/** The live events of a context wait here for the next frame, then go into the store as one update. */
+function queueOf(ctx: Context): EventQueue {
+  const known = queues.get(ctx);
+  if (known !== undefined) return known;
+  const queue = createEventQueue({
+    frames: browserFrames,
+    take: (batches) => {
+      ctx.store.update((s) =>
+        batches.reduce((next, { ref, events }) => withEvents(next, { ref, fresh: events }), s),
+      );
+    },
   });
+  queues.set(ctx, queue);
+  return queue;
 }
 
 /** Loads the events after the last one held, and keeps this session's history current from now on. */
@@ -106,12 +128,20 @@ export function applySummaries(ctx: Context, summaries: readonly SessionRow[]): 
   catchUp(ctx);
 }
 
-/** A live event: appended when it follows the last one held, a refetch when one was missed. */
+/**
+ * A live event: held until the next frame when it follows the last one held, so a burst is one
+ * update of the state and one render; a refetch when one was missed.
+ */
 export function applyEvent(ctx: Context, event: LiveSessionEvent): void {
   const ref = { workspaceId: event.workspaceId, id: event.sessionId };
+  const queue = queueOf(ctx);
   const { seq } = event;
-  const last = lastSeqOf(ctx.store.get(), ref);
+  const last = Math.max(queue.lastSeq(ref) ?? 0, lastSeqOf(ctx.store.get(), ref));
   if (ctx.store.get().events[keyOf(ref)] === undefined || seq <= last) return;
-  if (seq === last + 1) holdEvents(ctx, ref, [event]);
-  else inBackground(ctx, loadEvents(ctx, ref));
+  if (seq === last + 1) {
+    queue.add(ref, event);
+    return;
+  }
+  queue.flush();
+  inBackground(ctx, loadEvents(ctx, ref));
 }
