@@ -29,10 +29,13 @@ export const STREAM_RECORDER_SCRIPT = `(() => {
       const blocks = [...root.children].map((el) => ({ id: idOf(el), tag: el.tagName.toLowerCase() }));
       const text = root.textContent;
       const tables = root.querySelectorAll("table").length;
-      state.samples.push({ message: index, blocks, text, tables, permission, thoughts });
+      const columns = root.querySelectorAll("th").length;
+      const bolds = root.querySelectorAll("b").length;
+      state.samples.push({ message: index, blocks, text, tables, columns, bolds, permission, thoughts });
     });
     if (messages().length === 0) {
-      state.samples.push({ message: -1, blocks: [], text: "", tables: 0, permission, thoughts });
+      const empty = { message: -1, blocks: [], text: "", tables: 0, columns: 0, bolds: 0 };
+      state.samples.push({ ...empty, permission, thoughts });
     }
   }
   const observer = new MutationObserver((records) => {

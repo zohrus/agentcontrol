@@ -11,13 +11,16 @@ const isDelimiter = (line: string): boolean => line.includes("|") && DELIMITER.t
 export const startsTable = (lines: string[], at: number): boolean =>
   isRow(lines[at] ?? "") && isDelimiter(lines[at + 1] ?? "");
 
+/** A pipe that ends a cell: not escaped (`\|`), and not inside a `code` span (an even number of backticks follow). */
+const CELL_END = /(?<!\\)\|(?=(?:[^`]*`[^`]*`)*[^`]*$)/;
+
 function cellsOf(line: string): string[] {
   return line
     .trim()
     .replace(/^\|/, "")
-    .replace(/\|$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+    .replace(/(?<!\\)\|$/, "")
+    .split(CELL_END)
+    .map((cell) => cell.trim().replaceAll("\\|", "|"));
 }
 
 /** A table: the header, the delimiter row, then every row that follows. */

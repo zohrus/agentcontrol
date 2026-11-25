@@ -1,7 +1,8 @@
 /** A piece of a line: plain text, `code` or **bold**. */
 export type Span = { type: "text" | "code" | "bold"; text: string };
 
-const INLINE = /(`[^`\n]+`|\*\*[^*\n]+\*\*)/;
+/** `code`, or **bold** whose first character is not a space (as in `2 ** 3`). */
+const INLINE = /(`[^`\n]+`|\*\*[^\s*][^*\n]*\*\*)/;
 
 function spanOf(part: string): Span {
   if (part.startsWith("`")) return { type: "code", text: part.slice(1, -1) };
@@ -22,21 +23,32 @@ type Open = { code: number | undefined; bold: number | undefined };
 function openMarks(line: string): Open {
   const marks = [...line.matchAll(/`|\*\*/g)];
   const none: Open = { code: undefined, bold: undefined };
-  return marks.reduce((open, mark) => nextOpen(open, { text: mark[0], index: mark.index }), none);
+  return marks.reduce((open, mark) => {
+    const spaced = /\s/.test(line[mark.index + mark[0].length] ?? "");
+    return nextOpen(open, { text: mark[0], index: mark.index, spaced });
+  }, none);
 }
 
 /** What is open after one more marker: inside `code` only a backtick counts. */
-function nextOpen(open: Open, mark: { text: string; index: number }): Open {
+function nextOpen(open: Open, mark: Mark): Open {
   if (open.code !== undefined) return mark.text === "`" ? { ...open, code: undefined } : open;
   if (mark.text === "`") return { ...open, code: mark.index };
-  return { ...open, bold: open.bold === undefined ? mark.index : undefined };
+  return { ...open, bold: nextBold(open.bold, mark) };
 }
 
-/** The text without a marker that opens nothing yet (it is the last thing on the line), else closed by `mark`. */
+type Mark = { text: string; index: number; spaced: boolean };
+
+/** A `**` closes the bold that is open; else it opens one, unless a space follows it (`2 ** 3`). */
+function nextBold(bold: number | undefined, mark: Mark): number | undefined {
+  if (bold !== undefined) return undefined;
+  return mark.spaced ? undefined : mark.index;
+}
+
+/** The text without a marker that opens nothing yet (only spaces follow it), else closed by `mark`. */
 function closeMark(line: string, call: { at: number | undefined; mark: string }): string {
   const { at, mark } = call;
   if (at === undefined) return line;
-  return at + mark.length === line.length ? line.slice(0, at) : line + mark;
+  return line.slice(at + mark.length).trim() === "" ? line.slice(0, at) : line + mark;
 }
 
 /**

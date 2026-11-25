@@ -2,8 +2,10 @@ import { afterEach, test } from "bun:test";
 import {
   expectMarkersWereNeverShown,
   expectNothingAlreadyShownWasRedrawn,
+  expectNothingWasEverDrawnInBold,
   expectShownTextNeverGotShorter,
   expectTableAppearedOnlyOnceComplete,
+  expectTableNeverHadMoreColumnsThan,
 } from "../support/browser/stream-expectations.ts";
 import { expectStreamToShowAll } from "../support/browser/page-expectations.ts";
 import {
@@ -150,6 +152,34 @@ test(
     expectNothingAlreadyShownWasRedrawn(recording);
     // AND the cells read in full at the end
     await expectStreamToShowAll(app, "Plan", "Limit", "Free", "100", "That is all.");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "a pipe in a table cell's code or after a backslash does not split the cell, and two asterisks around a space are not bold",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN an agent that streams a sum and a two-column table with pipes in its cells
+    // ********************************************************************
+    const { app, stream } = await aSessionStreamingAReplyInChunks({
+      reply: "Compute 2 ** 3 now.\n\n| Command | Note |\n|---|---|\n| `a \\| b` | one \\| two |\n",
+      size: 3,
+    });
+
+    // ********************************************************************
+    // ** WHEN the user asks and the reply streams in
+    // ********************************************************************
+    await theUserAsksAndTheTurnEnds(app, "Show the pipes");
+
+    // ********************************************************************
+    // ** THEN the table never had more than two columns, and nothing was drawn in bold
+    // ********************************************************************
+    const recording = await stream.recording();
+    expectTableNeverHadMoreColumnsThan({ recording, columns: 2 });
+    expectNothingWasEverDrawnInBold(recording);
+    // AND the sum reads as written
+    await expectStreamToShowAll(app, "Compute 2 ** 3 now.");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

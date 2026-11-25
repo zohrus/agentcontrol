@@ -147,3 +147,24 @@ export function expectFewerPageUpdatesThanChunks(call: {
     );
   }
 }
+
+/** The table never had a column more than it should: a pipe in code or after a backslash is not a cell border. */
+export function expectTableNeverHadMoreColumnsThan(call: {
+  recording: StreamRecording;
+  columns: number;
+}): void {
+  const wide = call.recording.samples.find((sample) => sample.columns > call.columns);
+  if (wide !== undefined) {
+    throw new Error(
+      `expected the table to have at most ${String(call.columns)} columns, but it had ${String(wide.columns)}`,
+    );
+  }
+}
+
+/** No piece of the reply was ever drawn in bold. */
+export function expectNothingWasEverDrawnInBold(recording: StreamRecording): void {
+  const bold = recording.samples.find((sample) => sample.bolds > 0);
+  if (bold !== undefined) {
+    throw new Error(`expected nothing to be drawn in bold, but ${quote(bold.text)} was`);
+  }
+}

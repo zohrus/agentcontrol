@@ -1,5 +1,6 @@
 import { memo, type ReactNode, useMemo } from "react";
 import { type Block, parseInline, parseMarkdown, type Span } from "./markdown-blocks.ts";
+import { sameBlock } from "./same-block.ts";
 
 const spanViews: Record<Span["type"], (text: string) => ReactNode> = {
   text: (text) => text,
@@ -73,11 +74,6 @@ const blockViews: BlockViews = {
     </p>
   ),
 };
-
-/** Whether two blocks are the same to the reader: same kind, same text, so the view need not change. */
-function sameBlock(a: Block, b: Block): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
 
 /** One block. A block that is finished is not drawn again when the blocks after it change. */
 const BlockView = memo(

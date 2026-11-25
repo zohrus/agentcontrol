@@ -10,6 +10,9 @@ export type StreamSample = {
   /** The text it shows. */
   text: string;
   tables: number;
+  /** The columns of the table, and the bold pieces of text, in the reply. */
+  columns: number;
+  bolds: number;
   /** Whether a permission card was on the page. */
   permission: boolean;
   /** The thinking boxes on the page: the height they show, and their scroll position. */
