@@ -97,12 +97,20 @@ async function ensureReady(ctx: Context): Promise<void> {
   await linkDependencies({ templateDir: ctx.templateDir, dir: ctx.liveDir });
 }
 
+/**
+ * Going back (undo, restore) never waits for a build: the older UI may have to be built again, and
+ * the way back must answer at once. The served UI follows when its build is there.
+ */
+function followInBackground(ctx: Context): void {
+  void ctx.liveChanged().catch(() => undefined);
+}
+
 async function moveHistory(ctx: Context, move: () => Promise<UiVersion | undefined>) {
   await guard(ctx);
   const version = await move();
   if (version) {
     await checkoutBoth(ctx);
-    await ctx.liveChanged();
+    followInBackground(ctx);
   }
   return version;
 }
@@ -115,7 +123,7 @@ async function pendingChanges(ctx: Context): Promise<string[]> {
 async function resetToKept(ctx: Context): Promise<void> {
   await guard(ctx);
   await checkoutBoth(ctx);
-  await ctx.liveChanged();
+  followInBackground(ctx);
 }
 
 async function discardStaging(ctx: Context): Promise<void> {

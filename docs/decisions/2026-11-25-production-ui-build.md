@@ -53,7 +53,8 @@ Date: 25 Nov 2026. Owner decision: users run the built UI, not Vite's dev server
    there is no build at all (first start without a prebuilt one, or every build failed), the page
    is a plain "Preparing your UI" page that reloads itself, or a plain failure page with the
    output and the `/_safe` link. Never a blank page. Rollback on `/_safe` works as before and
-   waits for the build of the older version (instant when it is cached).
+   never waits for a build: Undo and restore return at once, and the served UI switches (the open
+   page reloads) when the older version's build is there, instantly when it is cached.
 6. **Start-up and prebuilt.** The release ships the default UI already built, as
    `resources/ui-template/dist/` (made once per release by `scripts/build/ui-resources.ts`; the
    build does not depend on the platform). On a first start, and on any start where `ui/` is still

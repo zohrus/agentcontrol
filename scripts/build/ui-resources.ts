@@ -85,7 +85,8 @@ function runWithBun(args: string[], cwd: string): void {
     stdout: "pipe",
     stderr: "pipe",
   });
-  if (run.exitCode !== 0) throw new Error(`${args.join(" ")} failed:\n${run.stdout.toString()}`);
+  if (run.exitCode !== 0)
+    throw new Error(`${args.join(" ")} failed:\n${run.stdout.toString()}${run.stderr.toString()}`);
 }
 
 /** What does not depend on the platform, made once: the app's type declarations and the built UI. */

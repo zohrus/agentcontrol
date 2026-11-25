@@ -112,6 +112,13 @@ function handlerFor(options: { cache: BuildCache; state: State }): UiHandler {
   };
 }
 
+/** A build for the checks; with no built UI served, nothing else prunes what they leave behind. */
+async function buildForChecks(call: { cache: BuildCache; dir: string; pruneAfter: boolean }) {
+  const built = await call.cache.build(call.dir);
+  if (call.pruneAfter && built.ok) await call.cache.used(built.key).catch(() => undefined);
+  return built;
+}
+
 /** The production UI: the live folder, built by Vite into the cache and served from there. */
 export function createUiBuilds(options: BuiltUiOptions): UiBuilds {
   const { cache } = options;
@@ -123,7 +130,7 @@ export function createUiBuilds(options: BuiltUiOptions): UiBuilds {
     }),
   );
   return {
-    build: (dir) => cache.build(dir),
+    build: (dir) => buildForChecks({ cache, dir, pruneAfter: !serving }),
     // Serving the dev server or a folder of built files, there is no build to keep up to date.
     sync: () => (serving ? sync() : Promise.resolve()),
     serve: async () => {
