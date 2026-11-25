@@ -57,7 +57,7 @@ function sendingText({ item, sending }: Pick<Props, "item" | "sending">): string
 /** Says which answer is on its way to the agent, in a line that is there, empty, from the start. */
 function Sending(props: Pick<Props, "item" | "sending">) {
   return (
-    <span role="status" className="block h-4 text-xs text-muted">
+    <span aria-live="polite" className="block h-4 text-xs text-muted">
       {sendingText(props)}
     </span>
   );

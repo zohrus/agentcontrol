@@ -19,12 +19,13 @@ type Outgoing = ItemOf<"outgoing">;
 
 /**
  * What the stream remembers between renders so that a sent message keeps its place and element
- * when the history takes it over: the messages on the way, those that left the list and have not
- * been matched to the history's copy yet, the history's messages already seen, and the takeovers.
+ * when the history takes it over: the messages on the way, those that left the list in the last
+ * update and have not been matched to the history's copy yet, the history's messages already seen,
+ * and the takeovers.
  */
 export type SentMemory = {
   onTheWay: Map<string, Outgoing>;
-  taken: Outgoing[];
+  taken: readonly Outgoing[];
   seen: Set<string>;
   takenOver: Map<string, Outgoing>;
 };
@@ -41,10 +42,9 @@ function takeOver(memory: SentMemory, item: ItemOf<"user">): ViewItem {
   const done = memory.takenOver.get(item.key);
   if (done) return done;
   if (memory.seen.has(item.key)) return item;
-  const index = memory.taken.findIndex((sent) => sent.text === item.text);
-  const sent = memory.taken[index];
+  const sent = memory.taken.find((candidate) => candidate.text === item.text);
   if (!sent) return item;
-  memory.taken.splice(index, 1);
+  memory.taken = memory.taken.filter((candidate) => candidate !== sent);
   const copy: Outgoing = { ...sent, text: item.text, state: "sent", error: undefined };
   memory.takenOver.set(item.key, copy);
   return copy;
@@ -56,9 +56,12 @@ function departed(items: readonly ViewItem[], memory: SentMemory): Outgoing[] {
   return [...memory.onTheWay].filter(([key]) => !keys.has(key)).map(([, sent]) => sent);
 }
 
-/** Notes which messages left the list (not those the user gave up on) and which are on the way now. */
+/**
+ * Notes which messages left the list this time (not those the user gave up on) and which are on
+ * the way now. The history's copy arrives in the same update, so only these can be matched.
+ */
 function noteDeparted(items: readonly ViewItem[], memory: SentMemory): void {
-  memory.taken.push(...departed(items, memory).filter((sent) => sent.state !== "failed"));
+  memory.taken = departed(items, memory).filter((sent) => sent.state !== "failed");
   memory.onTheWay.clear();
   for (const item of items) {
     if (item.type === "outgoing") memory.onTheWay.set(item.key, item);

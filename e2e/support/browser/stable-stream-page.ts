@@ -109,6 +109,8 @@ function scrolling(page: Page) {
       await page.keyboard.press(key);
       await settles();
     },
+    /** Drops the selection, as a click on empty space does. */
+    clearsTheSelection: () => page.evaluate("document.getSelection().removeAllRanges()"),
     /** Selects the first paragraph that says this, as a user does to copy it. */
     selectsTextInTheStream: (text: string) => page.evaluate(callWith(SELECT, text)),
   };

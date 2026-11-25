@@ -68,3 +68,29 @@ test(
   },
   BROWSER_TEST_TIMEOUT_MS,
 );
+
+test(
+  "letting go of a selection near the end makes the view follow the agent again",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a user who selected the last paragraph of a long answer that is still being written
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    const { firstHold } = await aSessionWritingALongAnswerOpenInTheBrowser(app);
+    await expectStreamToBeAtTheEnd(app);
+    await app.page.selectsTextInTheStream(paragraph(LONG_ANSWER.first));
+
+    // ********************************************************************
+    // ** WHEN the user drops the selection and the agent writes ten more paragraphs
+    // ********************************************************************
+    await app.page.clearsTheSelection();
+    await firstHold.letsTheAgentGoOn();
+    await expectStreamToShow(app, paragraph(LONG_ANSWER.second));
+
+    // ********************************************************************
+    // ** THEN the view is at the end, showing them
+    // ********************************************************************
+    await expectStreamToBeAtTheEnd(app);
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);

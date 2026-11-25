@@ -87,19 +87,36 @@ function useStickToEnd(call: {
   }, [scroller, content, follow]);
 }
 
+/** What to do when the selection in the stream ends: follow again if the user is back at the bottom. */
+function endSelection(view: HTMLElement, follow: Follow): void {
+  if (distanceFromBottom(view) <= AT_BOTTOM_PX) follow.resume();
+}
+
+/** Reacts to the selection changing: a selection in the stream holds the view, clearing it lets go. */
+function watchSelection(scroller: RefObject<HTMLElement | null>, follow: Follow) {
+  let holding = false;
+  return (): void => {
+    const view = scroller.current;
+    if (!view) return;
+    if (hasSelectionIn(view)) {
+      holding = true;
+      follow.release();
+    } else if (holding) {
+      holding = false;
+      endSelection(view, follow);
+    }
+  };
+}
+
 /** Selecting text in the stream releases the view: whoever reads must not be scrolled away. */
 function useReleaseOnSelection(scroller: RefObject<HTMLElement | null>, follow: Follow): void {
-  const { release } = follow;
   useEffect(() => {
-    const onSelection = (): void => {
-      const view = scroller.current;
-      if (view && hasSelectionIn(view)) release();
-    };
+    const onSelection = watchSelection(scroller, follow);
     document.addEventListener("selectionchange", onSelection);
     return () => {
       document.removeEventListener("selectionchange", onSelection);
     };
-  }, [scroller, release]);
+  }, [scroller, follow]);
 }
 
 /** The scroll position the last scroll event saw: moving up, with the content no smaller, is the user. */
