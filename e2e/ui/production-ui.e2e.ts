@@ -18,6 +18,7 @@ import {
   SHIPPED_BUILD_MARKER,
   startsAppLikeARelease,
   startsAppLikeAReleaseThatShipsTheUiBuilt,
+  userRestoresTheFirstUiVersion,
 } from "../support/setup/production-ui.ts";
 
 afterEach(cleanUpAfterTest);
@@ -75,8 +76,26 @@ test("a change that passed the checks is served as a fresh build while it waits 
   // ** THEN the served UI already shows the cost column, so the user can review it
   // ********************************************************************
   await expectTheServedUiToShow(app, "Cost");
-  // AND Undo brings the UI from before back
+});
+
+test("Undo of a change that waits for Keep serves the UI from before", async () => {
+  // ********************************************************************
+  // ** GIVEN a cost column change that waits for Keep, shown by the served UI
+  // ********************************************************************
+  const app = await startsAppLikeARelease();
+  app.mockAgent.willWriteFile("src/session-table.ts", withCost);
+  await app.user.asksToModifyTheUi("add a cost column");
+  await expectUiChangeReadyToKeep(app);
+  await expectTheServedUiToShow(app, "Cost");
+
+  // ********************************************************************
+  // ** WHEN the user presses Undo
+  // ********************************************************************
   await app.user.undoesTheChange();
+
+  // ********************************************************************
+  // ** THEN the served UI is the one from before, without the cost column
+  // ********************************************************************
   await expectTheServedUiToShow(app, "Status");
   await expectTheServedUiNotToShow(app, "Cost");
 });
@@ -111,12 +130,11 @@ test("restoring an earlier version serves the build of that version", async () =
   const app = await startsAppLikeARelease();
   await userKeptTableColumns(app, ["Title", "Status", "Cost"]);
   await expectTheServedUiToShow(app, "Cost");
-  const [, first] = await app.user.readsUiVersions();
 
   // ********************************************************************
   // ** WHEN the user restores the first version
   // ********************************************************************
-  await app.user.restoresUiVersion(first?.commit ?? "");
+  await userRestoresTheFirstUiVersion(app);
 
   // ********************************************************************
   // ** THEN the served UI is the first version's, without the cost column

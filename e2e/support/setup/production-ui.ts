@@ -64,3 +64,13 @@ export async function aCostColumnWasKeptAndDefaultUiOnePointOneIsReleased(): Pro
   await releaseDefaultUiUpdate(app, { version: "1.1", files: footer });
   return app;
 }
+
+/** The user restores the oldest version of the UI, as the recovery page's Restore button does. */
+export async function userRestoresTheFirstUiVersion(app: ModifiableApp): Promise<void> {
+  const versions = await app.user.readsUiVersions();
+  const first = versions.at(-1);
+  if (first === undefined) {
+    throw new Error("expected the UI to have a first version, but it has none");
+  }
+  await app.user.restoresUiVersion(first.commit);
+}

@@ -31,7 +31,9 @@ export interface BuildCache {
   adopt(options: { key: string; from: string }): Promise<void>;
   /** Notes that a build is served, and deletes the oldest ones beyond the few that are kept. */
   used(key: string): Promise<void>;
-  /** Ends the builds that are running. */
+  /** Deletes what builds that never finished left behind; call it when no build is running. */
+  clean(): Promise<void>;
+  /** Ends the builds that are running, and refuses any other from then on. */
   stop(): void;
 }
 
@@ -52,11 +54,14 @@ async function finished(root: string): Promise<{ key: string; at: number }[]> {
   return found.sort((a, b) => b.at - a.at);
 }
 
-/** Deletes the oldest builds beyond the few that are kept, and any build that never finished. */
+/** Deletes the oldest builds beyond the few that are kept. */
 async function prune(root: string): Promise<void> {
   const all = await finished(root);
   for (const old of all.slice(KEEP_BUILDS)) await rm(join(root, old.key), { recursive: true });
-  for (const name of await readdir(root)) {
+}
+
+async function clean(root: string): Promise<void> {
+  for (const name of await readdir(root).catch(() => [])) {
     if (name.endsWith(PARTIAL)) await rm(join(root, name), { recursive: true, force: true });
   }
 }
@@ -66,6 +71,7 @@ interface Parts {
   salt: string;
   running: RunningBuilds;
   inFlight: Map<string, Promise<BuildResult>>;
+  stopped: boolean;
 }
 
 const keyOf = (parts: Parts, dir: string) => contentKey({ dir, salt: parts.salt });
@@ -89,6 +95,7 @@ async function make(parts: Parts, call: { dir: string; key: string }): Promise<B
 }
 
 async function buildOnce(parts: Parts, dir: string): Promise<BuildResult> {
+  if (parts.stopped) throw new Error("The app is quitting.");
   const key = await keyOf(parts, dir);
   if (await isDir(dirOf(parts, key))) return { key, ok: true, output: "" };
   const started = parts.inFlight.get(key) ?? make(parts, { dir, key });
@@ -110,7 +117,7 @@ async function used(parts: Parts, key: string): Promise<void> {
 }
 
 export function createBuildCache(options: { root: string; salt: string }): BuildCache {
-  const parts: Parts = { ...options, running: new Set(), inFlight: new Map() };
+  const parts: Parts = { ...options, running: new Set(), inFlight: new Map(), stopped: false };
   return {
     keyOf: (dir) => keyOf(parts, dir),
     has: (key) => isDir(dirOf(parts, key)),
@@ -124,7 +131,9 @@ export function createBuildCache(options: { root: string; salt: string }): Build
       })),
     adopt: (call) => adopt(parts, call),
     used: (key) => used(parts, key),
+    clean: () => clean(parts.root),
     stop: () => {
+      parts.stopped = true;
       for (const child of parts.running) child.kill();
     },
   };

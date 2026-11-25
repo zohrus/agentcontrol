@@ -30,6 +30,9 @@ export interface UiBuilds {
   stop(): void;
 }
 
+/** What a failed build says when Vite printed nothing (it was killed, for example). */
+const NO_OUTPUT = "The build ended without saying why.";
+
 interface State {
   /** The key of the build served: the newest one made, until the live content has its own. */
   key: string | undefined;
@@ -58,8 +61,9 @@ async function switchIfReady(options: BuiltUiOptions & { state: State; key: stri
   const shipped = await shippedBuildFor({ cache, prebuilt, key });
   if (shipped !== undefined) await cache.adopt({ key, from: shipped });
   if (!(await cache.has(key))) return false;
-  await cache.used(key);
+  // The key is served before old builds are deleted, so a request never meets a deleted build.
   Object.assign(state, { key, failure: undefined });
+  await cache.used(key);
   return true;
 }
 
@@ -69,10 +73,18 @@ async function syncOnce(options: BuiltUiOptions & { state: State }): Promise<voi
   if (await switchIfReady({ ...options, key })) return;
   const built: BuildResult = await cache.build(liveDir);
   if (!built.ok) {
-    state.failure = built.output;
+    state.failure = built.output || NO_OUTPUT;
     return;
   }
   await switchIfReady({ ...options, key: built.key });
+}
+
+/** At start: serves the newest build there is, then the build of the live folder if it is ready. */
+async function first(options: BuiltUiOptions & { state: State; sync: () => Promise<void> }) {
+  const { cache, liveDir, state } = options;
+  state.key = await cache.newest();
+  const key = await cache.keyOf(liveDir);
+  if (!(await switchIfReady({ ...options, key }))) void options.sync();
 }
 
 /** Syncs one at a time: a request that comes while one runs waits, then looks at the folder again. */
@@ -103,6 +115,7 @@ function handlerFor(options: { cache: BuildCache; state: State }): UiHandler {
 export function createUiBuilds(options: BuiltUiOptions): UiBuilds {
   const { cache } = options;
   const state: State = { key: undefined, failure: undefined };
+  let serving = false;
   const sync = inTurn(() =>
     syncOnce({ ...options, state }).catch((error: unknown) => {
       state.failure = String(error);
@@ -110,11 +123,14 @@ export function createUiBuilds(options: BuiltUiOptions): UiBuilds {
   );
   return {
     build: (dir) => cache.build(dir),
-    sync,
+    // Serving the dev server or a folder of built files, there is no build to keep up to date.
+    sync: () => (serving ? sync() : Promise.resolve()),
     serve: async () => {
-      state.key = await cache.newest();
-      const key = await cache.keyOf(options.liveDir);
-      if (!(await switchIfReady({ ...options, state, key }))) void sync();
+      serving = true;
+      await cache.clean();
+      await first({ ...options, state, sync }).catch((error: unknown) => {
+        state.failure = String(error);
+      });
       return handlerFor({ cache, state });
     },
     stop: () => {

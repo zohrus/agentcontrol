@@ -77,7 +77,14 @@ async function copyWorkspacePackages(options: {
 }
 
 function runWithBun(args: string[], cwd: string): void {
-  const run = Bun.spawnSync([process.execPath, ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  // NODE_ENV is set because a shell or CI may export another value, and the shipped UI is a production build.
+  const env = { ...process.env, NODE_ENV: "production" };
+  const run = Bun.spawnSync([process.execPath, ...args], {
+    cwd,
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   if (run.exitCode !== 0) throw new Error(`${args.join(" ")} failed:\n${run.stdout.toString()}`);
 }
 
