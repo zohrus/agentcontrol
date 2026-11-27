@@ -1,4 +1,4 @@
-import type { SessionEvent } from "@agentcontrol/sdk";
+import type { SessionEvent, SessionRow } from "@agentcontrol/sdk";
 import type { Context } from "./context.ts";
 import type { DataState, OutgoingMessage, Pending } from "./model.ts";
 import { keyOf, refOf, type SessionRef } from "./session-ref.ts";
@@ -105,10 +105,12 @@ export function setCreating(ctx: Context, call: { key: string; creating: boolean
   ctx.store.update((s) => withPending(s, (p) => ({ ...p, creating: held(p.creating) })));
 }
 
-/** The state without the rows of the sessions that are leaving. */
+/** The state without the rows of the sessions that are leaving (the list may show one as archived: it stays). */
 export function withoutLeavingSessions(state: DataState): DataState {
   const { leaving } = state.pending;
-  const sessions = state.sessions.filter((row) => leaving[keyOf(refOf(row))] === undefined);
+  const goes = (row: SessionRow) =>
+    leaving[keyOf(refOf(row))] !== undefined && row.status !== "archived";
+  const sessions = state.sessions.filter((row) => !goes(row));
   return sessions.length === state.sessions.length ? state : { ...state, sessions };
 }
 

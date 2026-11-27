@@ -11,7 +11,9 @@ import { loadSessions } from "./sessions-data.ts";
 export type ArchiveOutcome =
   | { status: "archived" }
   | { status: "blocked"; files: readonly string[] }
-  | { status: "failed" };
+  | { status: "failed" }
+  /** The same archive is already on its way: nothing was done. */
+  | { status: "ignored" };
 
 /** Starts a new agent for an interrupted session; it reads "Resuming…" until the app answers. */
 export function resumeSession(ctx: Context, ref: SessionRef) {
@@ -99,8 +101,9 @@ async function archiveRequest(
   } catch (error) {
     return refusedArchive(ctx, { ref, row, error });
   } finally {
-    setLeaving(ctx, { ref, leaving: false });
+    // The session stays out of the list (unless the app lists it as archived) until this list is in.
     await loadSessions(ctx).catch(() => undefined);
+    setLeaving(ctx, { ref, leaving: false });
   }
 }
 
@@ -114,5 +117,5 @@ export async function archiveSession(
 ): Promise<ArchiveOutcome> {
   const key = busyKey("archive", keyOf(call.ref));
   const outcome = await whileBusy(ctx, { key, work: () => archiveRequest(ctx, call) });
-  return outcome ?? { status: "failed" };
+  return outcome ?? { status: "ignored" };
 }

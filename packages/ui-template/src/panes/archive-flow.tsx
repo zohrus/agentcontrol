@@ -35,6 +35,9 @@ function useMoveOn({ selected, select }: Navigation) {
 const stillWhereLeft = (now: SessionRef | undefined, moved: MovedOn): boolean =>
   now === undefined || sameSession(now, moved.next);
 
+/** The session is in the list again: the archive was held back by unsaved changes, or it failed. */
+const isBack = (status: string): boolean => status === "blocked" || status === "failed";
+
 /**
  * Archiving: the user confirms first, and the session is gone from the list at once (the view
  * moves on to the next session). When the worktree has unsaved changes, or the archive fails, the
@@ -59,9 +62,10 @@ export function useArchiveFlow(navigation: Navigation) {
       const { ref } = chosen;
       const moved = moveOn(ref);
       const outcome = await controller.archive(ref, chosen.files.length > 0);
-      if (outcome.status === "archived") return;
       if (outcome.status === "blocked") setTarget({ ref, files: outcome.files });
-      if (moved.wasOpen && stillWhereLeft(latest.current, moved)) navigation.select(ref);
+      if (isBack(outcome.status) && moved.wasOpen && stillWhereLeft(latest.current, moved)) {
+        navigation.select(ref);
+      }
     },
   };
 }
