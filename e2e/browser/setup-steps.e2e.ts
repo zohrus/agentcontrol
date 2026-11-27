@@ -90,9 +90,11 @@ test(
     await expectPageToShow(app, "ready", "Worktree setup finished ·");
 
     // ********************************************************************
-    // ** WHEN the user archives it
+    // ** WHEN the user archives it, and opens it under Archived
     // ********************************************************************
     await app.page.archives();
+    await app.page.showsArchivedSessions();
+    await app.page.opensTheFirstListedSession();
 
     // ********************************************************************
     // ** THEN the stream says it was archived, and opens into the steps of archiving

@@ -47,8 +47,23 @@ function describeOther(error: unknown): string {
     : "Something went wrong in the page. Try again, or reload it.";
 }
 
+/** What the user tried, and the failure that stopped it: `Could not archive "x": <why>`. */
+export class ActionFailed extends Error {
+  constructor(
+    readonly what: string,
+    override readonly cause: unknown,
+  ) {
+    super(what);
+  }
+}
+
 /** A failure in plain words for a toast or an inline message. */
 export function describeError(error: unknown): string {
+  if (error instanceof ActionFailed) return `${error.what}: ${describeError(error.cause)}`;
+  return describeFailure(error);
+}
+
+function describeFailure(error: unknown): string {
   if (!(error instanceof ApiError)) return describeOther(error);
   if (saysItself(error)) return error.message;
   const base = messages[error.code] ?? "Something went wrong.";

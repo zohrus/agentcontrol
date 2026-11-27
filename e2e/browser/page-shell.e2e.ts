@@ -39,7 +39,7 @@ test(
 );
 
 test(
-  "the header counts how long a session has been going, from seconds up to days",
+  "the details count how long a session has been going, from seconds up to days",
   async () => {
     // ********************************************************************
     // ** GIVEN a session open in a browser whose clock can be moved forward
@@ -47,6 +47,8 @@ test(
     const app = await startAppInBrowser({ controllableClock: true });
     const session = await app.user.startsSession({ prompt: "Add rate limiting" });
     await app.page.opensSession(session.title);
+    // AND its details are open
+    await app.page.opensTheDetails();
     await expectElapsedTimeToShow(app, /^\d+s$/);
 
     // ********************************************************************
@@ -57,7 +59,7 @@ test(
     await app.page.letsTimePass(2 * DAY_MS + HOUR_MS);
 
     // ********************************************************************
-    // ** THEN the header shows days and hours
+    // ** THEN the details show days and hours
     // ********************************************************************
     await expectElapsedTimeToShow(app, /^2d 4h$/);
   },

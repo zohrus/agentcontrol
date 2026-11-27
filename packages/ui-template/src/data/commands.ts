@@ -1,9 +1,9 @@
 import type { SessionId } from "@agentcontrol/sdk";
 import { attempt, type Context } from "./context.ts";
-import { uncommittedFilesOf } from "./errors.ts";
+import { ActionFailed, uncommittedFilesOf } from "./errors.ts";
 import type { DataState } from "./model.ts";
-import { busyKey, whileBusy } from "./pending.ts";
-import { keyOf, type SessionRef } from "./session-ref.ts";
+import { busyKey, setLeaving, whileBusy } from "./pending.ts";
+import { isRow, keyOf, type SessionRef } from "./session-ref.ts";
 import { untilStore } from "./store.ts";
 import { loadSessions } from "./sessions-data.ts";
 
@@ -59,26 +59,39 @@ async function answerAndWait(
   if (sent) await untilStore(ctx.store, (state) => !stillAsking(requestId)(state));
 }
 
+/** Unsaved changes held the archive back (the files are listed); anything else is reported. */
+function refusedArchive(ctx: Context, call: { title: string; error: unknown }): ArchiveOutcome {
+  const files = uncommittedFilesOf(call.error);
+  if (files !== undefined) return { status: "blocked", files };
+  ctx.report(new ActionFailed(`Could not archive "${call.title}"`, call.error));
+  return { status: "failed" };
+}
+
+/**
+ * The archive request, with the session already out of the list. Afterwards it is back in the
+ * list (archived, or as it was when the archive was refused or failed, which is then reported).
+ */
 async function archiveRequest(
   ctx: Context,
   call: { ref: SessionRef; force: boolean },
 ): Promise<ArchiveOutcome> {
+  const { ref } = call;
+  const title = ctx.store.get().sessions.find((row) => isRow(row, ref))?.title ?? "the session";
+  setLeaving(ctx, { ref, leaving: true });
   try {
-    await ctx.client.sessions.archive(call.ref.id, call.force ? { force: true } : {});
-    // "Archiving…" stays until the list says archived, so the button does not flicker back.
-    await loadSessions(ctx).catch(() => undefined);
+    await ctx.client.sessions.archive(ref.id, call.force ? { force: true } : {});
     return { status: "archived" };
   } catch (error) {
-    const files = uncommittedFilesOf(error);
-    if (files !== undefined) return { status: "blocked", files };
-    ctx.report(error);
-    return { status: "failed" };
+    return refusedArchive(ctx, { title, error });
+  } finally {
+    setLeaving(ctx, { ref, leaving: false });
+    await loadSessions(ctx).catch(() => undefined);
   }
 }
 
 /**
- * Archives a session; without `force`, unsaved changes in its worktree stop it and are listed.
- * The session reads "Archiving…" until the app answers, and a second press does nothing.
+ * Archives a session: it leaves every list at once, without waiting for the app. Without `force`,
+ * unsaved changes in its worktree stop it and are listed. A second press does nothing.
  */
 export async function archiveSession(
   ctx: Context,

@@ -12,8 +12,13 @@ export type StreamView = {
 /** One item of the conversation: its words, and where it sits in the conversation and how tall it is. */
 export type ItemBox = { text: string; top: number; height: number };
 
-/** The header over the conversation: how tall it is, and whether all of it shares one line. */
-export type HeaderBox = { height: number; oneLine: boolean };
+/** The header over the conversation: how tall it is, and where its title is, how wide and in how many lines. */
+export type HeaderBox = {
+  height: number;
+  titleTop: number;
+  titleWidth: number;
+  titleLines: number;
+};
 
 const logOf = (page: Page): Locator => page.getByRole("log");
 
@@ -88,10 +93,14 @@ const LAST = `(el) => {
 }`;
 
 const HEADER = `(bar) => {
-  const [title, ...rest] = [...bar.children].map((child) => child.getBoundingClientRect());
+  const title = bar.querySelector("h4");
+  const box = title.getBoundingClientRect();
+  const lineHeight = parseFloat(getComputedStyle(title).lineHeight);
   return {
     height: bar.getBoundingClientRect().height,
-    oneLine: rest.every((box) => box.top < title.bottom),
+    titleTop: box.top - bar.getBoundingClientRect().top,
+    titleWidth: box.width,
+    titleLines: Math.round(box.height / lineHeight),
   };
 }`;
 

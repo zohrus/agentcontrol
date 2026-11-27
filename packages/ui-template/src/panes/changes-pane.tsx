@@ -45,7 +45,8 @@ function useSaving(call: { id: SessionRef; path: string | undefined }) {
   return { saving: count > 0, save };
 }
 
-function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
+function Loaded(props: { id: SessionRef; diff: DiffResult; showChangesTab: number }) {
+  const { id, diff } = props;
   const events = useSessionEvents(id);
   const [picked, setPicked] = useState<string>();
   const path = picked ?? diff.files[0]?.path;
@@ -65,6 +66,7 @@ function Loaded({ id, diff }: { id: SessionRef; diff: DiffResult }) {
       workingContent={file.working}
       notice={file.notice}
       worktreePath={worktreePathOf(events) ?? ""}
+      showChangesTab={props.showChangesTab}
       readOnly={frozen}
       saving={saving}
       onSave={save}
@@ -80,12 +82,21 @@ function unavailableReason(summary: { status: string } | undefined, error: strin
   return error;
 }
 
-/** The open session's changes: the diff, and an editor for its files. Remount it per session. */
-export function ChangesPane({ id }: { id: SessionRef | undefined }) {
+/**
+ * The open session's changes: the diff, and an editor for its files. Remount it per session.
+ * `showChangesTab` goes up each time something asks to see the changes.
+ */
+export function ChangesPane({
+  id,
+  showChangesTab,
+}: {
+  id: SessionRef | undefined;
+  showChangesTab: number;
+}) {
   const summary = useSession(id);
   const reason = unavailableReason(summary, useChangesError(id));
   const diff = useDiff(id);
   if (reason !== undefined) return <Message text={reason} />;
   if (id === undefined || !diff) return <Message text="Loading changes…" />;
-  return <Loaded id={id} diff={diff} />;
+  return <Loaded id={id} diff={diff} showChangesTab={showChangesTab} />;
 }

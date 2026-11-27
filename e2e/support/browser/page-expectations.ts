@@ -1,7 +1,7 @@
 import { pageEventually, quote } from "./browser-expectations.ts";
 import type { AppInBrowser } from "./start-app-in-browser.ts";
 
-const missingFrom = (shown: string, texts: string[]): string[] =>
+export const missingFrom = (shown: string, texts: string[]): string[] =>
   texts.filter((text) => !shown.includes(text));
 
 /** Somewhere on the page these texts are shown. */
@@ -143,10 +143,10 @@ export function expectSessionRowToSay(
   );
 }
 
-/** The header of the open session shows this time since it started. */
+/** The details of the open session show this time since it started. */
 export function expectElapsedTimeToShow(app: AppInBrowser, pattern: RegExp): Promise<void> {
   return pageEventually(
-    `expected the header's elapsed time to match ${String(pattern)}`,
+    `expected the details' elapsed time to match ${String(pattern)}`,
     async () => {
       const shown = await app.page.elapsedTimeText();
       return pattern.test(shown) ? undefined : `it shows ${quote(shown)}`;

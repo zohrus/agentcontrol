@@ -7,7 +7,10 @@ import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
 } from "../support/browser/start-app-in-browser.ts";
-import { opensSessionWithUncommittedEdit } from "../support/browser/open-session-setups.ts";
+import {
+  opensSessionWithUncommittedEdit,
+  startsSessionThatOnlyReplied,
+} from "../support/browser/open-session-setups.ts";
 import { expectSessionArchived } from "../support/expect/app-expectations.ts";
 import { cleanUpAfterTest } from "../support/setup/cleanup.ts";
 
@@ -67,8 +70,7 @@ test(
     // ** GIVEN a session whose agent only replied, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    app.mockAgent.willReply("Nothing to change");
-    const session = await app.user.startsSession({ prompt: "Check the readme" });
+    const session = await startsSessionThatOnlyReplied(app, "Check the readme");
     await app.page.opensSession(session.title);
 
     // ********************************************************************

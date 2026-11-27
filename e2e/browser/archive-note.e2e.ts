@@ -16,13 +16,15 @@ test(
     // ** GIVEN a session with an uncommitted edit, open in the browser
     // ********************************************************************
     const app = await startAppInBrowser();
-    await opensSessionWithUncommittedEdit(app, "Reword the readme");
+    const session = await opensSessionWithUncommittedEdit(app, "Reword the readme");
 
     // ********************************************************************
-    // ** WHEN the user archives it anyway
+    // ** WHEN the user archives it anyway, and opens it under Archived
     // ********************************************************************
     await app.page.archives();
     await app.page.archivesAnyway();
+    await app.page.showsArchivedSessions();
+    await app.page.opensSession(session.title);
 
     // ********************************************************************
     // ** THEN the conversation says the agent was stopped

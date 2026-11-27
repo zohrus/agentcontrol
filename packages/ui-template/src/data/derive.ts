@@ -1,4 +1,10 @@
-import type { SessionEvent, SessionRow, UsageRow, WorkspaceInfo } from "@agentcontrol/sdk";
+import type {
+  DiffResult,
+  SessionEvent,
+  SessionRow,
+  UsageRow,
+  WorkspaceInfo,
+} from "@agentcontrol/sdk";
 import {
   agentLabel,
   type PendingPermission,
@@ -9,7 +15,7 @@ import { formatCost, type SessionUsage } from "../status/index.ts";
 import { canTakeCommands, connectionName } from "../workspaces/index.ts";
 import type { DataState } from "./model.ts";
 import { busyKey } from "./pending.ts";
-import { keyOf, LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
+import { LOCAL_WORKSPACE, refOf } from "./session-ref.ts";
 
 /** How the user knows a workspace: the Mac itself is "This Mac", anything else keeps its name. */
 export function workspaceLabel(id: string): string {
@@ -42,11 +48,10 @@ function withAnswering(permission: PendingPermission | undefined, answering: str
   return permission && { ...permission, answering };
 }
 
-/** What the row says while the user's action on it is in flight: archiving, or the answer being sent. */
-function inFlightOf(row: SessionRow, busy: DataState["pending"]["busy"]) {
-  const archiving = busy[busyKey("archive", keyOf(refOf(row)))] !== undefined;
+/** The answer to the row's permission request that is on its way, if one is. */
+function answeringOf(row: SessionRow, busy: DataState["pending"]["busy"]): string | undefined {
   const answers = row.pendingPermissions.map((p) => busy[busyKey("answer", p.requestId)]);
-  return { archiving, answering: answers.find((choice) => choice !== undefined) };
+  return answers.find((choice) => choice !== undefined);
 }
 
 /** One session's list entry: its workspace, its single pending permission, what is in flight. */
@@ -59,9 +64,10 @@ function entryOf(call: {
   const workspace = tagOf(row, call.workspaces);
   const readOnly = !canTakeCommands(workspace);
   const entry: SessionListEntry = { summary: row, ref: refOf(row), workspace, readOnly };
-  const { archiving, answering } = inFlightOf(row, busy);
-  const detail = archiving ? "Archiving…" : detailOf(row, workspace);
-  const pending = readOnly ? undefined : withAnswering(pendingPermissionOf(row), answering);
+  const detail = detailOf(row, workspace);
+  const pending = readOnly
+    ? undefined
+    : withAnswering(pendingPermissionOf(row), answeringOf(row, busy));
   return { ...entry, ...(detail && { detail }), ...(pending && { pendingPermission: pending }) };
 }
 
@@ -71,6 +77,12 @@ export function toEntries(
   busy: DataState["pending"]["busy"],
 ): SessionListEntry[] {
   return call.sessions.map((row) => entryOf({ row, workspaces: call.workspaces, busy }));
+}
+
+/** The model of the latest turn that names one. */
+function modelOf(rows: readonly UsageRow[]): { model?: string } {
+  const model = rows.findLast((row) => row.model !== undefined)?.model;
+  return model === undefined ? {} : { model };
 }
 
 /** Tokens and cost over every turn of a session, or nothing before its first turn ends. */
@@ -85,6 +97,21 @@ export function totalUsage(rows: readonly UsageRow[] | undefined): SessionUsage 
     cacheReadTokens: sum((row) => row.cacheReadTokens),
     cacheWriteTokens: sum((row) => row.cacheWriteTokens),
     ...(priced.length > 0 && { costUsd: priced.reduce((t, row) => t + (row.costUsd ?? 0), 0) }),
+    ...modelOf(rows),
+  };
+}
+
+/** How many files a diff touches, and how many lines it adds and removes; nothing when it has no change. */
+export function changeTotalsOf(diff: DiffResult) {
+  // The app's answer is not checked on arrival: a malformed one must not take the session down.
+  const files: unknown = diff.files;
+  if (!Array.isArray(files) || files.length === 0) return undefined;
+  const sum = (pick: (file: DiffResult["files"][number]) => number) =>
+    diff.files.reduce((total, file) => total + pick(file), 0);
+  return {
+    files: diff.files.length,
+    additions: sum((file) => file.additions),
+    deletions: sum((file) => file.deletions),
   };
 }
 

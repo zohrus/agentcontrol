@@ -93,10 +93,9 @@ export function useAnswering(): Readonly<Record<string, string>> {
     return Object.fromEntries(answers.map(([key, option]) => [key.slice(prefix.length), option]));
   }, [busy]);
 }
-/** Whether this session's cancel, archive or resume has been asked for and not answered yet. */
+/** Whether this session's cancel or resume has been asked for and not answered yet. */
 export const useInFlight = (ref: SessionRef | undefined) => ({
   cancelling: useData((s) => s.pending.busy[busyKey("cancel", keyedBy(ref) ?? "")] !== undefined),
-  archiving: useData((s) => s.pending.busy[busyKey("archive", keyedBy(ref) ?? "")] !== undefined),
   resuming: useData((s) => s.pending.busy[busyKey("resume", keyedBy(ref) ?? "")] !== undefined),
 });
 export const useUsage = (ref: SessionRef | undefined) =>

@@ -20,10 +20,12 @@ import {
   ArchiveFlowDialog,
   ChangesPane,
   clearSelectionIf,
+  type ChangesRequest,
   type DialogName,
   SessionPane,
   SessionsPane,
   useArchiveFlow,
+  useChangesRequest,
   useOpenDialog,
   useSelectedSession,
 } from "./panes/index.ts";
@@ -49,9 +51,12 @@ type PaneOptions = {
   open: Open;
   /** Set while the Analytics screen is open: how to close it. */
   closeAnalytics: (() => void) | undefined;
+  /** The header asks to show the changes; the Changes panel opens its Changes tab each time. */
+  changes: ChangesRequest;
 };
 
-function paneSlots({ selected, select, archive, open, closeAnalytics }: PaneOptions) {
+function paneSlots(options: PaneOptions) {
+  const { selected, select, archive, open, closeAnalytics } = options;
   return {
     analytics: closeAnalytics && (
       <AnalyticsView
@@ -67,10 +72,15 @@ function paneSlots({ selected, select, archive, open, closeAnalytics }: PaneOpti
         selected={selected}
         onNewSession={open("new-session")}
         onArchive={archive.request}
+        onShowChanges={options.changes.ask}
       />
     ),
     changes: (
-      <ChangesPane key={selected && `${selected.workspaceId}/${selected.id}`} id={selected} />
+      <ChangesPane
+        key={selected && `${selected.workspaceId}/${selected.id}`}
+        id={selected}
+        showChangesTab={options.changes.asked}
+      />
     ),
   };
 }
@@ -94,15 +104,16 @@ function useScreen() {
 
 function Workbench() {
   const { selected, select, dialog, setDialog, closeAnalytics } = useScreen();
-  const archive = useArchiveFlow();
+  const archive = useArchiveFlow({ selected, select });
   const stats = useStatusStats();
+  const changes = useChangesRequest();
   useOpenSession(selected);
   const open: Open = (name) => () => {
     setDialog(name);
   };
   const slots = {
     topBar: topBarSlots(open),
-    panes: paneSlots({ selected, select, archive, open, closeAnalytics }),
+    panes: paneSlots({ selected, select, archive, open, closeAnalytics, changes }),
     statusBar: defaultStatusBarSlots(stats),
   };
   return (

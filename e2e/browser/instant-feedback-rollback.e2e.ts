@@ -2,6 +2,7 @@ import { RelayName } from "@agentcontrol/protocol";
 import { afterEach, test } from "bun:test";
 import {
   expectSessionListed,
+  expectSessionUnderArchived,
   expectStreamToShow,
 } from "../support/browser/browser-expectations.ts";
 import {
@@ -55,7 +56,7 @@ test(
 );
 
 test(
-  "archiving a session with unsaved changes shows archiving, then asks again and is ready to be pressed once more",
+  "archiving a session with unsaved changes removes it, then brings it back and asks again",
   async () => {
     // ********************************************************************
     // ** GIVEN a session with an uncommitted edit, open in a browser, and a relay slow to archive
@@ -69,16 +70,18 @@ test(
     // ** WHEN the user archives it and confirms
     // ********************************************************************
     await app.page.archives();
-    // AND the page says it is being archived while the relay has not answered
-    await expectPageToShow(app, "Archiving…");
+    // AND the session is gone from the list while the relay has not answered
+    await expectListedSessions(app, []);
     relay.answers();
 
     // ********************************************************************
-    // ** THEN the dialog asks again, listing the unsaved file, and the Archive button is back
+    // ** THEN the session is back and the dialog asks again, listing the unsaved file
     // ********************************************************************
     await expectDialogToShow(app, "README.md", "Archive anyway");
+    await expectListedSessions(app, [session.title]);
+    // AND Archive anyway archives it
     await app.page.archivesAnyway();
-    await expectPageToShow(app, "Session archived");
+    await expectSessionUnderArchived(app, session.title);
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

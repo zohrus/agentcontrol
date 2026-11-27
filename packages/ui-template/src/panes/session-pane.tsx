@@ -1,8 +1,10 @@
 import {
+  changeTotalsOf,
   type SessionRef,
   useAnswering,
   useController,
   useData,
+  useDiff,
   useInFlight,
   useOutgoing,
   useSession,
@@ -14,13 +16,17 @@ import { SessionView } from "../session-view/index.ts";
 import { readOnlyNote } from "../workspaces/index.ts";
 import { EmptyState } from "./empty-state.tsx";
 
-type Props = {
-  selected: SessionRef | undefined;
-  onNewSession: () => void;
+type OpenProps = {
+  selected: SessionRef;
   onArchive: (ref: SessionRef) => void;
+  /** Shows the session's changes in the right-hand panel. */
+  onShowChanges: () => void;
 };
 
-type OpenProps = { selected: SessionRef; onArchive: (ref: SessionRef) => void };
+type Props = Omit<OpenProps, "selected"> & {
+  selected: SessionRef | undefined;
+  onNewSession: () => void;
+};
 
 function Missing({ loaded }: { loaded: boolean }) {
   return <p className="p-4 text-muted">{loaded ? "That session no longer exists." : "Loading…"}</p>;
@@ -52,11 +58,12 @@ function useSessionActions(selected: SessionRef) {
   };
 }
 
-function OpenSession({ selected, onArchive }: OpenProps) {
+function OpenSession({ selected, onArchive, onShowChanges }: OpenProps) {
   const loaded = useData((s) => s.loaded);
   const summary = useSession(selected);
   const events = useSessionEvents(selected);
   const usage = useUsage(selected);
+  const diff = useDiff(selected);
   const workspace = useWorkspace(selected.workspaceId);
   const actions = useSessionActions(selected);
   const pending = usePending(selected);
@@ -67,6 +74,8 @@ function OpenSession({ selected, onArchive }: OpenProps) {
       events={events}
       turnRunning={summary.turnRunning}
       usage={usage}
+      changes={diff && changeTotalsOf(diff)}
+      onShowChanges={onShowChanges}
       readOnlyNote={workspace && readOnlyNote(workspace)}
       {...pending}
       {...actions}
@@ -78,7 +87,7 @@ function OpenSession({ selected, onArchive }: OpenProps) {
 }
 
 /** The open session's stream and composer, or a guide when none is open. */
-export function SessionPane({ selected, onNewSession, onArchive }: Props) {
+export function SessionPane({ selected, onNewSession, ...actions }: Props) {
   if (selected === undefined) return <EmptyState onNewSession={onNewSession} />;
-  return <OpenSession selected={selected} onArchive={onArchive} />;
+  return <OpenSession selected={selected} {...actions} />;
 }

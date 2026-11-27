@@ -25,12 +25,13 @@ test(
     await app.page.startsSession(mock);
 
     // ********************************************************************
-    // ** THEN the session says it started from the latest origin/main
+    // ** THEN the session's details say it started from the latest origin/main
     // ********************************************************************
-    await expectPageToShow(app, "from origin/main");
-    // AND the setup lines of the session say so too
     await app.page.opensTheSetupOutput();
     await expectPageToShow(app, "Started from the latest origin/main.");
+    // AND so do its details
+    await app.page.opensTheDetails();
+    await expectPageToShow(app, "from origin/main");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

@@ -1,5 +1,9 @@
 import { afterEach, test } from "bun:test";
 import {
+  expectFontToBeLoaded,
+  expectNothingToBeFetchedFromOutside,
+} from "../support/browser/fonts-expectations.ts";
+import {
   expectThePageToRunAProductionBuild,
   expectThePageToShowByItself,
 } from "../support/browser/production-ui-expectations.ts";
@@ -29,6 +33,27 @@ test(
     // ** THEN the page works, and runs React's production build from built files
     // ********************************************************************
     await expectThePageToRunAProductionBuild(app.page);
+  },
+  BROWSER_TEST_TIMEOUT_MS * 3,
+);
+
+test(
+  "the default UI of a released app ships its fonts: Inter and JetBrains Mono load from the app itself",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN the app is started the way a release starts, with the default UI
+    // ********************************************************************
+    // ********************************************************************
+    // ** WHEN the user opens it in a browser
+    // ********************************************************************
+    const app = await startReleaseWithTheDefaultUiInABrowser();
+
+    // ********************************************************************
+    // ** THEN both fonts are loaded, and nothing was fetched from outside this machine
+    // ********************************************************************
+    await expectFontToBeLoaded(app.page, "Inter");
+    await expectFontToBeLoaded(app.page, "JetBrains Mono");
+    expectNothingToBeFetchedFromOutside(app.page);
   },
   BROWSER_TEST_TIMEOUT_MS * 3,
 );

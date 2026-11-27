@@ -109,7 +109,7 @@ test(
 );
 
 test(
-  "archiving a session shows it is being archived at once, while the relay has not answered",
+  "archiving a session removes it at once, while the relay has not answered",
   async () => {
     // ********************************************************************
     // ** GIVEN a ready session open in a browser, and a slow relay
@@ -123,13 +123,13 @@ test(
     // ** WHEN the user confirms archiving it
     // ********************************************************************
     // ********************************************************************
-    // ** THEN the page says the session is being archived
+    // ** THEN the page no longer has the session, and shows the empty state
     // ********************************************************************
     await expectPageToReactAtOnce(app, {
       action: "Archive (confirm)",
       act: () => app.page.confirmsTheArchive(),
-      shown: pageShows("Archiving"),
-      reads: "say that the session is being archived",
+      shown: "/Welcome to AgentControl|No sessions yet/.test(document.body.innerText)",
+      reads: "show that the session is gone",
       backEndAnswers: () => {
         relay.answers();
       },

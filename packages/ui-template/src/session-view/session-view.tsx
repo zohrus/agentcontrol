@@ -3,6 +3,7 @@ import { ArchivedBanner } from "../archive/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { SessionUsage } from "../status/index.ts";
 import { Composer } from "./composer.tsx";
+import type { ChangeTotals } from "./header-numbers.tsx";
 import { InterruptedBanner } from "./interrupted-banner.tsx";
 import { ReadOnlyBanner } from "./read-only-banner.tsx";
 import { isTurnRunning } from "./reduce-events.ts";
@@ -13,13 +14,17 @@ import type { OutgoingView } from "./outgoing-items.ts";
 import { useViewItems } from "./use-view-items.ts";
 
 /** The actions of a session that are in flight. */
-type InFlight = { cancelling?: boolean; archiving?: boolean; resuming?: boolean };
+type InFlight = { cancelling?: boolean; resuming?: boolean };
 
 export type SessionViewProps = {
   summary: SessionSummary;
   events: readonly SessionEvent[];
-  /** Tokens and cost so far, shown as a chip in the header. */
+  /** Tokens and cost so far: the cost is in the header, the rest in its details. */
   usage?: SessionUsage | undefined;
+  /** What the session changed, shown in the header; absent until known. */
+  changes?: ChangeTotals | undefined;
+  /** Shows the session's changes (the header's files button). */
+  onShowChanges: () => void;
   /** True while the agent works on a turn (the session row's `turnRunning`); worked out from `events` when left out. */
   turnRunning?: boolean | undefined;
   onSendPrompt: (text: string) => void;
@@ -34,7 +39,7 @@ export type SessionViewProps = {
   onCancel: () => void;
   /** Starts a new agent for an interrupted session (its status is "interrupted"). */
   onResume: () => void;
-  /** Asks to archive; the caller shows the confirmation (see ArchiveDialog). */
+  /** Asks to archive, from the header's details; the caller shows the confirmation (see ArchiveDialog). */
   onArchive: () => void;
   onAnswerPermission: (requestId: string, optionId: string) => void;
   /** Set when the session's workspace cannot take commands: says why, and replaces the composer. */
@@ -63,7 +68,6 @@ function composerStateOf(props: SessionViewProps) {
     starting: summary.status === "starting",
     notReady: notReadyOf(summary),
     cancelling: inFlight?.cancelling === true,
-    archiving: inFlight?.archiving === true,
   };
 }
 
@@ -88,9 +92,24 @@ function Footer(props: SessionViewProps) {
         {...composerStateOf(props)}
         onSendPrompt={props.onSendPrompt}
         onCancel={props.onCancel}
-        onArchive={props.onArchive}
       />
     </>
+  );
+}
+
+/** A session archived already, or in a workspace that cannot take commands, is not archived from here. */
+const canArchive = (props: SessionViewProps): boolean =>
+  props.summary.status !== "archived" && props.readOnlyNote === undefined;
+
+function Header(props: SessionViewProps) {
+  return (
+    <SessionHeader
+      summary={props.summary}
+      usage={props.usage}
+      changes={props.changes}
+      onShowChanges={props.onShowChanges}
+      onArchive={canArchive(props) ? props.onArchive : undefined}
+    />
   );
 }
 
@@ -110,7 +129,7 @@ export function SessionView(props: SessionViewProps) {
   const items = useViewItems(props.events, outgoing);
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-surface">
-      <SessionHeader summary={props.summary} usage={props.usage} />
+      <Header {...props} />
       <Stream
         key={props.summary.id}
         items={items}

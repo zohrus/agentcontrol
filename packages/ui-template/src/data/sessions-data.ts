@@ -3,7 +3,7 @@ import { type Context, inBackground } from "./context.ts";
 import { browserFrames, createEventQueue, type EventQueue } from "./event-queue.ts";
 import { appendEvents, mergeFetched, upsertSessions } from "./merge.ts";
 import type { DataState } from "./model.ts";
-import { isCreating, setCreating, settleOutgoing } from "./pending.ts";
+import { isCreating, setCreating, settleOutgoing, withoutLeavingSessions } from "./pending.ts";
 import { isRow, keyOf, refOf, type SessionRef } from "./session-ref.ts";
 
 const PAGE = 1000;
@@ -105,7 +105,9 @@ function usageIsOutOfDate(before: DataState, row: SessionRow): boolean {
 export async function loadSessions(ctx: Context): Promise<void> {
   const fetched = await ctx.client.sessions.list();
   const before = ctx.store.get();
-  ctx.store.update((s) => ({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }));
+  ctx.store.update((s) =>
+    withoutLeavingSessions({ ...s, sessions: mergeFetched(s.sessions, fetched), loaded: true }),
+  );
   adoptCreated(ctx, fetched);
   for (const row of fetched) {
     if (usageIsOutOfDate(before, row)) inBackground(ctx, loadUsage(ctx, refOf(row)));
@@ -127,7 +129,9 @@ function adoptCreated(ctx: Context, summaries: readonly SessionRow[]): void {
 export function applySummaries(ctx: Context, summaries: readonly SessionRow[]): void {
   const before = ctx.store.get().sessions;
   adoptCreated(ctx, summaries);
-  ctx.store.update((s) => ({ ...s, sessions: upsertSessions(s.sessions, summaries) }));
+  ctx.store.update((s) =>
+    withoutLeavingSessions({ ...s, sessions: upsertSessions(s.sessions, summaries) }),
+  );
   for (const row of summaries) {
     const known = before.find((held) => isRow(held, refOf(row)));
     if (known?.status !== row.status) inBackground(ctx, loadUsage(ctx, refOf(row)));

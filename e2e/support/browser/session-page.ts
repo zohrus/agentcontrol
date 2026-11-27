@@ -22,16 +22,6 @@ function composer(page: Page) {
     cancelsTheTurn: () => page.getByRole("button", { name: "Cancel", exact: true }).click(),
     /** Whether the Send button can be pressed. */
     sendIsEnabled: () => page.getByRole("button", { name: "Send", exact: true }).isEnabled(),
-    /** Presses Archive; the dialog that asks to confirm opens. */
-    asksToArchive: () => page.getByRole("button", { name: "Archive", exact: true }).click(),
-    /** Confirms in the archive dialog. */
-    confirmsTheArchive: () =>
-      page.getByRole("dialog").getByRole("button", { name: "Archive", exact: true }).click(),
-    /** Presses Archive and confirms in the dialog that opens. */
-    archives: async (): Promise<void> => {
-      await page.getByRole("button", { name: "Archive", exact: true }).click();
-      await page.getByRole("dialog").getByRole("button", { name: "Archive", exact: true }).click();
-    },
   };
 }
 
@@ -73,11 +63,7 @@ export function sessionPage(page: Page) {
     streamText: async (): Promise<string> => {
       return textOf(streamOf(page));
     },
-    /** The usage chip of the open session's header ("1.5k tokens · $0.02"), or "" before any turn ended. */
-    usageChipText: async (): Promise<string> => {
-      return textOf(page.locator('[data-testid="usage-chip"]'));
-    },
-    /** How long the header says the session has been going ("45s", "3h 05m", "2d 4h"). */
+    /** How long the Details say the session has been going ("45s", "3h 05m", "2d 4h"); they must be open. */
     elapsedTimeText: () => page.locator('[title^="Started "]').innerText(),
     /** How many times the stream shows this text. */
     timesTheStreamShows: async (text: string): Promise<number> => {

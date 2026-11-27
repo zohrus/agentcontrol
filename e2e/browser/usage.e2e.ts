@@ -1,5 +1,5 @@
 import { afterEach, test } from "bun:test";
-import { expectUsageChipToShow } from "../support/browser/browser-expectations.ts";
+import { expectCostToShow } from "../support/browser/header-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
@@ -10,7 +10,7 @@ import { agentWillReplyReporting1200And340Tokens } from "../support/setup/report
 afterEach(cleanUpAfterTest);
 
 test(
-  "the open session's header shows its tokens and cost once a turn has finished",
+  "the open session's header shows its cost once a turn has finished",
   async () => {
     // ********************************************************************
     // ** GIVEN an agent that will reply and report 1200 input and 340 output tokens costing $0.02
@@ -25,9 +25,9 @@ test(
     await app.page.opensSession(session.title);
 
     // ********************************************************************
-    // ** THEN the header's usage chip shows 1.5k tokens and $0.02
+    // ** THEN the header shows the cost, $0.02
     // ********************************************************************
-    await expectUsageChipToShow(app, "1.5k tokens · $0.02");
+    await expectCostToShow(app, "$0.02");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

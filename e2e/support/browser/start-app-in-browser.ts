@@ -3,6 +3,7 @@ import { type AppPage, appPageOf } from "./app-page.ts";
 import { openTab } from "./open-tab.ts";
 import type { Page } from "./playwright.ts";
 import type { Wire } from "../setup/wire.ts";
+import { recordRequests } from "./fonts-page.ts";
 import { recordBrowserCoverage } from "./ui-coverage/collect.ts";
 
 const CONNECT_TIMEOUT_MS = 60_000;
@@ -20,6 +21,8 @@ export type BrowserOptions = {
   relayEnv?: Record<string, string>;
   /** The page's clock can be moved forward, so hours and days pass at once. */
   controllableClock?: boolean;
+  /** The page may read and write the computer's clipboard. */
+  clipboard?: boolean;
   /** The browser refuses to store anything, as in a locked-down private window. */
   storageBlocked?: boolean;
   /** The repo holds this many files besides its readme. */
@@ -40,6 +43,7 @@ const REFUSE_STORAGE = `Object.defineProperty(window, "sessionStorage", {
 
 async function prepareTab(tab: Page, options: BrowserOptions): Promise<void> {
   await recordBrowserCoverage(tab);
+  recordRequests(tab);
   if (options.controllableClock) await tab.clock.install();
   if (options.storageBlocked) await tab.addInitScript(REFUSE_STORAGE);
 }
@@ -53,6 +57,7 @@ export async function openInBrowser<A extends RunningApp>(
   const tab = await openTab({
     ...(viewport && { viewport }),
     ...(colorScheme && { colorScheme }),
+    ...(options.clipboard && { permissions: ["clipboard-read", "clipboard-write"] }),
   });
   await prepareTab(tab, options);
   // The app seeds the Modify agent's UI folders on the first request for its state. Doing that

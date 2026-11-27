@@ -1,13 +1,11 @@
 import { afterEach, test } from "bun:test";
-import {
-  expectStreamToShow,
-  expectUsageChipToShow,
-} from "../support/browser/browser-expectations.ts";
+import { expectStreamToShow } from "../support/browser/browser-expectations.ts";
+import { expectCostToShow } from "../support/browser/header-expectations.ts";
 import { aSessionWithAQueuedFirstPrompt } from "../support/browser/queued-prompt-setups.ts";
 import {
   expectBlockToBeClosed,
   expectEndOfTurnLineInPlaceOfWorkingRow,
-  expectHeaderToKeepItsHeight,
+  expectHeaderToKeepItsShape,
   expectItemKeptItsElementPlaceAndSize,
   expectLastRowToSay,
   theMarkedItem,
@@ -51,12 +49,12 @@ test(
 );
 
 test(
-  "the header stays one line of the same height when the turn ends and the usage appears",
+  "the header keeps its height and its title keeps its place and width when the turn ends and the cost appears",
   async () => {
     // ********************************************************************
-    // ** GIVEN a session open in a browser 800 px wide, whose agent works and then reports usage
+    // ** GIVEN a session open in a browser 1100 px wide, whose agent works and then reports usage
     // ********************************************************************
-    const app = await startAppInBrowser({ viewport: { width: 800, height: 700 } });
+    const app = await startAppInBrowser({ viewport: { width: 1100, height: 700 } });
     app.mockAgent.willReply("Starting");
     const hold = theAgentWaitsForTheTest(app);
     agentWillReplyReporting1200And340Tokens(app.mockAgent);
@@ -72,10 +70,10 @@ test(
     await expectLastRowToSay(app, "Turn ended");
 
     // ********************************************************************
-    // ** THEN the usage is in the header, which is one line of the same height
+    // ** THEN the cost is in the header, which is as tall as before, with its title where it was
     // ********************************************************************
-    await expectUsageChipToShow(app, "1.5k tokens · $0.02");
-    await expectHeaderToKeepItsHeight(app, before);
+    await expectCostToShow(app, "$0.02");
+    await expectHeaderToKeepItsShape(app, before);
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

@@ -147,7 +147,7 @@ A real Claude Code session was run in the compiled Linux app through a browser, 
 - [ ] The diff in the Changes tab is short and opens at line 1, not at the first change.
 - [ ] A quoted line (`> ...`) in an agent reply shows a literal `>` instead of a quote block.
 - [ ] The Terminal prompt shows the full worktree path and wraps over three lines; start the shell with a short prompt or a shorter folder.
-- [ ] The session title is cut mid-word with no ellipsis.
+- [x] The session title is cut mid-word with no ellipsis (done 27 Nov 2026): the header title now wraps and is never cut; agent, repository, branch, time and usage moved into the Details popover.
 - [ ] No "create pull request" action: commit and push were done in the Terminal tab, the pull request on GitHub.
 - [ ] `agentcontrol --help` starts the app on the default port and data folder instead of printing help.
 - [x] The flood tests no longer depend on how the shell's output is cut into pieces or on how fast the machine is (done 25 Nov 2026): `limitedOutput` keeps the last 64 KiB of what it drops and sends it after the "[output skipped]" marker, so the end of the output always arrives; the floods are 40 MB and 20 MB (still several times the 8 MB limit) so they finish well within the wait even at load 30.

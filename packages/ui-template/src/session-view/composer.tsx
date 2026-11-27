@@ -5,8 +5,6 @@ export type ComposerProps = {
   running: boolean;
   /** Cancel was pressed and the app has not answered yet. */
   cancelling?: boolean;
-  /** Archive was confirmed and the app has not answered yet. */
-  archiving?: boolean;
   placeholder: string;
   onSendPrompt: (text: string) => void;
   /** The session is still being set up: a message is held, not sent, until it is ready. */
@@ -14,8 +12,6 @@ export type ComposerProps = {
   /** The session did not become ready: a held message is given back, not sent. */
   notReady?: boolean;
   onCancel: () => void;
-  /** Omit to hide the Archive button (for example in the Modify chat). */
-  onArchive?: () => void;
 };
 
 type PromptProps = {
@@ -102,10 +98,8 @@ type ButtonsProps = {
   canSend: boolean;
   running: boolean;
   cancelling: boolean;
-  archiving: boolean;
   onSend: () => void;
   onCancel: () => void;
-  onArchive?: (() => void) | undefined;
 };
 
 function SendButton({ held, canSend, onSend }: Pick<ButtonsProps, "held" | "canSend" | "onSend">) {
@@ -127,21 +121,11 @@ function CancelButton(props: Pick<ButtonsProps, "running" | "cancelling" | "onCa
   );
 }
 
-function ArchiveButton({ archiving, onArchive }: Pick<ButtonsProps, "archiving" | "onArchive">) {
-  if (!onArchive) return null;
-  return (
-    <Button className="ml-auto" variant="ghost" onClick={onArchive} disabled={archiving}>
-      {archiving ? "Archiving…" : "Archive"}
-    </Button>
-  );
-}
-
 function Buttons(props: ButtonsProps) {
   return (
     <div className="flex gap-2">
       <SendButton {...props} />
       <CancelButton {...props} />
-      <ArchiveButton {...props} />
     </div>
   );
 }
@@ -163,7 +147,7 @@ function useMessage(props: ComposerProps) {
   return { text, setText, held, send };
 }
 
-/** Prompt box with Send, Cancel (while a turn runs) and Archive. */
+/** Prompt box with Send and Cancel (while a turn runs). */
 export function Composer(props: ComposerProps) {
   const { text, setText, held, send } = useMessage(props);
   return (
@@ -179,7 +163,6 @@ export function Composer(props: ComposerProps) {
       <Buttons
         {...props}
         cancelling={props.cancelling === true}
-        archiving={props.archiving === true}
         held={held}
         canSend={text.trim() !== ""}
         onSend={send}

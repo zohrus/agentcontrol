@@ -3,6 +3,15 @@ import { expectSessionWaitingForReply } from "../expect/app-expectations.ts";
 import type { Session } from "../setup/app.ts";
 import type { AppInBrowser } from "./start-app-in-browser.ts";
 
+/** A session whose agent only replied, and is waiting for the user: listed, not open yet. */
+export async function startsSessionThatOnlyReplied(
+  app: AppInBrowser,
+  prompt: string,
+): Promise<Session> {
+  app.mockAgent.willReply("Nothing to change");
+  return app.user.startsSession({ prompt });
+}
+
 /** A session whose agent edited README.md, left it uncommitted and finished; open in the browser. */
 export async function opensSessionWithUncommittedEdit(
   app: AppInBrowser,

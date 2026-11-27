@@ -87,6 +87,8 @@ export type Pending = {
   busy: Readonly<Record<string, string>>;
   /** Sessions the UI created that the app has not confirmed yet, by session key. */
   creating: Readonly<Record<string, true>>;
+  /** Sessions being archived: gone from every list at once, and kept out of it until the app answers. */
+  leaving: Readonly<Record<string, true>>;
 };
 
 /** Everything the UI shows that comes from the app. Per-session data is keyed by `keyOf(ref)`. */
@@ -146,7 +148,7 @@ export const initialState: DataState = {
   config: initialConfig,
   modify: undefined,
   versions: [],
-  pending: { messages: {}, busy: {}, creating: {} },
+  pending: { messages: {}, busy: {}, creating: {}, leaving: {} },
 };
 
 export const fileKey = (ref: SessionRef, path: string): string => `${keyOf(ref)}\u0001${path}`;

@@ -19,7 +19,7 @@ jerky, and items changed shape or place after they were shown.
    "Jump to latest", resumes it.
 7. "Working" is one fixed-height row at the end of the stream. When the turn ends it is replaced in
    place by the end-of-turn line of the same height.
-8. The header and composer have a fixed height while streaming: truncate, never wrap.
+8. The header and composer have a fixed height while streaming. The header's title wraps when the window is narrow (never cut), and the room for the files count and the cost is kept, so numbers that appear or change never move the title (changed 27 Nov 2026, owner's header decision: title only, details in a popover).
 
 ## Owner decisions (25 Nov 2026)
 

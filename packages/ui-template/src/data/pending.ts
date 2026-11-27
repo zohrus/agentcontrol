@@ -1,6 +1,7 @@
 import type { SessionEvent } from "@agentcontrol/sdk";
 import type { Context } from "./context.ts";
 import type { DataState, OutgoingMessage, Pending } from "./model.ts";
+import { keyOf, refOf, type SessionRef } from "./session-ref.ts";
 
 /** The things a user can start that take a while: each one is shown as "in progress" while it runs. */
 type BusyKind = "cancel" | "archive" | "resume" | "answer" | "modify";
@@ -102,6 +103,23 @@ export function setCreating(ctx: Context, call: { key: string; creating: boolean
   const held = (map: Pending["creating"]) =>
     creating ? { ...map, [key]: true as const } : without(map, key);
   ctx.store.update((s) => withPending(s, (p) => ({ ...p, creating: held(p.creating) })));
+}
+
+/** The state without the rows of the sessions that are leaving. */
+export function withoutLeavingSessions(state: DataState): DataState {
+  const { leaving } = state.pending;
+  const sessions = state.sessions.filter((row) => leaving[keyOf(refOf(row))] === undefined);
+  return sessions.length === state.sessions.length ? state : { ...state, sessions };
+}
+
+/** A session being archived leaves every list at once, and stays out of them until `leaving` is false again. */
+export function setLeaving(ctx: Context, call: { ref: SessionRef; leaving: boolean }): void {
+  const key = keyOf(call.ref);
+  const held = (map: Pending["leaving"]) =>
+    call.leaving ? { ...map, [key]: true as const } : without(map, key);
+  ctx.store.update((s) =>
+    withoutLeavingSessions(withPending(s, (p) => ({ ...p, leaving: held(p.leaving) }))),
+  );
 }
 
 /** True while the app has not confirmed the session this UI created: it has no history to load yet. */

@@ -21,9 +21,5 @@ type Props = { since: string; until?: string | undefined };
 export function ElapsedTime({ since, until }: Props) {
   const now = useNow(until === undefined);
   const end = until === undefined ? now : Date.parse(until);
-  return (
-    <span className="font-mono text-[11px] text-muted" title={`Started ${since}`}>
-      {formatElapsed(end - Date.parse(since))}
-    </span>
-  );
+  return <span title={`Started ${since}`}>{formatElapsed(end - Date.parse(since))}</span>;
 }

@@ -19,6 +19,9 @@ async function replaceInEditor(page: Page, text: string): Promise<void> {
 export function changesPage(page: Page) {
   return {
     opensChangesTab: () => page.getByRole("tab", { name: /^Changes/ }).click(),
+    /** Whether the Changes tab of the right-hand panel is the one that is open. */
+    changesTabIsOpen: async (): Promise<boolean> =>
+      (await page.getByRole("tab", { name: /^Changes/ }).getAttribute("aria-selected")) === "true",
     opensEditorTab: () => page.getByRole("tab", { name: "Editor" }).click(),
     opensChangedFile: (path: string) =>
       page

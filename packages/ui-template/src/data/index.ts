@@ -1,4 +1,4 @@
-export { workspaceLabel, worktreePathOf } from "./derive.ts";
+export { changeTotalsOf, workspaceLabel, worktreePathOf } from "./derive.ts";
 export { describeError } from "./errors.ts";
 export {
   useChangesError,

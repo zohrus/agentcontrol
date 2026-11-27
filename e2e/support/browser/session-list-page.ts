@@ -43,6 +43,8 @@ export function sessionListPage(page: Page) {
   return {
     ...filters(page),
     ...keyboard(page),
+    /** Opens the session the list shows first. */
+    opensTheFirstListedSession: () => rowsOf(page).first().getByRole("button").first().click(),
     opensSession: (title: string) =>
       rowOf(page, title).getByRole("button", { name: title }).click(),
     approvesFromTheRow: (title: string) =>

@@ -3,6 +3,8 @@ import { changesPage } from "./changes-page.ts";
 import { configEditorPage } from "./config-editor-page.ts";
 import { configPage } from "./config-page.ts";
 import { dialogsPage } from "./dialogs-page.ts";
+import { fontsPage } from "./fonts-page.ts";
+import { headerPage } from "./header-page.ts";
 import { idePage } from "./ide-page.ts";
 import { previewContent, previewPage } from "./preview-page.ts";
 import { terminalPage } from "./terminal-page.ts";
@@ -28,6 +30,8 @@ export function appPageOf(page: Page) {
     ...analyticsPage(page),
     ...sessionListPage(page),
     ...sessionPage(page),
+    ...headerPage(page),
+    ...fontsPage(page),
     ...streamPage(page),
     ...changesPage(page),
     ...dialogsPage(page),

@@ -1,6 +1,6 @@
 import type { FsEntry } from "@agentcontrol/protocol";
 import type { SessionId } from "@agentcontrol/sdk";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/index.ts";
 import { OpenInBrowserVSCode } from "../ide/index.ts";
 import { PreviewTab } from "../preview/index.ts";
@@ -21,6 +21,8 @@ export type ChangesPanelProps = Omit<ChangesTabProps, "onPreview"> & {
   tree: readonly FsEntry[];
   /** Plain-language note about the open file, e.g. that a save was refused. */
   notice?: string | undefined;
+  /** Goes up each time something outside asks to see the Changes tab. */
+  showChangesTab?: number | undefined;
 };
 
 function Notice({ text }: { text: string }) {
@@ -87,9 +89,18 @@ function PanelTabs({ panel }: { panel: ChangesPanelProps }) {
   );
 }
 
+/** The open tab; it goes back to Changes each time `showChangesTab` goes up. */
+function useTab(showChangesTab = 0) {
+  const [tab, setTab] = useState("changes");
+  useEffect(() => {
+    if (showChangesTab > 0) setTab("changes");
+  }, [showChangesTab]);
+  return [tab, setTab] as const;
+}
+
 /** Right-hand panel: Changes, Editor and Preview tabs plus an "Open in VS Code" link. */
 export function ChangesPanel(props: ChangesPanelProps) {
-  const [tab, setTab] = useState("changes");
+  const [tab, setTab] = useTab(props.showChangesTab);
   const onPreview = (path: string): void => {
     props.onSelectPath(path);
     setTab("preview");

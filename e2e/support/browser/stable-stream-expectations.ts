@@ -137,18 +137,23 @@ export function expectSameElementAfterSecondRead(
   });
 }
 
-/** The header is one line, and as tall as it was. */
-export async function expectHeaderToKeepItsHeight(
+/** The header is as tall as it was, and its title is in the same place, as wide and in as many lines. */
+export async function expectHeaderToKeepItsShape(
   app: AppInBrowser,
   before: HeaderBox,
 ): Promise<void> {
   const now = await app.page.sessionHeader();
-  if (now.oneLine && same(now.height, before.height)) return;
-  const shape = now.oneLine ? "one line" : "wrapped onto several lines";
-  throw new Error(
-    `expected the header to stay one line of ${String(before.height)} px, but it is ${String(now.height)} px, ${shape}`,
-  );
+  const kept =
+    same(now.height, before.height) &&
+    same(now.titleTop, before.titleTop) &&
+    same(now.titleWidth, before.titleWidth) &&
+    now.titleLines === before.titleLines;
+  if (kept) return;
+  throw new Error(`expected the header to stay ${shapeOf(before)}, but it is ${shapeOf(now)}`);
 }
+
+const shapeOf = (box: HeaderBox): string =>
+  `${String(box.height)} px tall with a title ${String(box.titleWidth)} px wide in ${String(box.titleLines)} line(s) at ${String(box.titleTop)} px`;
 
 /** The last row of the conversation says this. */
 export function expectLastRowToSay(app: AppInBrowser, text: string): Promise<void> {

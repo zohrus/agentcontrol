@@ -39,7 +39,9 @@ export {
   type ConnectionState,
   ElapsedTime,
   type SessionUsage,
-  UsageChip,
+  usageBreakdown,
+  usageCostOrTokens,
+  usageHeadline,
 } from "./status/index.ts";
 export {
   type RepoWithSetup,
