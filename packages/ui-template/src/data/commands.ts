@@ -1,9 +1,9 @@
-import type { SessionId } from "@agentcontrol/sdk";
+import type { SessionId, SessionRow } from "@agentcontrol/sdk";
 import { attempt, type Context } from "./context.ts";
 import { ActionFailed, uncommittedFilesOf } from "./errors.ts";
 import type { DataState } from "./model.ts";
 import { busyKey, setLeaving, whileBusy } from "./pending.ts";
-import { isRow, keyOf, type SessionRef } from "./session-ref.ts";
+import { isRow, keyOf, refOf, type SessionRef } from "./session-ref.ts";
 import { untilStore } from "./store.ts";
 import { loadSessions } from "./sessions-data.ts";
 
@@ -59,11 +59,22 @@ async function answerAndWait(
   if (sent) await untilStore(ctx.store, (state) => !stillAsking(requestId)(state));
 }
 
+/** The session is in the list again as it was, even when the list cannot be read right now. */
+function putBack(ctx: Context, row: SessionRow): void {
+  setLeaving(ctx, { ref: refOf(row), leaving: false });
+  ctx.store.update((s) =>
+    s.sessions.some((held) => isRow(held, refOf(row)))
+      ? s
+      : { ...s, sessions: [row, ...s.sessions] },
+  );
+}
+
 /** Unsaved changes held the archive back (the files are listed); anything else is reported. */
-function refusedArchive(ctx: Context, call: { title: string; error: unknown }): ArchiveOutcome {
+function refusedArchive(ctx: Context, call: { row: SessionRow; error: unknown }): ArchiveOutcome {
+  putBack(ctx, call.row);
   const files = uncommittedFilesOf(call.error);
   if (files !== undefined) return { status: "blocked", files };
-  ctx.report(new ActionFailed(`Could not archive "${call.title}"`, call.error));
+  ctx.report(new ActionFailed(`Could not archive "${call.row.title}"`, call.error));
   return { status: "failed" };
 }
 
@@ -76,13 +87,13 @@ async function archiveRequest(
   call: { ref: SessionRef; force: boolean },
 ): Promise<ArchiveOutcome> {
   const { ref } = call;
-  const title = ctx.store.get().sessions.find((row) => isRow(row, ref))?.title ?? "the session";
+  const row = ctx.store.get().sessions.find((held) => isRow(held, ref));
   setLeaving(ctx, { ref, leaving: true });
   try {
     await ctx.client.sessions.archive(ref.id, call.force ? { force: true } : {});
     return { status: "archived" };
   } catch (error) {
-    return refusedArchive(ctx, { title, error });
+    return row === undefined ? { status: "failed" } : refusedArchive(ctx, { row, error });
   } finally {
     setLeaving(ctx, { ref, leaving: false });
     await loadSessions(ctx).catch(() => undefined);

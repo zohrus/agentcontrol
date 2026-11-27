@@ -74,12 +74,15 @@ const itemClass = "h-7 w-full justify-start gap-2.5 px-2 font-normal";
 function Actions(props: Pick<DetailsProps, "summary" | "onArchive">) {
   const [copied, setCopied] = useState(false);
   const copy = (): void => {
-    void navigator.clipboard.writeText(props.summary.branch).then(
-      () => {
-        setCopied(true);
-      },
-      () => undefined,
-    );
+    // Where the browser has no clipboard (a page not served from this machine) the call throws: it is no copy.
+    void Promise.resolve()
+      .then(() => navigator.clipboard.writeText(props.summary.branch))
+      .then(
+        () => {
+          setCopied(true);
+        },
+        () => undefined,
+      );
   };
   return (
     <div className="mt-1 flex flex-col border-t border-line pt-1">

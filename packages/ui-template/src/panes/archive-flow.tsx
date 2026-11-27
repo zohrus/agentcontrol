@@ -49,8 +49,8 @@ export function useArchiveFlow(navigation: Navigation) {
       const wasOpen = sameSession(navigation.selected, ref);
       moveOn(ref);
       const outcome = await controller.archive(ref, chosen.files.length > 0);
-      if (outcome.status !== "blocked") return;
-      setTarget({ ref, files: outcome.files });
+      if (outcome.status === "archived") return;
+      if (outcome.status === "blocked") setTarget({ ref, files: outcome.files });
       if (wasOpen) navigation.select(ref);
     },
   };
