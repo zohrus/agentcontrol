@@ -7,11 +7,12 @@ import type {
   StartSession,
 } from "@agentcontrol/sdk";
 import { saveFile } from "./changes-data.ts";
-import { answerPermission, archiveSession, cancelTurn, resumeSession } from "./commands.ts";
+import { answerPermission, resumeSession } from "./commands.ts";
 import { configActions } from "./config-actions.ts";
 import { attempt, type Context, inBackground } from "./context.ts";
-import { dismissMessage, retryMessage, sendMessage } from "./outgoing.ts";
+import { dismissMessage, retryMessage } from "./outgoing.ts";
 import { type FileChange, startLive } from "./live.ts";
+import { archiveAndDropQueue, queueActions, startDelivering } from "./queue.ts";
 import { initialState } from "./model.ts";
 import { loadModify, modifyActions } from "./modify-data.ts";
 import { createSelection } from "./selection.ts";
@@ -34,17 +35,15 @@ function sessionActions(ctx: Context, selection: ReturnType<typeof createSelecti
     /** The session is in the list at once, so it can be opened; `confirmed` says whether the app took it. */
     startSession: (request: StartSession) =>
       startSession(ctx, { request, loadIt: selection.created }),
-    /** The message is in the conversation at once; the app is asked in the background. */
-    sendPrompt: (ref: SessionRef, text: string) => sendMessage(ctx, { ref, text }),
+    ...queueActions(ctx),
     retryPrompt: (ref: SessionRef, localId: string) => retryMessage(ctx, { ref, localId }),
     dismissPrompt: (ref: SessionRef, localId: string) => {
       dismissMessage(ctx, { ref, localId });
     },
-    cancel: (ref: SessionRef) => cancelTurn(ctx, ref),
     resume: (ref: SessionRef) => resumeSession(ctx, ref),
+    archive: (ref: SessionRef, force: boolean) => archiveAndDropQueue(ctx, { ref, force }),
     answerPermission: (id: SessionId, requestId: string, optionId: string) =>
       answerPermission(ctx, { id, requestId, optionId }),
-    archive: (ref: SessionRef, force: boolean) => archiveSession(ctx, { ref, force }),
     saveFile: (ref: SessionRef, path: string, content: string) =>
       attempt(ctx, () => saveFile(ctx, { ref, path, content })),
     /** What the sessions cost and how they went (the SDK's analytics). */
@@ -101,6 +100,29 @@ function passedThrough(client: Client) {
   };
 }
 
+/** Starts the live connection and the delivery of queued messages; returns the function that stops both. */
+function connectLive(
+  ctx: Context,
+  call: {
+    resync: () => void;
+    selection: ReturnType<typeof createSelection>;
+    changes: ReturnType<typeof fileChangeListeners>;
+  },
+): () => void {
+  const stopLive = startLive(ctx, {
+    resync: call.resync,
+    filesChanged: (change) => {
+      call.selection.filesChanged(change.ref);
+      call.changes.tell(change);
+    },
+  });
+  const stopQueue = startDelivering(ctx);
+  return () => {
+    stopQueue();
+    stopLive();
+  };
+}
+
 /** What the UI can ask for: the state to read, and the actions the user can take. */
 export function createController({ client, report }: ControllerOptions) {
   const store = createStore(initialState);
@@ -116,14 +138,7 @@ export function createController({ client, report }: ControllerOptions) {
     modify: modifyActions(ctx),
     store,
     /** Starts the live connection; returns the function that stops it. */
-    connect: () =>
-      startLive(ctx, {
-        resync,
-        filesChanged: (change) => {
-          selection.filesChanged(change.ref);
-          changes.tell(change);
-        },
-      }),
+    connect: () => connectLive(ctx, { resync, selection, changes }),
     /** Calls `listener` for every change to a session's files; returns the function that stops it. */
     watchFileChanges: changes.add,
     ...passedThrough(client),

@@ -23,6 +23,7 @@ import {
   fileKey,
   type FileVersions,
   type OutgoingMessage,
+  type QueuedMessage,
   type SetupStep,
   type WorkspaceCheck,
 } from "./model.ts";
@@ -36,6 +37,7 @@ const noChoices: Choices = { repos: [], agents: [] };
 const noCheck: WorkspaceCheck = { steps: [], running: false };
 const noSteps: readonly SetupStep[] = [];
 const noMessages: readonly OutgoingMessage[] = [];
+const noQueued: readonly QueuedMessage[] = [];
 
 /** Reads one part of the data; re-renders only when that part changes. */
 export function useData<V>(select: (state: DataState) => V): V {
@@ -84,6 +86,12 @@ export const useTurnRunning = (ref: SessionRef | undefined): boolean =>
 /** Messages the user sent to the session that its history does not hold yet. */
 export const useOutgoing = (ref: SessionRef | undefined): readonly OutgoingMessage[] =>
   useData((s) => s.pending.messages[keyedBy(ref) ?? ""] ?? noMessages);
+/** Messages the user wrote while the agent was busy, in the order they are sent. */
+export const useQueued = (ref: SessionRef | undefined): readonly QueuedMessage[] =>
+  useData((s) => s.queued[keyedBy(ref) ?? ""] ?? noQueued);
+/** True while the session's queue is held back after Cancel. */
+export const useQueuePaused = (ref: SessionRef | undefined): boolean =>
+  useData((s) => s.queuePaused[keyedBy(ref) ?? ""] !== undefined);
 /** The permission requests whose answer is on its way: request id to the option chosen. */
 export function useAnswering(): Readonly<Record<string, string>> {
   const busy = useData((s) => s.pending.busy);

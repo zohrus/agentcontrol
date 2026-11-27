@@ -25,6 +25,7 @@ Detailed progress per component is on the live status page: https://claude.ai/ar
 - [ ] External trajectories (sessions recorded elsewhere): read-only viewing, or resumable? Imported by the app (cloud trace systems) or by the relay (agent logs in `~/.claude/projects`, `~/.codex/sessions`)? Decide before building; read-only sources would become extra workspaces in the app.
 - [ ] Previewing an agent's dev server: forward its port over SSH and open it from the session.
 - [ ] Prompt input: images, `@file` references, slash commands. Both adapters advertise `image` and `embeddedContext` prompts; check slash commands (`available_commands_update`).
+- [ ] The message queue above the message box lives in the UI only (it survives switching sessions, not a page reload or closing the tab); one that survives them would have to live in the relay, next to the event log.
 - [ ] Real Claude Code always runs in Manual mode (`docs/decisions/2026-11-23-claude-code-manual-mode.md`). Users who want `auto` for their own sessions need a per-session setting. If an adapter stops offering a mode named `default`, nothing is switched and nothing says so: revisit then.
 - [ ] The relay accepts a `model` on `relay/sessions.create` and drops it. Pass it through when the model picker is wired (use the config option of category `model`).
 - [ ] Codex retries network errors for a long time without failing. Give turns their own timeout in the relay.

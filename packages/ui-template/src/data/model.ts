@@ -76,6 +76,9 @@ export type OutgoingMessage = {
   error: string | undefined;
 };
 
+/** A message written while the agent was busy: it waits in the queue above the message box. */
+export type QueuedMessage = { id: string; text: string };
+
 /**
  * What the user did that the app has not confirmed yet, shown at once and settled when the app
  * answers (or rolled back, with a message, when it refuses).
@@ -119,6 +122,10 @@ export type DataState = {
   /** Saved versions of the UI, newest first. */
   versions: readonly UiVersionEntry[];
   pending: Pending;
+  /** Messages waiting for the agent to be free, by session key, oldest first. */
+  queued: Readonly<Record<string, readonly QueuedMessage[]>>;
+  /** Sessions whose queue is held back (after Cancel) until the user sends or presses Send now. */
+  queuePaused: Readonly<Record<string, true>>;
 };
 
 const initialConfig: ConfigState = {
@@ -149,6 +156,8 @@ export const initialState: DataState = {
   modify: undefined,
   versions: [],
   pending: { messages: {}, busy: {}, creating: {}, leaving: {} },
+  queued: {},
+  queuePaused: {},
 };
 
 export const fileKey = (ref: SessionRef, path: string): string => `${keyOf(ref)}\u0001${path}`;

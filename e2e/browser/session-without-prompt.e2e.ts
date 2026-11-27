@@ -3,6 +3,7 @@ import { expectStreamToShow } from "../support/browser/browser-expectations.ts";
 import { expectMessageBoxToHold } from "../support/browser/message-box-expectations.ts";
 import { aSessionWithAQueuedFirstPrompt } from "../support/browser/queued-prompt-setups.ts";
 import { expectPageToShow } from "../support/browser/page-expectations.ts";
+import { expectQueueToHold } from "../support/browser/queue-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
@@ -65,7 +66,7 @@ test(
 );
 
 test(
-  "when the setup fails the session says so and the message the user wrote stays in the message box",
+  "when the setup fails the session says so and the message the user wrote stays unsent in the queue",
   async () => {
     // ********************************************************************
     // ** GIVEN a session whose setup is still running, with a first prompt already sent
@@ -84,8 +85,13 @@ test(
     await expectPageToShow(app, "Worktree setup failed");
     await app.page.opensTheSetupOutput();
     await expectPageToShow(app, "setup broke");
-    // AND the message was not sent and is still in the message box
+    // AND the message was not sent and is still in the queue, where it can be edited
     await expectPageToShow(app, "Not sent: the session did not become ready.");
+    await expectQueueToHold(app, "Add rate limiting");
+    // AND a message written now joins the queue behind it, instead of overtaking it
+    await app.page.sendsMessage("Then fix the tests");
+    await expectQueueToHold(app, "Add rate limiting", "Then fix the tests");
+    await app.page.editsTheQueuedMessage("Add rate limiting");
     await expectMessageBoxToHold(app, "Add rate limiting");
   },
   BROWSER_TEST_TIMEOUT_MS,
