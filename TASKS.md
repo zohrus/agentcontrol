@@ -245,3 +245,4 @@ Landed: see `docs/decisions/2026-11-25-stream-stability.md`. Still open:
 - [ ] The paced reveal cuts at spaces; text without spaces (CJK) is revealed in steps of up to 40 characters.
 - [ ] No word fade-in (owner decision of 25 Nov: not for now).
 - [ ] `ModifyChat` still builds its items from scratch on each change (`buildViewItems`); give it `useViewItems` when the Modify stream is made fluid too.
+- [ ] Header follow-ups (27 Nov 2026): the editor (Monaco) and terminal (xterm) still use their own font stacks, not JetBrains Mono; after an archive the view moves to the next session in flat order, not the grouped list order; the cost slot is too narrow for the "tokens" text shown when an agent reports no cost; a blocked archive (uncommitted changes) makes the session vanish briefly before the warning opens.
