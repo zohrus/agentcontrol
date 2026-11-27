@@ -8,6 +8,7 @@ import { previewContent, previewPage } from "./preview-page.ts";
 import { terminalPage } from "./terminal-page.ts";
 import { modifyPage } from "./modify-page.ts";
 import type { Page } from "./playwright.ts";
+import { queuePage } from "./queue-page.ts";
 import { sessionListPage } from "./session-list-page.ts";
 import { sessionPage } from "./session-page.ts";
 import { shellPage } from "./shell-page.ts";
@@ -28,6 +29,7 @@ export function appPageOf(page: Page) {
     ...analyticsPage(page),
     ...sessionListPage(page),
     ...sessionPage(page),
+    ...queuePage(page),
     ...streamPage(page),
     ...changesPage(page),
     ...dialogsPage(page),

@@ -1,5 +1,7 @@
-import { type KeyboardEvent, useEffect, useState } from "react";
+import { type KeyboardEvent, useRef } from "react";
 import { Button } from "../components/index.ts";
+import { QueueList, type QueuedView, type QueueProps } from "./queue-list.tsx";
+import { useMessage } from "./use-message.ts";
 
 export type ComposerProps = {
   running: boolean;
@@ -9,10 +11,14 @@ export type ComposerProps = {
   archiving?: boolean;
   placeholder: string;
   onSendPrompt: (text: string) => void;
-  /** The session is still being set up: a message is held, not sent, until it is ready. */
+  /** A message was just sent and the history does not hold it yet: the next one waits in the queue. */
+  sending?: boolean;
+  /** The session is still being set up: a message waits in the queue until it is ready. */
   starting?: boolean;
-  /** The session did not become ready: a held message is given back, not sent. */
+  /** The session did not become ready: queued messages are not sent, and stay in the queue. */
   notReady?: boolean;
+  /** Omit to send every message at once (for example in the Modify chat, which is never busy here). */
+  queue?: QueueProps | undefined;
   onCancel: () => void;
   /** Omit to hide the Archive button (for example in the Modify chat). */
   onArchive?: () => void;
@@ -20,85 +26,46 @@ export type ComposerProps = {
 
 type PromptProps = {
   text: string;
-  locked: boolean;
   placeholder: string;
   onChange: (text: string) => void;
   onSend: () => void;
 };
 
+/** Shift+Enter, Cmd+Enter or Ctrl+Enter sends; Enter alone is a new line. */
 function isSendShortcut(event: KeyboardEvent): boolean {
-  return event.key === "Enter" && (event.metaKey || event.ctrlKey);
+  const withModifier = event.shiftKey || event.metaKey || event.ctrlKey;
+  return event.key === "Enter" && withModifier && !event.nativeEvent.isComposing;
 }
 
-function Prompt({ text, locked, placeholder, onChange, onSend }: PromptProps) {
+function Prompt({ text, placeholder, onChange, onSend }: PromptProps) {
   return (
     <textarea
       value={text}
-      readOnly={locked}
       rows={2}
       placeholder={placeholder}
       onChange={(e) => {
         onChange(e.target.value);
       }}
       onKeyDown={(e) => {
-        if (isSendShortcut(e)) onSend();
+        if (!isSendShortcut(e)) return;
+        e.preventDefault();
+        onSend();
       }}
       className="resize-none rounded-lg border border-line bg-surface px-3 py-2 text-fg placeholder:text-muted focus-visible:outline-2 focus-visible:outline-accent"
     />
   );
 }
 
-type Held = {
-  /** The message waits for the session to be set up. */
-  queued: boolean;
-  /** A held message was not sent because the session did not become ready. */
-  notSent: boolean;
-  hold: () => void;
-  release: () => void;
-};
-
-/** A message written while the session starts is held, and sent once the agent is ready. */
-function useHeldMessage(call: { starting: boolean; notReady: boolean; deliver: () => void }): Held {
-  const { starting, notReady, deliver } = call;
-  const [queued, setQueued] = useState(false);
-  const [notSent, setNotSent] = useState(false);
-  useEffect(() => {
-    if (!queued || starting) return;
-    setQueued(false);
-    if (notReady) setNotSent(true);
-    else deliver();
-  }, [queued, starting, notReady, deliver]);
-  return {
-    queued,
-    notSent,
-    hold: () => {
-      setNotSent(false);
-      setQueued(true);
-    },
-    release: () => {
-      setQueued(false);
-    },
-  };
-}
-
-function HeldNote({ held }: { held: Held }) {
-  if (held.queued) {
-    return (
-      <p role="status" className="m-0 text-[11px] text-muted">
-        Queued: it is sent as the first message as soon as the session is ready.
-      </p>
-    );
-  }
-  if (!held.notSent) return null;
+function NotSent({ notReady, queued }: { notReady: boolean; queued: number }) {
+  if (!notReady || queued === 0) return null;
   return (
     <p role="alert" className="m-0 text-[11px] text-fail">
-      Not sent: the session did not become ready. Your message is still here.
+      Not sent: the session did not become ready. Your messages are still queued.
     </p>
   );
 }
 
 type ButtonsProps = {
-  held: Held;
   canSend: boolean;
   running: boolean;
   cancelling: boolean;
@@ -107,15 +74,6 @@ type ButtonsProps = {
   onCancel: () => void;
   onArchive?: (() => void) | undefined;
 };
-
-function SendButton({ held, canSend, onSend }: Pick<ButtonsProps, "held" | "canSend" | "onSend">) {
-  if (held.queued) return <Button onClick={held.release}>Take back</Button>;
-  return (
-    <Button variant="primary" onClick={onSend} disabled={!canSend}>
-      Send
-    </Button>
-  );
-}
 
 /** Cancel while a turn runs; once pressed it says it is cancelling until the app has answered. */
 function CancelButton(props: Pick<ButtonsProps, "running" | "cancelling" | "onCancel">) {
@@ -139,48 +97,59 @@ function ArchiveButton({ archiving, onArchive }: Pick<ButtonsProps, "archiving" 
 function Buttons(props: ButtonsProps) {
   return (
     <div className="flex gap-2">
-      <SendButton {...props} />
+      <Button
+        variant="primary"
+        title="Send (Shift+Enter or Cmd/Ctrl+Enter)"
+        onClick={props.onSend}
+        disabled={!props.canSend}
+      >
+        Send
+      </Button>
       <CancelButton {...props} />
       <ArchiveButton {...props} />
     </div>
   );
 }
 
-/** The text being written, and what Send does with it: send now, or hold it while the session starts. */
-function useMessage(props: ComposerProps) {
-  const { starting = false, notReady = false, onSendPrompt } = props;
-  const [text, setText] = useState("");
-  const deliver = () => {
-    onSendPrompt(text.trim());
-    setText("");
-  };
-  const held = useHeldMessage({ starting, notReady, deliver });
-  const send = () => {
-    if (text.trim() === "" || held.queued) return;
-    if (starting) held.hold();
-    else deliver();
-  };
-  return { text, setText, held, send };
+type QueueAreaProps = {
+  queue: QueueProps | undefined;
+  notReady: boolean;
+  starting: boolean;
+  onEdit: (message: QueuedView) => void;
+};
+
+/** The queued messages and, when the session never became ready, why they are not sent. */
+function QueueArea({ queue, notReady, starting, onEdit }: QueueAreaProps) {
+  if (queue === undefined) return null;
+  return (
+    <>
+      <QueueList {...queue} onEdit={onEdit} />
+      <NotSent notReady={notReady && !starting} queued={queue.messages.length} />
+    </>
+  );
 }
 
-/** Prompt box with Send, Cancel (while a turn runs) and Archive. */
+/** The queue above the message box, the box, and Send, Cancel (while a turn runs) and Archive. */
 export function Composer(props: ComposerProps) {
-  const { text, setText, held, send } = useMessage(props);
+  const { queue, notReady = false, starting = false } = props;
+  const { text, setText, send, edit } = useMessage({
+    busy: props.running || starting || props.sending === true,
+    queue,
+    onSendPrompt: props.onSendPrompt,
+  });
+  const box = useRef<HTMLDivElement>(null);
+  const takeBack = (message: QueuedView) => {
+    edit(message);
+    box.current?.querySelector("textarea")?.focus();
+  };
   return (
-    <div className="flex flex-col gap-2 border-t border-line px-4 py-2.5">
-      <Prompt
-        text={text}
-        locked={held.queued}
-        placeholder={props.placeholder}
-        onChange={setText}
-        onSend={send}
-      />
-      <HeldNote held={held} />
+    <div ref={box} className="flex flex-col gap-2 border-t border-line px-4 py-2.5">
+      <QueueArea queue={queue} notReady={notReady} starting={starting} onEdit={takeBack} />
+      <Prompt text={text} placeholder={props.placeholder} onChange={setText} onSend={send} />
       <Buttons
         {...props}
         cancelling={props.cancelling === true}
         archiving={props.archiving === true}
-        held={held}
         canSend={text.trim() !== ""}
         onSend={send}
       />

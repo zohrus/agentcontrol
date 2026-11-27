@@ -12,6 +12,8 @@ export {
   useOpenFile,
   useOpenSession,
   useOutgoing,
+  useQueued,
+  useQueuePaused,
   useSetupSteps,
   useSession,
   useSessionEntries,

@@ -3,10 +3,12 @@ import { ArchivedBanner } from "../archive/index.ts";
 import { agentLabel } from "../session-list/index.ts";
 import type { SessionUsage } from "../status/index.ts";
 import { Composer } from "./composer.tsx";
+import type { QueueProps } from "./queue-list.tsx";
 import { InterruptedBanner } from "./interrupted-banner.tsx";
 import { ReadOnlyBanner } from "./read-only-banner.tsx";
 import { isTurnRunning } from "./reduce-events.ts";
 import { SessionHeader } from "./session-header.tsx";
+import { takesPrompt } from "./takes-prompt.ts";
 import { Stream, type TurnRunning } from "./stream.tsx";
 import { turnStartedAt } from "./turn-clock.ts";
 import type { OutgoingView } from "./outgoing-items.ts";
@@ -23,6 +25,8 @@ export type SessionViewProps = {
   /** True while the agent works on a turn (the session row's `turnRunning`); worked out from `events` when left out. */
   turnRunning?: boolean | undefined;
   onSendPrompt: (text: string) => void;
+  /** Messages written while the agent is busy, waiting above the message box. */
+  queue?: QueueProps | undefined;
   /** Messages sent that the history does not hold yet: shown at the end of the conversation. */
   outgoing?: readonly OutgoingView[] | undefined;
   onRetryMessage?: ((localId: string) => void) | undefined;
@@ -48,12 +52,6 @@ function placeholderOf(summary: SessionSummary): string {
     : `Reply to ${agent}…`;
 }
 
-const TAKES_A_PROMPT = new Set(["ready", "running", "idle", "waiting"]);
-
-/** A message held while the session started cannot be sent: setup failed, or the agent is gone. */
-const notReadyOf = ({ status, waitingReason }: SessionSummary): boolean =>
-  waitingReason === "setup-failed" || !TAKES_A_PROMPT.has(status);
-
 /** What the composer says about the session: running or starting, and what is in flight. */
 function composerStateOf(props: SessionViewProps) {
   const { summary, inFlight } = props;
@@ -61,7 +59,8 @@ function composerStateOf(props: SessionViewProps) {
     running: props.turnRunning ?? isTurnRunning(props.events),
     placeholder: placeholderOf(summary),
     starting: summary.status === "starting",
-    notReady: notReadyOf(summary),
+    sending: (props.outgoing ?? []).some((m) => m.state !== "failed"),
+    notReady: !takesPrompt(summary),
     cancelling: inFlight?.cancelling === true,
     archiving: inFlight?.archiving === true,
   };
@@ -87,6 +86,7 @@ function Footer(props: SessionViewProps) {
         key={props.summary.id}
         {...composerStateOf(props)}
         onSendPrompt={props.onSendPrompt}
+        queue={props.queue}
         onCancel={props.onCancel}
         onArchive={props.onArchive}
       />

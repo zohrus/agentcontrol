@@ -1,7 +1,9 @@
 import { afterEach, test } from "bun:test";
 import { expectStreamToShow } from "../support/browser/browser-expectations.ts";
 import { opensSessionThatAnswersTwice } from "../support/browser/more-session-setups.ts";
+import { expectMessageBoxToHold } from "../support/browser/message-box-expectations.ts";
 import { expectStreamToShowAll } from "../support/browser/page-expectations.ts";
+import { expectStreamNotToShow } from "../support/browser/rendering-expectations.ts";
 import {
   BROWSER_TEST_TIMEOUT_MS,
   startAppInBrowser,
@@ -30,6 +32,53 @@ test(
     // ** THEN the conversation says the turn ended as cancelled
     // ********************************************************************
     await expectStreamToShow(app, "Turn ended · cancelled");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "Shift+Enter sends the message in the box without adding a line",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session open in the browser whose agent answered "First answer"
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    await opensSessionThatAnswersTwice(app);
+
+    // ********************************************************************
+    // ** WHEN the user types a message and presses Shift+Enter
+    // ********************************************************************
+    await app.page.sendsMessageWithShiftEnter("And again?");
+
+    // ********************************************************************
+    // ** THEN the message and the agent's second answer are in the conversation, and the box is empty
+    // ********************************************************************
+    await expectStreamToShowAll(app, "And again?", "Second answer");
+    await expectMessageBoxToHold(app, "");
+  },
+  BROWSER_TEST_TIMEOUT_MS,
+);
+
+test(
+  "Enter alone adds a new line and sends nothing",
+  async () => {
+    // ********************************************************************
+    // ** GIVEN a session open in the browser whose agent answered "First answer"
+    // ********************************************************************
+    const app = await startAppInBrowser();
+    await opensSessionThatAnswersTwice(app);
+
+    // ********************************************************************
+    // ** WHEN the user types a line and presses Enter
+    // ********************************************************************
+    await app.page.writesWithoutSending("First line");
+    await app.page.pressesEnterInTheMessageBox();
+
+    // ********************************************************************
+    // ** THEN the box holds the line and a new line, and nothing was sent
+    // ********************************************************************
+    await expectMessageBoxToHold(app, "First line\n");
+    await expectStreamNotToShow(app, "First line");
   },
   BROWSER_TEST_TIMEOUT_MS,
 );

@@ -14,7 +14,7 @@ const withPending = (state: DataState, change: (pending: Pending) => Pending): D
 });
 
 /** The record without one key. */
-function without<V>(record: Readonly<Record<string, V>>, key: string): Record<string, V> {
+export function without<V>(record: Readonly<Record<string, V>>, key: string): Record<string, V> {
   return Object.fromEntries(Object.entries(record).filter(([held]) => held !== key));
 }
 

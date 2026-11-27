@@ -5,6 +5,8 @@ import {
   useData,
   useInFlight,
   useOutgoing,
+  useQueued,
+  useQueuePaused,
   useSession,
   useSessionEvents,
   useUsage,
@@ -35,6 +37,24 @@ function usePending(selected: SessionRef) {
   };
 }
 
+/** The messages waiting for the agent, and what their buttons do. */
+function useQueue(selected: SessionRef) {
+  const controller = useController();
+  return {
+    messages: useQueued(selected),
+    paused: useQueuePaused(selected),
+    onQueue: (text: string) => {
+      controller.queuePrompt(selected, text);
+    },
+    onRemove: (id: string) => {
+      controller.removeQueuedPrompt(selected, id);
+    },
+    onSendNow: () => {
+      controller.resumeQueuedPrompts(selected);
+    },
+  };
+}
+
 /** What the buttons of the open session do. */
 function useSessionActions(selected: SessionRef) {
   const controller = useController();
@@ -60,6 +80,7 @@ function OpenSession({ selected, onArchive }: OpenProps) {
   const workspace = useWorkspace(selected.workspaceId);
   const actions = useSessionActions(selected);
   const pending = usePending(selected);
+  const queue = useQueue(selected);
   if (!summary) return <Missing loaded={loaded} />;
   return (
     <SessionView
@@ -68,6 +89,7 @@ function OpenSession({ selected, onArchive }: OpenProps) {
       turnRunning={summary.turnRunning}
       usage={usage}
       readOnlyNote={workspace && readOnlyNote(workspace)}
+      queue={queue}
       {...pending}
       {...actions}
       onArchive={() => {
