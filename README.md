@@ -32,9 +32,11 @@ Pre-release. There is no installer yet. **Running from source is the supported w
 ## Requirements
 
 - [Bun](https://bun.sh) 1.4.4 (the version CI uses) and `git`.
-- For real agents: Claude Code logged in on this machine. The agent adapters are downloaded with
-  `bunx` the first time a session starts, so the first session needs network access and can take a
-  minute.
+- For real agents: Claude Code logged in on this machine. The relay downloads each agent's adapter
+  itself, once, into its data folder the first time a session with that agent starts. That first
+  session needs network access and can take a minute; later sessions use the installed copy and
+  need no download. If the download fails, the session says so: check your internet connection and
+  start the session again.
 - No key is needed to try it with the built-in test agent (see below).
 
 ## Quick start
